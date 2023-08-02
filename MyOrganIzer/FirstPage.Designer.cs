@@ -28,8 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FirstPage));
             this.panel1 = new System.Windows.Forms.Panel();
+            this.btnmesseje = new MyOrganIzer.CriculButton();
             this.label2 = new System.Windows.Forms.Label();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.btnMinimize = new MyOrganIzer.CriculButton();
@@ -37,6 +39,8 @@
             this.btnTexniqs = new MyOrganIzer.CriculButton();
             this.btnSenders = new MyOrganIzer.CriculButton();
             this.btnPcainet = new MyOrganIzer.CriculButton();
+            this.metroToolTip1 = new MetroFramework.Components.MetroToolTip();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
@@ -44,11 +48,27 @@
             // panel1
             // 
             this.panel1.BackColor = System.Drawing.Color.PowderBlue;
+            this.panel1.Controls.Add(this.btnmesseje);
             this.panel1.Controls.Add(this.label2);
             this.panel1.Location = new System.Drawing.Point(3, 1);
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(1480, 107);
             this.panel1.TabIndex = 3;
+            // 
+            // btnmesseje
+            // 
+            this.btnmesseje.BackColor = System.Drawing.Color.White;
+            this.btnmesseje.FlatAppearance.BorderSize = 0;
+            this.btnmesseje.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnmesseje.Image = ((System.Drawing.Image)(resources.GetObject("btnmesseje.Image")));
+            this.btnmesseje.Location = new System.Drawing.Point(1411, 35);
+            this.btnmesseje.Name = "btnmesseje";
+            this.btnmesseje.Size = new System.Drawing.Size(60, 57);
+            this.btnmesseje.TabIndex = 11;
+            this.metroToolTip1.SetToolTip(this.btnmesseje, "Հաճախորդներ");
+            this.btnmesseje.UseVisualStyleBackColor = false;
+            this.btnmesseje.Visible = false;
+            this.btnmesseje.Click += new System.EventHandler(this.btnmesseje_Click);
             // 
             // label2
             // 
@@ -82,6 +102,7 @@
             this.btnMinimize.Name = "btnMinimize";
             this.btnMinimize.Size = new System.Drawing.Size(86, 85);
             this.btnMinimize.TabIndex = 9;
+            this.metroToolTip1.SetToolTip(this.btnMinimize, "Ծալել");
             this.btnMinimize.UseVisualStyleBackColor = false;
             this.btnMinimize.Click += new System.EventHandler(this.btnMinimize_Click);
             // 
@@ -96,6 +117,7 @@
             this.btnExit.Name = "btnExit";
             this.btnExit.Size = new System.Drawing.Size(86, 85);
             this.btnExit.TabIndex = 8;
+            this.metroToolTip1.SetToolTip(this.btnExit, "Անջատել");
             this.btnExit.UseVisualStyleBackColor = false;
             this.btnExit.Click += new System.EventHandler(this.btnExit_Click);
             // 
@@ -110,6 +132,7 @@
             this.btnTexniqs.Name = "btnTexniqs";
             this.btnTexniqs.Size = new System.Drawing.Size(83, 83);
             this.btnTexniqs.TabIndex = 7;
+            this.metroToolTip1.SetToolTip(this.btnTexniqs, "Տեխնիկներ");
             this.btnTexniqs.UseVisualStyleBackColor = false;
             this.btnTexniqs.Click += new System.EventHandler(this.btnTexniqs_Click);
             // 
@@ -124,11 +147,13 @@
             this.btnSenders.Name = "btnSenders";
             this.btnSenders.Size = new System.Drawing.Size(89, 87);
             this.btnSenders.TabIndex = 6;
+            this.metroToolTip1.SetToolTip(this.btnSenders, "Առաքիչներ");
             this.btnSenders.UseVisualStyleBackColor = false;
             this.btnSenders.Click += new System.EventHandler(this.btnSenders_Click);
             // 
             // btnPcainet
             // 
+            this.btnPcainet.AccessibleDescription = "";
             this.btnPcainet.BackColor = System.Drawing.Color.PowderBlue;
             this.btnPcainet.FlatAppearance.BorderSize = 0;
             this.btnPcainet.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -137,8 +162,19 @@
             this.btnPcainet.Name = "btnPcainet";
             this.btnPcainet.Size = new System.Drawing.Size(84, 83);
             this.btnPcainet.TabIndex = 5;
+            this.metroToolTip1.SetToolTip(this.btnPcainet, "Հաճախորդներ");
             this.btnPcainet.UseVisualStyleBackColor = false;
             this.btnPcainet.Click += new System.EventHandler(this.btnPcainet_Click_1);
+            // 
+            // metroToolTip1
+            // 
+            this.metroToolTip1.Style = MetroFramework.MetroColorStyle.Blue;
+            this.metroToolTip1.StyleManager = null;
+            this.metroToolTip1.Theme = MetroFramework.MetroThemeStyle.Light;
+            // 
+            // timer1
+            // 
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
             // FirstPage
             // 
@@ -180,5 +216,8 @@
         private CriculButton btnExit;
         private CriculButton btnMinimize;
         private System.Windows.Forms.PictureBox pictureBox1;
+        private MetroFramework.Components.MetroToolTip metroToolTip1;
+        private System.Windows.Forms.Timer timer1;
+        private CriculButton btnmesseje;
     }
 }

@@ -11,12 +11,12 @@ namespace MyOrganIzer
 {
     public class Client
     {
-        string connectionString = "server=developer.000.am,1433\\MERSOFT11;database=Ayzenq;user=dev;password=Developer1*";
+       static string connectionString = "server=(LocalDb)\\MSSQLLocalDB;database=Ayzenq";
         string sql = "SELECT * FROM Answers";
         SqlCommand sCommand;
         SqlDataAdapter sAdapter;
         SqlCommandBuilder sBuilder;
-        SqlConnection conn;
+       static SqlConnection conn;
         public Client()
         {
             DateJoin  = new DateTime(1900/01/01);
@@ -29,8 +29,9 @@ namespace MyOrganIzer
         public decimal? Price { get; set; }
         public decimal? Debet { get; set; }
         public string PhoneNumber { get; set; }
-        public DateTime DateJoin { get; set; } = new DateTime(1900/01/01);
-
+        public DateTime DateJoin { get; set; } = new DateTime(1900-01-01);
+        public DateTime DateDobleJoin { get; set; } = new DateTime(1900-01-01);
+        public string DateJoinString { get; set; }
         public void ShowDatagrid(DataGridView dataGrid)
         {
             var dt = new DataTable();
@@ -45,33 +46,64 @@ namespace MyOrganIzer
             conn.Open();
             if (!edit)
             {
-                sCommand = new SqlCommand($"insert into Answers values('{ FirstName }' , '{ LastName }' ," +
-                    $"'{ MidlName }','{DateJoin.ToString("yyyy-MM-dd HH:mm:ss")}',{ Price },{Debet},{PhoneNumber})", conn); 
+                sCommand = new SqlCommand($"insert into Answers values(N'{ FirstName }' , N'{ LastName }' ," +
+                    $"N'{ MidlName }','{DateJoin.ToString("yyyy-MM-dd HH:mm:ss")}',{ Price },{Debet},{PhoneNumber},'{DateDobleJoin.ToString("yyyy-MM-dd HH:mm:ss")}','{DateJoinString}')", conn); 
             }
             else
             {
-                sCommand = new SqlCommand($"update Answers set Name='{FirstName}', LastName='{LastName}'," +
-                    $" MidlName='{MidlName}', DateJoin='{DateJoin.ToString("yyyy-MM-dd HH:mm:ss")}',Price={Price},Debt={Debet},PhoneNumbers={PhoneNumber} where Id={Id}", conn);
+                sCommand = new SqlCommand($"update Answers set Name=N'{FirstName}', LastName=N'{LastName}'," +
+                    $" MidlName=N'{MidlName}', DateDoubleJoin='{DateDobleJoin.ToString("yyyy-MM-dd HH:mm:ss")}', DateJoin='{DateJoin.ToString("yyyy-MM-dd HH:mm:ss")}',Price={Price},Debt={Debet},PhoneNumbers={PhoneNumber},DateJoinString='{DateJoinString}' where Id={Id}", conn);
             }
             try
             {
                 sCommand.ExecuteNonQuery();
                 M.OKCencel(MessegesTyp.OKCenc,"Տվյալները գրանցված են");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                MessageBox.Show("Տեղի է ունեցել սխալ");
+                MessageBox.Show(ex.Message);
             }
             finally
             {
                 conn.Close();
             }
         }
+        public static object[] SalectDatduoblejoin()
+        {
+            List<object> str = new List<object>();
+            conn = new SqlConnection(connectionString);
+            try
+            {
+                SqlCommand comm = new SqlCommand("SELECT  id,DateDoubleJoin FROM Answers", conn);
+               
+                conn.Open();
+
+                SqlDataReader reader = comm.ExecuteReader();
+                
+          
+                while (reader.Read())
+                {
+                    object[] values = new object[reader.FieldCount];
+                    reader.GetValues(values);
+                    str.Add(values);
+                }
+                reader.Close();
+            }
+            catch (Exception ex)
+            {
+                M.OKCencel(MessegesTyp.OKCenc, ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+            return str.ToArray();
+        }
         public void Delete()
         {
             conn = new SqlConnection(connectionString);
             conn.Open();
-            sCommand = new SqlCommand($"DELETE FROM Answers where Id={Id}", conn);
+            sCommand = new SqlCommand($"DELETE FROM Answers where Id={Id} DELETE FROM ABC where EPMLID={Id} DELETE FROM Emploit where EmploeId={Id}", conn);
             try
             {
                 sCommand.ExecuteNonQuery();

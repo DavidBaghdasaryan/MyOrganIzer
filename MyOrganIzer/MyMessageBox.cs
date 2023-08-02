@@ -42,24 +42,35 @@ namespace MyOrganIzer
         private void btnYes_Click(object sender, EventArgs e)
         {
             Yes = true;
+            No = false;
             this.Close();
         }
 
         private void btnNo_Click(object sender, EventArgs e)
         {
             No = true;
+            Yes = false;
             this.Close();
         }
-
         private void MyMessageBox_Load(object sender, EventArgs e)
         {
             LabelQuestion.Text = labelText;
+            
+            if (LabelQuestion.Height>30)
+            {
+                panel1.Height = 20 + LabelQuestion.Height;
+                panel1.Width = 2* LabelQuestion.Width;
+                return;
+            }
+            LabelQuestion.Font = new System.Drawing.Font("Centaur", 15.75F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
         }
 
         private void btnClosOk_Click(object sender, EventArgs e)
         {
             this.Close();
         }
+
+       
     }
     public class M
     {

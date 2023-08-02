@@ -10,20 +10,21 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
 
+
 namespace MyOrganIzer
 {
     public partial class FormClients : Form
     {
         Thread thread;
         Client clientedit =new Client ();
-        string connectionString = "server=developer.000.am,1433\\MERSOFT11;database=Ayzenq;user=dev;password=Developer1*";
+        string connectionString = "server=(LocalDb)\\MSSQLLocalDB;database=Ayzenq";
         string sql = "select  * from Answers";
         SqlCommand sCommand;
         SqlDataAdapter sAdapter;
         SqlCommandBuilder sBuilder;
 
-        MessageBoxButtons buttons = MessageBoxButtons.YesNo;
-        DialogResult result;
+        
+       
         public FormClients()
         {
             InitializeComponent();
@@ -34,11 +35,13 @@ namespace MyOrganIzer
             dgvClients.Columns[2].HeaderText = "Ազգաուն";
             dgvClients.Columns[3].HeaderText = "Հայրանուն";
             dgvClients.Columns[4].HeaderText = "Գրանցման օր";
+            dgvClients.Columns[4].DefaultCellStyle.Format = "MM-dd-yyyy HH:mm";
             dgvClients.Columns[5].HeaderText = "Վճարում";
             dgvClients.Columns[6].HeaderText = "Մնացորդ";
             dgvClients.Columns[7].HeaderText = "Հեռախոսահամար";
-
-
+            dgvClients.Columns[8].Visible=false;
+            dgvClients.Columns[9].HeaderText = "Նախատեսված է կրկնակի այց";
+            dgvClients.Columns[9].DefaultCellStyle.Format = "MM-dd-yyyy HH:mm";
         }
 
 
@@ -127,24 +130,74 @@ namespace MyOrganIzer
         private void criculButton1_Click(object sender, EventArgs e)
         {
 
-            SqlSelect("SELECT * FROM Answers where Debt > 0");
+            var Sum = SqlQuery.SqlSelect($"SELECT * FROM Answers where Debt > 0 and  MONTH(DateJoin) = '{datemounth.Value.Month}'", "Answers");
+            foreach (var item in Sum)
+            {
+                txtSum.Text = item[0].ToString();
+            }
         }
 
         private void criculButton2_Click(object sender, EventArgs e)
         {
-            SqlSelect($"select sum(Price) as Գումար from Answers WHERE MONTH(DateJoin) = '{datemounth.Value.Month}'");
+           var Sum= SqlQuery.SqlSelect($"select SUM(PRICE) from Answers WHERE MONTH(DateJoin) = '{datemounth.Value.Month}' ", "Answers");
+            foreach (var item in Sum)
+            {
+                txtSum.Text = item[0].ToString();
+            }
+            
         }
 
         private void btnFind_Click(object sender, EventArgs e)
         {
             for (int i = 0; i < dgvClients.ColumnCount; i++)
             {
-
+                if (chPrice.Checked)
+                {
+                    SqlSelect($"select * From Answers WHERE  PRICE<>0 And MONTH(DateJoin) = '{datemounth.Value.Month}'");
+                    return;
+                }
+                if (chbDebt.Checked)
+                {
+                    SqlSelect($"select * From Answers WHERE  Debt<>0 And MONTH(DateJoin) = '{datemounth.Value.Month}'");
+                    return;
+                }
+                if (cmbFind.SelectedItem==null)
+                {
+                    SqlSelect($"select * From Answers WHERE [{dgvClients.Columns[i].Name}] Like (N'%{txtFind.Text}%') And MONTH(DateJoin) = '{datemounth.Value.Month}'");
+                }
+                else
                 if (cmbFind.SelectedItem.ToString() == dgvClients.Columns[i].HeaderText)
                 {
-                    SqlSelect($"select * From Answers WHERE [{dgvClients.Columns[i].Name}] Like ('%{txtFind.Text}%')");
+                    SqlSelect($"select * From Answers WHERE [{dgvClients.Columns[i].Name}] Like (N'%{txtFind.Text}%') And MONTH(DateJoin) = '{datemounth.Value.Month}'");
                 }
             }
+
+        }
+
+        private void pictureBox2_Click(object sender, EventArgs e)
+        {
+            clientedit.ShowDatagrid(dgvClients);
+            dgvClients.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvClients.Columns[0].Visible = false;
+            dgvClients.Columns[1].HeaderText = "Անուն";
+            dgvClients.Columns[2].HeaderText = "Ազգաուն";
+            dgvClients.Columns[3].HeaderText = "Հայրանուն";
+            dgvClients.Columns[4].HeaderText = "Գրանցման օր";
+            dgvClients.Columns[5].HeaderText = "Վճարում";
+            dgvClients.Columns[6].HeaderText = "Մնացորդ";
+            dgvClients.Columns[7].HeaderText = "Հեռախոսահամար";
+            dgvClients.Columns[8].Visible=false;
+            dgvClients.Columns[9].HeaderText = "Նախատեսված է կրկնակի այց";
+        }
+
+        private void chPrice_CheckedChanged(object sender, EventArgs e)
+        {
+            chbDebt.Checked = false;
+        }
+
+        private void chbDebt_CheckedChanged(object sender, EventArgs e)
+        {
+            chPrice.Checked = false;
         }
     }
 }

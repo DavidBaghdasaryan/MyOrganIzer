@@ -15,7 +15,7 @@ namespace MyOrganIzer
     public partial class FormTecinks : Form
     {
         Thread thread;
-        string connectionString = "server=developer.000.am,1433\\MERSOFT11;database=Ayzenq;user=dev;password=Developer1*";
+        string connectionString = "server=(LocalDb)\\MSSQLLocalDB;database=Ayzenq";
         string sql = "SELECT * FROM Tecno";
         SqlCommand sCommand;
         SqlDataAdapter sAdapter;
@@ -43,15 +43,18 @@ namespace MyOrganIzer
             dgvTecnics.Columns["ID"].Visible = false;
             dgvTecnics.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
 
-            dgvTecnics.Columns[1].HeaderText = "Ա/Ա/Հ";
-            dgvTecnics.Columns[2].HeaderText = "implant m/k";
-            dgvTecnics.Columns[3].HeaderText = "m/k";
-            dgvTecnics.Columns[4].HeaderText = "cr";
-            dgvTecnics.Columns[5].HeaderText = "byuget";
-            dgvTecnics.Columns[6].HeaderText = "protez";
+            dgvTecnics.Columns[1].Visible = false;
+            dgvTecnics.Columns[2].HeaderText = "Ի/Մ/Կ";
+            dgvTecnics.Columns[3].HeaderText = "Մ/կ";
+            dgvTecnics.Columns[4].HeaderText = "Ց/կ";
+            dgvTecnics.Columns[5].HeaderText = "Բյուգել";
+            dgvTecnics.Columns[6].HeaderText = "Պրոթեզ";
             dgvTecnics.Columns[7].HeaderText = "M & S abatments";
-            dgvTecnics.Columns[8].HeaderText = "Gog";
+            dgvTecnics.Columns[8].HeaderText = "Լաբարատորիա";
             dgvTecnics.Columns[9].HeaderText = "Առաքման օր";
+
+            dgvTecnics.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            dgvTecnics.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
         }
 
        
@@ -92,7 +95,7 @@ namespace MyOrganIzer
         {
             if (cmbTecnics.SelectedItem == null)
             {
-                MessageBox.Show("Տեխնիկը նշված չէ");
+                M.OKCencel(MessegesTyp.OKCenc, "Նյութական միջոցի տեսակը նշված չէ");
                 return;
             }
 
@@ -111,6 +114,11 @@ namespace MyOrganIzer
         private void btnTecnicsEdit_Click(object sender, EventArgs e)
         {
             int id = (int)dgvTecnics.SelectedRows[0].Cells["Id"].Value;
+            if (cmbTecnics.SelectedItem == null)
+            {
+                M.OKCencel(MessegesTyp.OKCenc, "Նյութական միջոցի տեսակը ընտրված չէ");
+                return;
+            }
             for (int i = 0; i < dgvTecnics.ColumnCount; i++)
             {
 
@@ -135,6 +143,11 @@ namespace MyOrganIzer
         private void btnSum_Click_1(object sender, EventArgs e)
         {
             int id = (int)dgvTecnics.SelectedRows[0].Cells["Id"].Value;
+            if (cmbTecnics.SelectedItem==null)
+            {
+                M.OKCencel(MessegesTyp.OKCenc, "Նյութական միջոցի տեսակը ընտրված չէ");
+                return;
+            }
             for (int i = 0; i < dgvTecnics.ColumnCount; i++)
             {
 
@@ -154,7 +167,7 @@ namespace MyOrganIzer
 
         private void FormTecinks_Load(object sender, EventArgs e)
         {
-            string[] importersName = { "implant m/k", "m/k", "cr", "byuget", "jmk", "protez", "M & S abatments", "Gog" };
+            string[] importersName = { "Ի/Մ/Կ", "Մ/կ", "Ց/կ", "Բյուգել", "Պրոթեզ", "M & S abatments"};
 
             List<string> imporetrs = new List<string>();
             imporetrs.AddRange(importersName);

@@ -32,10 +32,10 @@ namespace MyOrganIzer
                 txtdebt.Text = ClientNew.Debet.ToString();
                 datejoin.Value = ClientNew.DateJoin;
                 txtPhoneNumber.Text = ClientNew.PhoneNumber.ToString();
+                
             }
         }
-
-        private void btnSave1_Click(object sender, EventArgs e)
+        public void ClinetSave()
         {
             if (!Client.edit)
             {
@@ -48,8 +48,22 @@ namespace MyOrganIzer
             ClientNew.Price = decimal.Parse(txtPrice.Text);
             ClientNew.Debet = decimal.Parse(txtdebt.Text);
             ClientNew.PhoneNumber = txtPhoneNumber.Text;
+            ClientNew.DateDobleJoin =datejoindouble.Value;
+            if(chbDouble.Checked)
+            ClientNew.DateJoinString = datejoindouble.Text;
             ClientNew.SaveOrUpdaet();
+            Client.edit = false;
+        }
+        private void btnSave1_Click(object sender, EventArgs e)
+        {
+            ClinetSave();
+            if (ClientNew.Id == 0)
+            {
+                ClientNew.Id = SqlQuery.Id();
+                SqlQuery.CackingToot(ClientNew.Id);
 
+            }
+            
             OpenAndClose();
         }
 
@@ -81,7 +95,7 @@ namespace MyOrganIzer
 
         private void btnDubladd_Click(object sender, EventArgs e)
         {
-            Client.edit = false;
+            Client.edit = true;
             ClientNew.FirstName = txtName.Text;
             ClientNew.LastName = txtLastName.Text;
             ClientNew.MidlName = txtMidlName.Text;
@@ -89,13 +103,61 @@ namespace MyOrganIzer
             ClientNew.Price = decimal.Parse(txtPrice.Text);
             ClientNew.Debet = decimal.Parse(txtdebt.Text);
             ClientNew.PhoneNumber = txtPhoneNumber.Text;
+            ClientNew.DateDobleJoin = datejoindouble.Value;
+            if (chbDouble.Checked)
+                ClientNew.DateJoinString = datejoindouble.Text;
             ClientNew.SaveOrUpdaet();
         }
-
+        public bool chacing()
+        {
+            if (string.IsNullOrEmpty(txtName.Text) || string.IsNullOrEmpty(txtLastName.Text) || string.IsNullOrEmpty(txtMidlName.Text))
+            {
+                M.OKCencel(MessegesTyp.OKCenc, "Հաճախորդի տվյալները լրացված չեն");
+                return false;
+            }
+            else
+                return true;
+        }
         private void btnWork_Click(object sender, EventArgs e)
         {
-            FormTooth tooth = new FormTooth();
+            if (!chacing())
+            {
+                return; 
+            }
+            if (ClientNew.Id==0)
+            {
+                Client.edit = false;
+                ClinetSave(); 
+            }
+            
+            FormTooth tooth = new FormTooth(ClientNew);
+            tooth.client = ClientNew;
             tooth.ShowDialog();
+        }
+
+        private void chbDouble_CheckedChanged(object sender, EventArgs e)
+        {
+            if (chbDouble.Checked)
+            {
+                datejoindouble.Visible = true;
+                //datejoindouble.CustomFormat = "dd-MM-yyyy HH:mm:ss";
+            }
+            else
+            {
+                datejoindouble.Visible = false;
+                datejoindouble.Text = "";
+            }
+            
+        }
+
+        private void datejoindouble_ValueChanged(object sender, EventArgs e)
+        {
+            datejoindouble.CustomFormat = "dd-MM-yyyy HH:mm:ss";
+        }
+
+        private void datejoin_ValueChanged(object sender, EventArgs e)
+        {
+            datejoin.CustomFormat = "dd-MM-yyyy HH:mm:ss";
         }
     }
 }

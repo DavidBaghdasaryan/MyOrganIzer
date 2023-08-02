@@ -15,7 +15,7 @@ namespace MyOrganIzer
     public partial class FromWorkSpace : Form
     {
         Thread thread;
-        string connectionString = "server=developer.000.am,1433\\MERSOFT11;database=Ayzenq;user=dev;password=Developer1*";
+        string connectionString = "server=(LocalDb)\\MSSQLLocalDB;database=Ayzenq";
         string sql = "SELECT * FROM Imprtno";
         SqlCommand sCommand;
         SqlDataAdapter sAdapter;
@@ -43,24 +43,39 @@ namespace MyOrganIzer
             dgvimpornents.Columns["ID"].Visible = false;
             dgvimpornents.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
 
-            dgvimpornents.Columns[1].HeaderText = "Tigran 09975533";
-            dgvimpornents.Columns[2].HeaderText = "Levadent/SOCO";
-            dgvimpornents.Columns[3].HeaderText = "ARMDENTAL";
-            dgvimpornents.Columns[4].HeaderText = "Dentax";
-            dgvimpornents.Columns[5].HeaderText = "s/z 099626438";
-            dgvimpornents.Columns[6].HeaderText = "nardent/Haykaz";
-            dgvimpornents.Columns[8].HeaderText = "Անձեռացիկ";
-            dgvimpornents.Columns[9].HeaderText = "Inna Takuhyama";
-            dgvimpornents.Columns[10].HeaderText = "Հաշիվ ապրանքագրեր";
-            dgvimpornents.Columns[11].HeaderText = "Am Intekayan";
-            dgvimpornents.Columns[12].HeaderText = "Ամսաթիվ";
-           
+            dgvimpornents.Columns[1].HeaderText = "Տիգրան Eldex";
+            dgvimpornents.Columns[2].HeaderText = "Levadent";
+            dgvimpornents.Columns[3].HeaderText = "Soco";
+            dgvimpornents.Columns[4].HeaderText = "Armdental";
+            dgvimpornents.Columns[5].HeaderText = "Dentax";
+            dgvimpornents.Columns[6].HeaderText = "S/ZPharma";
+            dgvimpornents.Columns[8].HeaderText = "Nardentax";
+            dgvimpornents.Columns[9].HeaderText = "Հակյկազ";
+            dgvimpornents.Columns[10].HeaderText = "Անձեռոցիկ";
+            dgvimpornents.Columns[11].HeaderText = "Tokuyama Իննա";
+            dgvimpornents.Columns[12].HeaderText = "Movses";
+            dgvimpornents.Columns[13].HeaderText = "Ամսաթիվ";
+
+            dgvimpornents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+          
         }
 
         private void FromWorkSpace_Load(object sender, EventArgs e)
         {
 
-            string[] importersName = { "Tigran 09975533", "Levadent/SOCO", "ARMDENTAL", "Dentax", "s/z 099626438", "nardent/Haykaz", "Անձեռացիկ", "Inna Takuhyama", "Հաշիվ ապրանքագրեր", "Am Intekayan" };
+            string[] importersName = 
+            { "Տիգրան Eldex",
+               "Levadent",
+               "Soco",
+               "Armdental",
+               "Dentax",
+               "S/ZPharma",
+               "Nardentax",
+               "Հակյկազ",
+               "Անձեռոցիկ",
+               "Tokuyama Իննա",
+               "Movses"
+            };
 
             List<string> imporetrs = new List<string>();
             imporetrs.AddRange(importersName);
@@ -71,7 +86,7 @@ namespace MyOrganIzer
         {
             if (cmbImporters.SelectedItem == null)
             {
-                MessageBox.Show("Առաքիչը նշված չէ");
+                M.OKCencel(MessegesTyp.OKCenc,"Առաքիչը նշված չէ");
                 return;
             }
 
@@ -139,6 +154,11 @@ namespace MyOrganIzer
             int id = (int)dgvimpornents.SelectedRows[0].Cells["Id"].Value;
             for (int i = 0; i < dgvimpornents.ColumnCount; i++)
             {
+                if (cmbImporters.SelectedItem == null)
+                {
+                    M.OKCencel(MessegesTyp.OKCenc, "Նյութական միջոցի տեսակը ընտրված չէ");
+                    return;
+                }
 
                 if (cmbImporters.SelectedItem.ToString() == dgvimpornents.Columns[i].HeaderText)
                 {

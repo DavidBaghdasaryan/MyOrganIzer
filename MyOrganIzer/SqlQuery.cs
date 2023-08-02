@@ -11,8 +11,9 @@ namespace MyOrganIzer
 {
     public class SqlQuery
     {
-       static string connectionString = "server=developer.000.am,1433\\MERSOFT11;database=Ayzenq;user=dev;password=Developer1*";
-        
+       static string connectionString = "server=(LocalDb)\\MSSQLLocalDB;database=Ayzenq";
+
+
        static SqlCommand sCommand;
         SqlDataAdapter sAdapter;
         SqlCommandBuilder sBuilder;
@@ -31,7 +32,7 @@ namespace MyOrganIzer
             try
             {
                 sCommand.ExecuteNonQuery();
-                MessageBox.Show("Տվյալները գրանցված են");
+                M.OKCencel(MessegesTyp.OKCenc,"Տվյալները գրանցված են");
             }
             catch (Exception ex)
             {
@@ -54,7 +55,7 @@ namespace MyOrganIzer
             try
             {
                 sCommand.ExecuteNonQuery();
-                MessageBox.Show("Տվյալները գրանցված են");
+                M.OKCencel(MessegesTyp.OKCenc, "Տվյալները գրանցված են");
             }
             catch (Exception ex)
             {
@@ -76,7 +77,7 @@ namespace MyOrganIzer
             try
             {
                 sCommand.ExecuteNonQuery();
-                MessageBox.Show("Տվյալները գրանցված են");
+                M.OKCencel(MessegesTyp.OKCenc, "Տվյալները գրանցված են");
             }
             catch (Exception ex)
             {
@@ -98,7 +99,7 @@ namespace MyOrganIzer
             try
             {
                 sCommand.ExecuteNonQuery();
-                MessageBox.Show("Տվյալները գրանցված են");
+                M.OKCencel(MessegesTyp.OKCenc, "Տվյալները գրանցված են");
             }
             catch (Exception ex)
             {
@@ -115,7 +116,7 @@ namespace MyOrganIzer
             conn.Open();
 
 
-            sCommand = new SqlCommand($" SELECT SUM({columnname}) FROM {table}  WHERE MONTH( {datcolumne}) ='{date.Month}'",conn);
+            sCommand = new SqlCommand($" SELECT SUM([{columnname}]) FROM {table}  WHERE MONTH( {datcolumne}) ='{date.Month}'",conn);
             object result = (object)sCommand.ExecuteScalar();
             try
             {
@@ -143,7 +144,7 @@ namespace MyOrganIzer
             try
             {
                 sCommand.ExecuteNonQuery();
-                MessageBox.Show("Նշված տողը հեռացված է");
+                M.OKCencel(MessegesTyp.OKCenc, "Նշված տողը հեռացված է");
             }
             catch (Exception ex)
             {
@@ -161,9 +162,158 @@ namespace MyOrganIzer
             adpt.Fill(dt);
             dataGrid.DataSource = dt;
         }
+        public static int Id()
+        {
+            conn = new SqlConnection(connectionString);
+            conn.Open();
 
 
+            sCommand = new SqlCommand($" select top 1 id from Answers order by id desc", conn);
+            int result = (int)sCommand.ExecuteScalar();
+            return result;
+        }
+        
+        public static void SaveTooth(int empid,string tid,int b,int prt,int imlz,int impmk,int zrk,int mk30,int rest, int plomb,int shift, int endo,bool up,bool add)
+        {
+            conn = new SqlConnection(connectionString);
+            conn.Open();
 
+
+           
+            
+                sCommand = new SqlCommand($"insert into Emploit(EmploeId,ToothId,Byugel,Protez,[Impl/zr],[impl/mk],[zr/k,emax],mk30,rest,plomb,shift,endo,up)  values ({empid},'{tid}',{b},{prt},{imlz},{impmk},{zrk},{mk30},{rest}," +
+                        $"{plomb},{shift},{endo},'{up}')", conn); 
+            
+           
+            try
+            {
+                sCommand.ExecuteNonQuery();
+               
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+        public static void CackingToot(int id)
+        {
+            conn = new SqlConnection(connectionString);
+            conn.Open();
+
+
+            sCommand = new SqlCommand($"   insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('Byugel',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('Protez',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[Impl/zr]',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[Impl/mk]',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[zr/k,emax]',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('mk30',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('rest',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('plomb',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('shift',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('endo',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                 $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values (null,8,7,6,5,4,3,2,1,1,2,3,4,5,6,7,8,{id})" +
+                 $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('endo.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('shift.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('plomb.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('rest.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('mk30.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[zr/k,emax].',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[Impl/mk].',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('[Impl/zr].',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('Protez.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})" +
+                $"insert into ABC(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,EpmlId)  values ('Byugel.',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,{id})"
+                , conn);
+
+            try
+            {
+                sCommand.ExecuteNonQuery();
+               
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        public static void LoadToot(int id)
+        {
+            conn = new SqlConnection(connectionString);
+            conn.Open();
+
+
+            sCommand = new SqlCommand($"SELECT * FROM ABC WHERE ID={id}", conn);
+            try
+            {
+                sCommand.ExecuteNonQuery();
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+
+        public static void UpdateToots(string columnname, int id,   int value, string rowName)
+        {
+            conn = new SqlConnection(connectionString);
+            conn.Open();
+
+
+            sCommand = new SqlCommand($" update ABC set {columnname}='{value}'    where A='{rowName}' and  epmlid={id}", conn);
+
+            try
+            {
+                sCommand.ExecuteNonQuery();
+               
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                conn.Close();
+            }
+        }
+        static string[] text;
+        public static List<object[]> SqlSelect(string sql,string table)
+        {
+            List<object[]> dataList = new List<object[]>();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                using (SqlCommand command = new SqlCommand(sql, connection))
+                {
+                    connection.Open();
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            object[] tempRow = new object[reader.FieldCount];
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                tempRow[i] = reader[i];
+                            }
+                            dataList.Add(tempRow);
+                        }
+                    }
+                }
+            }
+
+            return dataList;
+        }
     }
 
 

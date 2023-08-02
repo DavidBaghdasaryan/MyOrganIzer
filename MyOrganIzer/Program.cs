@@ -16,7 +16,7 @@ namespace MyOrganIzer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FirstPage());
+            Application.Run(new FormLogin());
         }
     }
 }
