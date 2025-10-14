@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.852
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyOrganIzer", "MyOrganIzer\MyOrganIzer.csproj", "{06641218-94A1-4899-A2BF-4A818F5BD275}"
 EndProject
 Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "StomNotesSetUp", "StomNotesSetUp\StomNotesSetUp.vdproj", "{577FA554-2E70-469F-8B62-BAAABBC54C36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyOrganizer.Wpf", "MyOrganizer.Wpf\MyOrganizer.Wpf.csproj", "{7722E5A9-BE6D-4125-9806-F9F3FF182107}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,6 +21,10 @@ Global
 		{06641218-94A1-4899-A2BF-4A818F5BD275}.Release|Any CPU.Build.0 = Release|Any CPU
 		{577FA554-2E70-469F-8B62-BAAABBC54C36}.Debug|Any CPU.ActiveCfg = Debug
 		{577FA554-2E70-469F-8B62-BAAABBC54C36}.Release|Any CPU.ActiveCfg = Release
+		{7722E5A9-BE6D-4125-9806-F9F3FF182107}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7722E5A9-BE6D-4125-9806-F9F3FF182107}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7722E5A9-BE6D-4125-9806-F9F3FF182107}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7722E5A9-BE6D-4125-9806-F9F3FF182107}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

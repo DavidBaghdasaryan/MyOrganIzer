@@ -1,0 +1,106 @@
+﻿<!-- MainWindow.xaml -->
+<Window x:Class="MyOrganizer.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+        Title="My Organizer"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Width="1486" Height="806"
+        Background="White"
+        WindowStartupLocation="CenterScreen"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Window.Resources>
+        <Style x:Key="CircleButton" TargetType="Button">
+            <Setter Property="Width" Value="86"/>
+            <Setter Property="Height" Value="86"/>
+            <Setter Property="Background" Value="#B0D5E8"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Ellipse x:Name="ellipse" Fill="{TemplateBinding Background}" />
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ellipse" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TitleText" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Centaur"/>
+            <Setter Property="FontSize" Value="48"/>
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Header -->
+        <Border Background="#B0D5E8" Height="107" VerticalAlignment="Top">
+            <Grid Margin="8,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Stom Organizer" Style="{StaticResource TitleText}"
+                           VerticalAlignment="Center" Margin="8,0"/>
+
+                <Button Grid.Column="2" x:Name="BtnMessage" Style="{StaticResource CircleButton}"
+                        Width="60" Height="60" Margin="0,24,8,0" VerticalAlignment="Top"
+                        ToolTip="Հաղորդագրություններ"
+                        Visibility="Collapsed"
+                        Click="BtnMessage_Click">
+                    <Image Width="30" Height="30"
+                           Source="/MyOrganizer.Wpf;component/Assets/msg.png"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Left logo -->
+        <Image Source="/MyOrganizer.Wpf;component/Assets/login_icon.jpg"
+               Width="410" Height="437"
+               Stretch="UniformToFill"
+               HorizontalAlignment="Left"
+               Margin="0,368,0,0" />
+
+        <!-- Top-right action buttons -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,146,16,0" VerticalAlignment="Top">
+            <Button x:Name="BtnPcainet" Style="{StaticResource CircleButton}" ToolTip="Հաճախորդներ"
+                    Click="BtnPcainet_Click" Margin="0,0,12,0">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/patients.png"/>
+            </Button>
+
+            <Button x:Name="BtnSenders" Style="{StaticResource CircleButton}" ToolTip="Առաքիչներ"
+                    Click="BtnSenders_Click" Margin="0,0,12,0">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/senders.png"/>
+            </Button>
+
+            <Button x:Name="BtnTexniqs" Style="{StaticResource CircleButton}" ToolTip="Տեխնիկներ"
+                    Click="BtnTexniqs_Click">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/techs.png"/>
+            </Button>
+        </StackPanel>
+
+        <!-- Bottom-right Min/Exit -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,10">
+            <Button x:Name="BtnMinimize" Style="{StaticResource CircleButton}" ToolTip="Ծալել"
+                    Click="BtnMinimize_Click" Margin="0,0,12,0">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/minimize.png"/>
+            </Button>
+            <Button x:Name="BtnExit" Style="{StaticResource CircleButton}" ToolTip="Անջատել"
+                    Click="BtnExit_Click">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/exit.png"/>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

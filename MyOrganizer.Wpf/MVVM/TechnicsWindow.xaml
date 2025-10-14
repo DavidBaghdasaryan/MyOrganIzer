@@ -1,0 +1,89 @@
+﻿<Window x:Class="MyOrganizer.Wpf.MVVM.TechnicsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+        Title="Տեխնիկներ"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Width="1150" Height="600"
+        Background="#DEB887"  
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"   
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Grid>
+        <!-- Header -->
+        <Border Background="DarkGoldenrod" Height="50" VerticalAlignment="Top">
+            <Grid Margin="10,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Տեխնիկներ"
+                           FontSize="22"
+                           FontWeight="Bold"
+                           Foreground="WhiteSmoke"
+                           VerticalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        Content="✕"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="20"
+                        Foreground="White"
+                        Width="45"
+                        Height="45"
+                        Click="BtnClose_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <StackPanel Margin="20,70,20,20" Orientation="Vertical" >
+
+            <!-- Controls -->
+            <StackPanel Orientation="Horizontal" >
+                <StackPanel>
+                    <TextBlock Text="Նյութական միջոցներ" FontWeight="Bold"/>
+                    <ComboBox x:Name="cmbTechnics" Width="200"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Վճարված գումար" FontWeight="Bold"/>
+                    <TextBox x:Name="txtPrice" Width="150"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Գործարքի օր" FontWeight="Bold"/>
+                    <DatePicker x:Name="dpDate" Width="150"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="Ա/Ա/Հ" FontWeight="Bold"/>
+                    <TextBox x:Name="txtTechnoName" Width="150"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button Content="Գրանցել" Background="Goldenrod" Foreground="White" Width="100" Click="BtnAdd_Click"/>
+                <Button Content="Խմբագրել" Background="DarkGoldenrod" Foreground="White" Width="100" Click="BtnEdit_Click"/>
+                <Button Content="Հեռացնել" Background="OrangeRed" Foreground="White" Width="100" Click="BtnDelete_Click"/>
+                <Button Content="Դիտել գումարը" Background="Peru" Foreground="White" Width="120" Click="BtnSum_Click"/>
+            </StackPanel>
+
+            <!-- DataGrid -->
+            <DataGrid x:Name="dgTechnics"
+                      AutoGenerateColumns="True"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      Background="Bisque"
+                      Height="350"
+                      Margin="0,10,0,0"/>
+
+            <!-- Sum -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock Text="Վճարված գումար /ամիս" FontWeight="Bold"/>
+                <TextBox x:Name="txtSum" Width="150"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

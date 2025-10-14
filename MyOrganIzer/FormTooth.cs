@@ -675,5 +675,10 @@ namespace MyOrganIzer
         {
             //dgvToots.CurrentCell.Value = new Value.ToString();
         }
+
+        private void pictureBox3_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

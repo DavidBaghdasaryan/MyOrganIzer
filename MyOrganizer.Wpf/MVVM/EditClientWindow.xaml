@@ -1,0 +1,171 @@
+﻿<Window x:Class="MyOrganizer.Wpf.MVVM.EditClientWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+        Title="Պացիենտի տվյալներ"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Width="1063" Height="575"
+        Background="#87CEEB" 
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"   
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Window.Resources>
+        <Style x:Key="HeaderLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#1E90FF"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <!-- Rounded ”chip“ button -->
+        <Style x:Key="ChipBtn" TargetType="Button">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Background" Value="#48D1CC"/>
+            <!-- MediumTurquoise -->
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                CornerRadius="16">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <!-- Top header -->
+        <Border Background="#F0FFFF" Height="51" VerticalAlignment="Top">
+            <Grid Margin="12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" >
+                    <TextBlock Text="{loc:Loc Client}" Style="{StaticResource HeaderLabel}" />
+                </StackPanel>
+
+                <!-- Close X -->
+                <Button Grid.Column="1" Width="46" Height="45" Background="Transparent" BorderBrush="{x:Null}" Click="BtnClose_Click">
+                    <TextBlock Text="✕" Foreground="#00BFFF" FontSize="18" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Side decorations like WinForms -->
+        <Rectangle Fill="#00BFFF" Width="26" HorizontalAlignment="Left" Margin="0,77,0,0"/>
+        <Rectangle Fill="#00BFFF" Width="26" HorizontalAlignment="Right" />
+        <Rectangle Fill="#00BFFF" Height="21" VerticalAlignment="Bottom" Margin="101,0,0,0"/>
+
+        <!-- Form content -->
+        <Grid Margin="28,90,28,28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: fields -->
+            <Grid Grid.Row="0" Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="24"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="24"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Անուն -->
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Loc FirstName}" Foreground="MediumBlue" Margin="0,0,8,4"/>
+                <TextBox   Grid.Row="0" Grid.Column="1" x:Name="txtName" Height="28"/>
+
+                <!-- Ազգանուն -->
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="{loc:Loc LastName}" Foreground="MediumBlue" Margin="16,0,8,4"/>
+                <TextBox   Grid.Row="0" Grid.Column="3" x:Name="txtLastName" Height="28"/>
+
+                <!-- Հայրանուն -->
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Loc MiddlName}" Foreground="MediumBlue" Margin="0,8,8,4"/>
+                <TextBox   Grid.Row="1" Grid.Column="1" x:Name="txtMidlName" Height="28" Margin="0,8,0,0"/>
+
+                <!-- Հեռախոսահամար -->
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="{loc:Loc Phone}" Foreground="MediumBlue" Margin="16,8,8,4"/>
+                <TextBox   Grid.Row="1" Grid.Column="3" x:Name="txtPhoneNumber" Height="28" Margin="0,8,0,0" Text="0"/>
+
+                <!-- spacer -->
+                <Rectangle Grid.Row="2" Grid.ColumnSpan="4" Height="8" Fill="Transparent"/>
+
+                <!-- Գրանցման օր (DateJoin) -->
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Գրանցման օր" Foreground="MediumBlue" Margin="0,8,8,4"/>
+                <DatePicker Grid.Row="3" Grid.Column="1" x:Name="dpDateJoin" Margin="0,4,0,0"/>
+
+                <!-- Վճար -->
+                <TextBlock Grid.Row="4" Grid.Column="2" Text="Վճար" Foreground="MediumBlue" Margin="16,8,8,4"/>
+                <TextBox   Grid.Row="4" Grid.Column="3" x:Name="txtPrice" Height="28" Margin="0,4,0,0" Text="0"/>
+
+                <!-- Մնացորդ (Debt) -->
+                <TextBlock Grid.Row="5" Grid.Column="2" Text="Մնացորդ" Foreground="MediumBlue" Margin="16,8,8,4"/>
+                <TextBox   Grid.Row="5" Grid.Column="3" x:Name="txtDebt" Height="28" Margin="0,4,0,0" Text="0"/>
+
+                <!-- Կրկնակի այց checkbox -->
+                <CheckBox  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" x:Name="chbDouble"
+                           Content="Նշանակել կրկնակի այց" Foreground="MediumBlue" FontWeight="Bold"
+                           Checked="chbDouble_CheckedChanged" Unchecked="chbDouble_Unchecked"
+                           Margin="0,8,0,0"/>
+
+                <!-- Կրկնակի այցի օր (DateDobleJoin) -->
+                <DatePicker Grid.Row="7" Grid.Column="1" x:Name="dpDateDouble" Visibility="Collapsed" Margin="0,4,0,0"/>
+
+                <!-- Work button -->
+                <Button Grid.Row="8" Grid.Column="3" x:Name="btnWork" Content="Կատարվող աշխատանքներ"
+                        HorizontalAlignment="Right" Width="250" Height="48"
+                        Background="#1E90FF" Foreground="White" BorderBrush="Transparent"
+                        Click="btnWork_Click"/>
+            </Grid>
+
+            <!-- Right: actions -->
+            <StackPanel Grid.Row="0" Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Top">
+                <Button x:Name="btnSave1" Content="Գրանցել" Style="{StaticResource ChipBtn}" Background="#40E0D0" Click="btnSave1_Click"/>
+                <Button x:Name="btrDelete" Content="Մաքրել"  Style="{StaticResource ChipBtn}" Background="#5F9EA0" Click="btrDelete_Click" Margin="0,8,0,0"/>
+                <Button x:Name="btnDubladd" Content="Պահպանել կրկնակի այցը" Style="{StaticResource ChipBtn}" Background="#00BFFF"
+                        Click="btnDubladd_Click" Margin="0,8,0,0" Visibility="Collapsed"/>
+                <Button x:Name="btnExit" Content="ՓԱԿԵԼ" Style="{StaticResource ChipBtn}" Background="#4682B4" Click="btnExit_Click" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- (Optional) bottom image like WinForms -->
+            <Image Grid.Row="1" Grid.Column="0" Source="/MyOrganizer.Wpf;component/Assets/login_icon.jpg"
+                   Width="100" Height="120" HorizontalAlignment="Left"/>
+        </Grid>
+    </Grid>
+</Window>

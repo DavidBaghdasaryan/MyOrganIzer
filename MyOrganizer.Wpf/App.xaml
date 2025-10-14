@@ -1,0 +1,233 @@
+﻿<Application x:Class="MyOrganizer.Wpf.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <!-- ========= ContextMenu tokens ========= -->
+            <SolidColorBrush x:Key="MenuBgBrush" Color="#03d7fc"/>
+            <SolidColorBrush x:Key="MenuBorderBrush" Color="#1A000000"/>
+            <SolidColorBrush x:Key="MenuItemFg" Color="#111827"/>
+            <SolidColorBrush x:Key="MenuItemFgSecondary" Color="#6B7280"/>
+            <SolidColorBrush x:Key="MenuItemHoverBg" Color="#F2F6FF"/>
+            <SolidColorBrush x:Key="MenuItemPressedBg" Color="#E6F0FF"/>
+
+            <!-- ========= ComboBox tokens ========= -->
+            <SolidColorBrush x:Key="ComboBg"               Color="#FFFFFFFF"/>
+            <SolidColorBrush x:Key="ComboFg"               Color="#111827"/>
+            <SolidColorBrush x:Key="ComboBorder"           Color="#1E90FF"/>
+            <!-- normal -->
+            <SolidColorBrush x:Key="ComboBorderHover"      Color="#3AA0FF"/>
+            <!-- hover -->
+            <SolidColorBrush x:Key="ComboBorderFocus"      Color="#2563EB"/>
+            <!-- focused -->
+            <SolidColorBrush x:Key="ComboDisabledBg"       Color="#FFF5F5F5"/>
+            <SolidColorBrush x:Key="ComboDisabledFg"       Color="#807F7F"/>
+            <SolidColorBrush x:Key="ComboPopupBg"          Color="#FFFFFFFF"/>
+            <SolidColorBrush x:Key="ComboPopupBorder"      Color="#1A000000"/>
+            <SolidColorBrush x:Key="ComboItemHoverBg"      Color="#F2F6FF"/>
+            <SolidColorBrush x:Key="ComboItemSelectedBg"   Color="#E6F0FF"/>
+            <SolidColorBrush x:Key="ComboItemFgSecondary"  Color="#6B7280"/>
+
+            <!-- ========= MenuItem template (define before it's referenced) ========= -->
+            <Style x:Key="ModernMenuItem" TargetType="{x:Type MenuItem}">
+                <Setter Property="Foreground" Value="{StaticResource MenuItemFg}"/>
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type MenuItem}">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6">
+                                <Grid Margin="6,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Grid.Column="0" ContentSource="Icon"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Margin="0,0,8,0"/>
+                                    <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                    RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}"
+                             Foreground="{StaticResource MenuItemFgSecondary}"
+                             Margin="16,0,4,0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuItemHoverBg}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuItemPressedBg}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.45"/>
+                                </Trigger>
+                                <Trigger Property="Role" Value="TopLevelHeader">
+                                    <Setter Property="Padding" Value="10,8"/>
+                                </Trigger>
+                                <Trigger Property="Role" Value="SubmenuHeader">
+                                    <Setter Property="Padding" Value="10,8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ========= ContextMenu template ========= -->
+            <Style x:Key="ModernContextMenu" TargetType="{x:Type ContextMenu}">
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="OverridesDefaultStyle" Value="True"/>
+                <Setter Property="HasDropShadow" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ContextMenu}">
+                            <Border Background="{DynamicResource MenuBgBrush}"
+                      BorderBrush="{DynamicResource MenuBorderBrush}"
+                      BorderThickness="1" CornerRadius="10" Padding="6">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.18"/>
+                                </Border.Effect>
+                                <ScrollViewer CanContentScroll="True">
+                                    <StackPanel IsItemsHost="True" />
+                                </ScrollViewer>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <!-- DynamicResource lets you keep the order flexible -->
+                <Setter Property="ItemContainerStyle" Value="{DynamicResource ModernMenuItem}"/>
+            </Style>
+
+            <!-- ========= Example ContextMenu instance (optional, if you use it as a resource) =========
+      <ContextMenu x:Key="GridContextMenu" Style="{StaticResource ModernContextMenu}">
+        <MenuItem Header="{loc:Loc Add}">
+          <MenuItem.Icon>
+            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE710;" FontSize="14"/>
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="{loc:Loc Edit}">
+          <MenuItem.Icon>
+            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE70F;" FontSize="14"/>
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="{loc:Loc Remove}" InputGestureText="Del">
+          <MenuItem.Icon>
+            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE74D;" FontSize="14"/>
+          </MenuItem.Icon>
+        </MenuItem>
+      </ContextMenu>
+      -->
+
+            <!-- ========= ComboBoxItem style ========= -->
+            <Style x:Key="ModernComboBoxItem" TargetType="ComboBoxItem">
+                <Setter Property="Foreground" Value="{StaticResource ComboFg}"/>
+                <Setter Property="Padding" Value="12,8"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBoxItem">
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Margin="2">
+                                <ContentPresenter VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource ComboItemHoverBg}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource ComboItemSelectedBg}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.55"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ========= ComboBox style ========= -->
+            <Style x:Key="ModernComboBox" TargetType="ComboBox">
+                <Setter Property="Foreground" Value="{StaticResource ComboFg}"/>
+                <Setter Property="Background" Value="{StaticResource ComboBg}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource ComboBorder}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="10,4,32,4"/>
+                <Setter Property="MinHeight" Value="26"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <Setter Property="ItemContainerStyle" Value="{StaticResource ModernComboBoxItem}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <Border x:Name="Outer"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="8"/>
+
+                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                  HorizontalAlignment="Left"
+                                  VerticalAlignment="Center"
+                                  RecognizesAccessKey="True"
+                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                  Content="{TemplateBinding SelectionBoxItem}"/>
+
+                                <TextBlock x:Name="Chevron"
+                           Text="&#xE70D;" FontFamily="Segoe MDL2 Assets"
+                           FontSize="12" Foreground="{TemplateBinding Foreground}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                           Margin="0,0,10,0" Opacity="0.75"/>
+
+                                <Popup x:Name="PART_Popup"
+                       Placement="Bottom" AllowsTransparency="True"
+                       Focusable="False"
+                       IsOpen="{TemplateBinding IsDropDownOpen}"
+                       PopupAnimation="Fade">
+                                    <Border Background="{StaticResource ComboPopupBg}"
+                          BorderBrush="{StaticResource ComboPopupBorder}"
+                          BorderThickness="1"
+                          CornerRadius="10" Padding="6">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.18"/>
+                                        </Border.Effect>
+                                        <ScrollViewer CanContentScroll="True" Style="{x:Null}">
+                                            <ItemsPresenter/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Outer" Property="BorderBrush" Value="{StaticResource ComboBorderHover}"/>
+                                </Trigger>
+                                <Trigger Property="IsDropDownOpen" Value="True">
+                                    <Setter TargetName="Outer" Property="BorderBrush" Value="{StaticResource ComboBorderFocus}"/>
+                                    <Setter TargetName="Chevron" Property="Opacity" Value="1"/>
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                    <Setter TargetName="Outer" Property="BorderBrush" Value="{StaticResource ComboBorderFocus}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Outer" Property="Background" Value="{StaticResource ComboDisabledBg}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource ComboDisabledFg}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

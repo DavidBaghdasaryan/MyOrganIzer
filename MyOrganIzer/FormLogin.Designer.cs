@@ -99,7 +99,7 @@
             // pictureBox1
             // 
             this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
-            this.pictureBox1.Location = new System.Drawing.Point(-2, 178);
+            this.pictureBox1.Location = new System.Drawing.Point(0, 178);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(100, 120);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -145,7 +145,7 @@
             this.label2.ForeColor = System.Drawing.Color.DarkBlue;
             this.label2.Location = new System.Drawing.Point(429, 24);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(185, 32);
+            this.label2.Size = new System.Drawing.Size(184, 32);
             this.label2.TabIndex = 127;
             this.label2.Text = "Stom Organizer";
             // 
