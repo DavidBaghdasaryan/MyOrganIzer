@@ -11,7 +11,7 @@ namespace MyOrganizer.Wpf.MVVM
 {
     public partial class LoginWindow : Window
     {
-        Ilan
+       
         public LoginWindow()
         {
             InitializeComponent();
