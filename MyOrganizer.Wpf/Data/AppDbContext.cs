@@ -2,6 +2,7 @@
 using MyOrganizer.Wpf.Data.Entities;
 using MyOrganizer.Wpf.Entities;
 using MyOrganizer.Wpf.Entities.Languages;
+using MyOrganizer.Wpf.Entities.Procedures;
 
 namespace MyOrganizer.Wpf.Data;
 
@@ -12,18 +13,21 @@ public class AppDbContext : DbContext
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Tooth> Teeth => Set<Tooth>();
     public DbSet<Product> Products => Set<Product>();
-    public DbSet<Tecno>  Tecnos => Set<Tecno>();
-    public DbSet<ToothWork>   ToothWorks => Set<ToothWork>();
+    public DbSet<Technic> Technics => Set<Technic>();
+    public DbSet<ToothWork> ToothWorks => Set<ToothWork>();
     public DbSet<L10nKey> L10nKeys => Set<L10nKey>();
     public DbSet<L10nValue> L10nValues => Set<L10nValue>();
     public DbSet<Language> Languages => Set<Language>();
+    public DbSet<ProcedurePrice> ProcedurePrices => Set<ProcedurePrice>();
+    public DbSet<Procedure> Procedures => Set<Procedure>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+
+    protected override void OnModelCreating(ModelBuilder b)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(b);
 
         // Client
-        modelBuilder.Entity<Client>(e =>
+        b.Entity<Client>(e =>
         {
             e.ToTable("Clients");
             e.HasKey(x => x.Id);
@@ -46,7 +50,7 @@ public class AppDbContext : DbContext
         });
 
         // Tooth
-        modelBuilder.Entity<Tooth>(e =>
+        b.Entity<Tooth>(e =>
         {
             e.ToTable("Teeth");
             e.HasKey(x => x.Id);
@@ -58,7 +62,7 @@ public class AppDbContext : DbContext
         });
 
         // Product
-        modelBuilder.Entity<Product>(e =>
+        b.Entity<Product>(e =>
         {
             e.ToTable("Products");
             e.HasKey(x => x.Id);
@@ -67,27 +71,27 @@ public class AppDbContext : DbContext
             e.Property(x => x.Value).IsRequired().HasMaxLength(50);
         });
 
-        modelBuilder.Entity<Tecno>(e =>
+        b.Entity<Technic>(e =>
         {
-            e.ToTable("Tecnos");
+            e.ToTable("Technics");
             e.HasKey(x => x.Id);
 
             e.Property(x => x.Name).IsRequired().HasMaxLength(200);
         });
-        modelBuilder.Entity<ToothWork>(e =>
+        b.Entity<ToothWork>(e =>
         {
             e.ToTable("ToothWorks");
             e.HasKey(x => x.Id);
 
         });
 
-        modelBuilder.Entity<L10nKey>(b =>
+        b.Entity<L10nKey>(b =>
         {
             b.HasIndex(x => x.Key).IsUnique();
             b.Property(x => x.Key).HasMaxLength(200).IsRequired();
         });
 
-        modelBuilder.Entity<L10nValue>(b =>
+        b.Entity<L10nValue>(b =>
         {
             b.HasKey(x => new { x.KeyId, x.Lang });
             b.Property(x => x.Value).HasMaxLength(2000).IsRequired();
@@ -97,11 +101,57 @@ public class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Language>(b =>
+        b.Entity<Procedure>(e =>
         {
-            b.HasKey(x => x.Code);
-            b.Property(x => x.Code).HasMaxLength(5);
-            b.Property(x => x.Name).HasMaxLength(50);
+            e.ToTable("Procedures");
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.IsActive).HasDefaultValue(true);
+
+            // 1 -> many
+            e.HasMany(p => p.Prices)
+             .WithOne(pp => pp.Procedure)
+             .HasForeignKey(pp => pp.ProcedureId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<ProcedurePrice>(e =>
+        {
+            e.ToTable("ProcedurePrices");
+            e.HasKey(x => x.Id);
+
+            // precision for money
+            e.Property(x => x.Tier1).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Tier2).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Tier3).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Currency).HasMaxLength(10);
+            e.HasIndex(x => x.ProcedureId);
+
+        });
+
+
+        b.Entity<Procedure>().HasData(
+            new Procedure { Id = 1, Name = "Removable Partial Denture (Metal Framework)", IsActive = true },
+            new Procedure { Id = 2, Name = "Full Denture", IsActive = true },
+            new Procedure { Id = 3, Name = "Implant with Zirconia Crown", IsActive = true },
+            new Procedure { Id = 4, Name = "Implant with Metal-Ceramic Crown", IsActive = true },
+            new Procedure { Id = 5, Name = "Zirconia or E-max Crown", IsActive = true },
+            new Procedure { Id = 6, Name = "Metal-Ceramic Crown", IsActive = true },
+            new Procedure { Id = 7, Name = "Composite or Inlay Restoration", IsActive = true },
+            new Procedure { Id = 8, Name = "Filling (Composite / Amalgam)", IsActive = true },
+            new Procedure { Id = 9, Name = "Work Shift / Appointment Slot", IsActive = true },
+            new Procedure { Id = 10, Name = "Endodontic Treatment (Root Canal)", IsActive = true }
+        );
+
+        b.Entity<ProcedurePrice>(e =>
+        {
+            e.ToTable("ProcedurePrices");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Currency).HasMaxLength(10);
+            e.Property(x => x.Tier1).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Tier2).HasColumnType("decimal(18,2)");
+            e.Property(x => x.Tier3).HasColumnType("decimal(18,2)");
         });
     }
 }

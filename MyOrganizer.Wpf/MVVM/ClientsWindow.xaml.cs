@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,8 +32,29 @@ namespace MyOrganizer.Wpf.MVVM
                     "FirstName".T(),
                     "LastName".T(),
                     "MidlName".T(),
-                    "Phone".T() 
+                    "Phone".T()
                 };
+
+                cmbFind.PreviewMouseLeftButtonDown += (s, e) =>
+                {
+                    // If the drop-down is closed and we clicked on the header area, open it
+                    if (!cmbFind.IsDropDownOpen)
+                    {
+                        e.Handled = true;           // stop bubbling (prevents Window drag or other handlers)
+                        cmbFind.Focus();            // ensure it has focus
+                        cmbFind.IsDropDownOpen = true;
+                    }
+                };
+
+                //cmbFind.PreviewKeyDown += (s, e) =>
+                //{
+                //    if (!cmbFind.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.F4))
+                //    {
+                //        e.Handled = true;
+                //        cmbFind.IsDropDownOpen = true;
+                //    }
+                //};
+
                 cmbFind.SelectedIndex = 0;
                 datemounth.SelectedDate = DateTime.Today;
 
@@ -54,10 +76,38 @@ namespace MyOrganizer.Wpf.MVVM
         private Client? GetSelected() => dgvClients.SelectedItem as Client;
 
         // Dragging (WindowStyle=None)
+
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ButtonState == MouseButtonState.Pressed) DragMove();
+            var src = e.OriginalSource as DependencyObject;
+            if (src == null) return;
+
+            // If click is inside any interactive input, don't start DragMove
+            if (FindParent<ComboBox>(src) != null ||
+                FindParent<TextBoxBase>(src) != null ||
+                FindParent<PasswordBox>(src) != null ||
+                FindParent<ButtonBase>(src) != null ||
+                FindParent<ListBox>(src) != null ||
+                FindParent<DataGrid>(src) != null ||
+                FindParent<DatePicker>(src) != null)
+            {
+                return;
+            }
+
+            // Otherwise allow moving window
+            try { DragMove(); } catch { /* ignore */ }
         }
+
+        private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            while (child != null)
+            {
+                if (child is T typed) return typed;
+                child = System.Windows.Media.VisualTreeHelper.GetParent(child);
+            }
+            return null;
+        }
+
 
         // Close (top-right X)
         private void pictureBox2_Click(object sender, RoutedEventArgs e) => Close();

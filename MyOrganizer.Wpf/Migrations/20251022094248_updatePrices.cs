@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace MyOrganizer.Wpf.Migrations
 {
     /// <inheritdoc />
-    public partial class AddLocalizationTables : Migration
+    public partial class updatePrices : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -59,6 +61,20 @@ namespace MyOrganizer.Wpf.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Procedures",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false, defaultValue: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Procedures", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Products",
                 columns: table => new
                 {
@@ -74,7 +90,7 @@ namespace MyOrganizer.Wpf.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Tecnos",
+                name: "Technics",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -86,7 +102,7 @@ namespace MyOrganizer.Wpf.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Tecnos", x => x.Id);
+                    table.PrimaryKey("PK_Technics", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -157,6 +173,46 @@ namespace MyOrganizer.Wpf.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "ProcedurePrices",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProcedureId = table.Column<int>(type: "int", nullable: false),
+                    Tier1 = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Tier2 = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Tier3 = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProcedurePrices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProcedurePrices_Procedures_ProcedureId",
+                        column: x => x.ProcedureId,
+                        principalTable: "Procedures",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.InsertData(
+                table: "Procedures",
+                columns: new[] { "Id", "IsActive", "Name" },
+                values: new object[,]
+                {
+                    { 1, true, "Removable Partial Denture (Metal Framework)" },
+                    { 2, true, "Full Denture" },
+                    { 3, true, "Implant with Zirconia Crown" },
+                    { 4, true, "Implant with Metal-Ceramic Crown" },
+                    { 5, true, "Zirconia or E-max Crown" },
+                    { 6, true, "Metal-Ceramic Crown" },
+                    { 7, true, "Composite or Inlay Restoration" },
+                    { 8, true, "Filling (Composite / Amalgam)" },
+                    { 9, true, "Work Shift / Appointment Slot" },
+                    { 10, true, "Endodontic Treatment (Root Canal)" }
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_L10nKeys_Key",
                 table: "L10nKeys",
@@ -164,17 +220,14 @@ namespace MyOrganizer.Wpf.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProcedurePrices_ProcedureId",
+                table: "ProcedurePrices",
+                column: "ProcedureId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Teeth_Client_ToothNumber",
                 table: "Teeth",
                 columns: new[] { "ClientId", "ToothNumber" });
-
-            migrationBuilder.Sql(@"
-        INSERT INTO Languages (Code, Name) VALUES 
-        ('hy', N'Armenian'),
-        ('ru', N'Russian'),
-        ('en', N'English');");
-
-            migrationBuilder.Sql(@"CREATE UNIQUE INDEX UX_L10nKeys_Key ON MyOrganizer.dbo.L10nKeys([Key])");
         }
 
         /// <inheritdoc />
@@ -187,10 +240,13 @@ namespace MyOrganizer.Wpf.Migrations
                 name: "Languages");
 
             migrationBuilder.DropTable(
+                name: "ProcedurePrices");
+
+            migrationBuilder.DropTable(
                 name: "Products");
 
             migrationBuilder.DropTable(
-                name: "Tecnos");
+                name: "Technics");
 
             migrationBuilder.DropTable(
                 name: "Teeth");
@@ -200,6 +256,9 @@ namespace MyOrganizer.Wpf.Migrations
 
             migrationBuilder.DropTable(
                 name: "L10nKeys");
+
+            migrationBuilder.DropTable(
+                name: "Procedures");
 
             migrationBuilder.DropTable(
                 name: "Clients");

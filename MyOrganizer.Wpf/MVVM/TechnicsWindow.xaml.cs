@@ -25,13 +25,23 @@ namespace MyOrganizer.Wpf.MVVM
             {
                 "Ի/Մ/Կ", "Մ/կ", "Ց/կ", "Բյուգել", "Պրոթեզ", "M & S abatments"
             };
+            cmbTechnics.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                // If the drop-down is closed and we clicked on the header area, open it
+                if (!cmbTechnics.IsDropDownOpen)
+                {
+                    e.Handled = true;           // stop bubbling (prevents Window drag or other handlers)
+                    cmbTechnics.Focus();            // ensure it has focus
+                    cmbTechnics.IsDropDownOpen = true;
+                }
+            };
             dpDate.SelectedDate = DateTime.Today;
             await LoadDataAsync();
         }
 
         private async Task LoadDataAsync()
         {
-            dgTechnics.ItemsSource = await _db.Tecnos.AsNoTracking().ToListAsync();
+            dgTechnics.ItemsSource = await _db.Technics.AsNoTracking().ToListAsync();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -49,21 +59,21 @@ namespace MyOrganizer.Wpf.MVVM
                 return;
             }
 
-            var item = new Tecno
+            var item = new Technic
             {
                 Type = cmbTechnics.SelectedItem.ToString(),
                 Price = int.TryParse(txtPrice.Text, out var p) ? p : 0,
                 Date = dpDate.SelectedDate ?? DateTime.Today,
                 Name = txtTechnoName.Text
             };
-            _db.Tecnos.Add(item);
+            _db.Technics.Add(item);
             await _db.SaveChangesAsync();
             await LoadDataAsync();
         }
 
         private async void BtnEdit_Click(object sender, RoutedEventArgs e)
         {
-            if (dgTechnics.SelectedItem is not Tecno selected)
+            if (dgTechnics.SelectedItem is not Technic selected)
                 return;
 
             if (cmbTechnics.SelectedItem == null)
@@ -77,17 +87,17 @@ namespace MyOrganizer.Wpf.MVVM
             selected.Date = dpDate.SelectedDate ?? DateTime.Today;
             selected.Name = txtTechnoName.Text;
 
-            _db.Tecnos.Update(selected);
+            _db.Technics.Update(selected);
             await _db.SaveChangesAsync();
             await LoadDataAsync();
         }
 
         private async void BtnDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (dgTechnics.SelectedItem is not Tecno selected)
+            if (dgTechnics.SelectedItem is not Technic selected)
                 return;
 
-            _db.Tecnos.Remove(selected);
+            _db.Technics.Remove(selected);
             await _db.SaveChangesAsync();
             await LoadDataAsync();
         }
@@ -103,7 +113,7 @@ namespace MyOrganizer.Wpf.MVVM
             var type = cmbTechnics.SelectedItem.ToString();
             var month = dpDate.SelectedDate?.Month ?? DateTime.Today.Month;
 
-            var sum = await _db.Tecnos
+            var sum = await _db.Technics
                 .Where(t => t.Type == type && t.Date.Month == month)
                 .SumAsync(t => (int?)t.Price) ?? 0;
 

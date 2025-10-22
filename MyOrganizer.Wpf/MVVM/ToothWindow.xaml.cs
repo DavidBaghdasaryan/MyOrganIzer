@@ -2,111 +2,173 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Windows.Shapes;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using MyOrganizer.Wpf.Repository;
-using MyOrganizer.Wpf.Entities;
-using MyOrganizer.Wpf.Data.Entities;
+using System.Windows.Shapes;
+using Microsoft.EntityFrameworkCore;
+using MyOrganizer.Wpf.Data;                 // AppDbContext
+using MyOrganizer.Wpf.Data.Entities;        // your data entities if needed
+using MyOrganizer.Wpf.Entities;             // Client, etc.
+using MyOrganizer.Wpf.MVVM;                 // namespace of this file (keep consistent)
+using MyOrganizer.Wpf.Repository;           // IToothWorkRepository
 
 namespace MyOrganizer.Wpf.MVVM
 {
-    public partial class ToothWindow :Window
+    public partial class ToothWindow : Window
     {
         private readonly IToothWorkRepository _repo;
-        public   Client Client;
-        private  string _clientFullName=string.Empty;
+        private readonly AppDbContext _db;
+
+        public Client Client;
+        private string _clientFullName = string.Empty;
+
+        // In-memory selections per tooth: FDI -> set of procedure names
+        private readonly Dictionary<string, HashSet<string>> _toothProcedures =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        // Price table (procedure name -> [A,B,C] tier prices)
+        private Dictionary<string, int[]> _priceTable =
+            new(StringComparer.Ordinal);
 
         public struct ToothAction
         {
-            public string Fdi;          // e.g. "11" (the tooth number)
-            public string Procedure;    // e.g. "Byugel"
-            public string Tier;         // e.g. "A", "B", or "C"
-            public int Price;           // e.g. 230000
+            public string Fdi;        // e.g. "11"
+            public string Procedure;  // full name (e.g., "Metal-Ceramic Crown")
+            public string Tier;       // "A" | "B" | "C"
+            public int Price;         // AMD (int for UI)
         }
 
-        // Pass client details via ctor
-        public ToothWindow( IToothWorkRepository repo)
+        // Inject repo + db
+        public ToothWindow(IToothWorkRepository repo, AppDbContext db)
         {
-           
             _repo = repo;
-
+            _db = db;
             InitializeComponent();
-            
         }
-       
+
+        // ===== Static dictionaries: procedures, short codes, and colors =====
 
         private static readonly string[] Procedures =
         {
-            "Byugel", "Protez", "Impl/Zr", "Impl/Mk",
-            "Zr/K,Emax", "Mk30", "Rest", "Plomb",
-            "Shift", "Endo"
+            "Removable Partial Denture (Metal Framework)", // BY
+            "Full Denture",                                // PR
+            "Implant with Zirconia Crown",                 // IZ
+            "Implant with Metal-Ceramic Crown",            // IM
+            "Zirconia or E-max Crown",                     // ZR
+            "Metal-Ceramic Crown",                         // MK
+            "Composite or Inlay Restoration",              // RS
+            "Filling (Composite / Amalgam)",               // PL
+            "Work Shift / Appointment Slot",               // SH
+            "Endodontic Treatment (Root Canal)"            // EN
         };
 
-        private static readonly Dictionary<string, string> _procShort = new()
-        {
-            ["Byugel"] = "BY",
-            ["Protez"] = "PR",
-            ["Impl/Zr"] = "IZ",
-            ["Impl/Mk"] = "IM",
-            ["Zr/K,Emax"] = "ZR",
-            ["Mk30"] = "MK",
-            ["Rest"] = "RS",
-            ["Plomb"] = "PL",
-            ["Shift"] = "SH",
-            ["Endo"] = "EN"
-        };
+        private static readonly Dictionary<string, string> _procShort =
+            new(StringComparer.Ordinal)
+            {
+                ["Removable Partial Denture (Metal Framework)"] = "BY",
+                ["Full Denture"] = "PR",
+                ["Implant with Zirconia Crown"] = "IZ",
+                ["Implant with Metal-Ceramic Crown"] = "IM",
+                ["Zirconia or E-max Crown"] = "ZR",
+                ["Metal-Ceramic Crown"] = "MK",
+                ["Composite or Inlay Restoration"] = "RS",
+                ["Filling (Composite / Amalgam)"] = "PL",
+                ["Work Shift / Appointment Slot"] = "SH",
+                ["Endodontic Treatment (Root Canal)"] = "EN"
+            };
 
-        private static readonly Dictionary<string, Brush> _procBrush = new()
-        {
-            ["Byugel"] = new SolidColorBrush(Color.FromRgb(0x39, 0x8E, 0xB5)),
-            ["Protez"] = new SolidColorBrush(Color.FromRgb(0x6A, 0x1B, 0x9A)),
-            ["Impl/Zr"] = new SolidColorBrush(Color.FromRgb(0x00, 0x8B, 0x8B)),
-            ["Impl/Mk"] = new SolidColorBrush(Color.FromRgb(0x00, 0x64, 0x95)),
-            ["Zr/K,Emax"] = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)),
-            ["Mk30"] = new SolidColorBrush(Color.FromRgb(0xF9, 0xA8, 0x25)),
-            ["Rest"] = new SolidColorBrush(Color.FromRgb(0xEF, 0x6C, 0x00)),
-            ["Plomb"] = new SolidColorBrush(Color.FromRgb(0xD8, 0x3F, 0x31)),
-            ["Shift"] = new SolidColorBrush(Color.FromRgb(0x45, 0x55, 0x57)),
-            ["Endo"] = new SolidColorBrush(Color.FromRgb(0x15, 0x75, 0x9A)),
-        };
+        private static readonly Dictionary<string, Brush> _procBrush =
+            new(StringComparer.Ordinal)
+            {
+                ["Removable Partial Denture (Metal Framework)"] = new SolidColorBrush(Color.FromRgb(0x39, 0x8E, 0xB5)), // BY
+                ["Full Denture"] = new SolidColorBrush(Color.FromRgb(0x6A, 0x1B, 0x9A)), // PR
+                ["Implant with Zirconia Crown"] = new SolidColorBrush(Color.FromRgb(0x00, 0x8B, 0x8B)), // IZ
+                ["Implant with Metal-Ceramic Crown"] = new SolidColorBrush(Color.FromRgb(0x00, 0x64, 0x95)), // IM
+                ["Zirconia or E-max Crown"] = new SolidColorBrush(Color.FromRgb(0x2E, 0x7D, 0x32)), // ZR
+                ["Metal-Ceramic Crown"] = new SolidColorBrush(Color.FromRgb(0xF9, 0xA8, 0x25)), // MK
+                ["Composite or Inlay Restoration"] = new SolidColorBrush(Color.FromRgb(0xEF, 0x6C, 0x00)), // RS
+                ["Filling (Composite / Amalgam)"] = new SolidColorBrush(Color.FromRgb(0xD8, 0x3F, 0x31)), // PL
+                ["Work Shift / Appointment Slot"] = new SolidColorBrush(Color.FromRgb(0x45, 0x55, 0x57)), // SH
+                ["Endodontic Treatment (Root Canal)"] = new SolidColorBrush(Color.FromRgb(0x15, 0x75, 0x9A)), // EN
+            };
 
-        // remember per-tooth selections (loaded from DB, updated live)
-        private readonly Dictionary<string, HashSet<string>> _toothProcedures = new(StringComparer.OrdinalIgnoreCase);
-
-        // (optional) simple default price tiers
-        private readonly Dictionary<string, int[]> _priceTable = new()
-        {
-            ["Byugel"] = new[] { 250000, 230000, 200000 },
-            ["Protez"] = new[] { 70000, 65000, 60000 },
-            ["Impl/Zr"] = new[] { 90000, 85000, 80000 },
-            ["Impl/Mk"] = new[] { 70000, 65000, 60000 },
-            ["Zr/K,Emax"] = new[] { 80000, 78000, 75000 },
-            ["Mk30"] = new[] { 35000, 30000, 25000 },
-            ["Rest"] = new[] { 20000, 18000, 15000 },
-            ["Plomb"] = new[] { 15000, 13000, 10000 },
-            ["Shift"] = new[] { 5000, 4000, 3000 },
-            ["Endo"] = new[] { 7000, 6000, 5000 }
-        };
+        // ===== Window lifecycle =====
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            _clientFullName = string.Concat(Client.FirstName, " ", Client.LastName);
-            TxtClientName.Text = _clientFullName;
-            if (Client.Id <= 0) return;
-            await LoadExistingBadgesAsync(Client.Id);
+            // show client name
+            _clientFullName = string.Concat(Client?.FirstName ?? "", " ", Client?.LastName ?? "").Trim();
+            if (this.FindName("TxtClientName") is TextBlock tb)
+                tb.Text = _clientFullName;
+
+            // Load prices from DB (with fallback defaults)
+            await LoadPriceTableAsync();
+
+            if (Client?.Id > 0)
+                await LoadExistingBadgesAsync(Client.Id);
         }
 
-        // ====== clicks & context menu ======
+        // ===== DB-backed price loader with fallback defaults =====
+
+        private async Task LoadPriceTableAsync()
+        {
+            // latest price per procedure by Id (simple, no extra columns needed)
+            var latest = await _db.ProcedurePrices
+                                  .AsNoTracking()
+                                  .GroupBy(pp => pp.ProcedureId)
+                                  .Select(g => g.OrderByDescending(pp => pp.Id).First())
+                                  .ToListAsync();
+
+            // active procedures → map Id -> Name
+            var procNames = await _db.Procedures
+                                     .AsNoTracking()
+                                     .Where(p => p.IsActive)
+                                     .Select(p => new { p.Id, p.Name })
+                                     .ToListAsync();
+            var nameById = procNames.ToDictionary(x => x.Id, x => x.Name);
+
+            _priceTable.Clear();
+
+            foreach (var row in latest)
+            {
+                if (!nameById.TryGetValue(row.ProcedureId, out var name)) continue;
+                _priceTable[name] = new[]
+                {
+                    (int)Math.Round(row.Tier1, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(row.Tier2, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(row.Tier3, MidpointRounding.AwayFromZero),
+                };
+            }
+
+            // ensure defaults exist for all menu items (if no DB rows yet)
+            void EnsureDefault(string key, int a, int b, int c)
+            {
+                if (!_priceTable.ContainsKey(key))
+                    _priceTable[key] = new[] { a, b, c };
+            }
+
+            EnsureDefault("Removable Partial Denture (Metal Framework)", 250000, 230000, 200000);
+            EnsureDefault("Full Denture", 70000, 65000, 60000);
+            EnsureDefault("Implant with Zirconia Crown", 90000, 85000, 80000);
+            EnsureDefault("Implant with Metal-Ceramic Crown", 70000, 65000, 60000);
+            EnsureDefault("Zirconia or E-max Crown", 80000, 78000, 75000);
+            EnsureDefault("Metal-Ceramic Crown", 35000, 30000, 25000);
+            EnsureDefault("Composite or Inlay Restoration", 20000, 18000, 15000);
+            EnsureDefault("Filling (Composite / Amalgam)", 15000, 13000, 10000);
+            EnsureDefault("Work Shift / Appointment Slot", 5000, 4000, 3000);
+            EnsureDefault("Endodontic Treatment (Root Canal)", 7000, 6000, 5000);
+        }
+
+        // ===== Clicks & context menu =====
+
         private void Tooth_Click(object sender, RoutedEventArgs e)
         {
             var btn = (Button)sender;
             ToggleHighlight(btn);
             var fdi = (btn.ToolTip ?? "").ToString();
-            Title = $"Tooth Chart — Selected {fdi}";
+            this.Title = $"Tooth Chart — Selected {fdi}";
         }
 
         private void Tooth_ContextMenu(object sender, ContextMenuEventArgs e)
@@ -149,11 +211,15 @@ namespace MyOrganizer.Wpf.MVVM
                 Header = $"{tier} — {price.ToString("N0", CultureInfo.InvariantCulture)} ֏",
                 Tag = new ToothAction { Fdi = fdi, Procedure = proc, Tier = tier, Price = price }
             };
+
             mi.Click += async (_, __) =>
             {
-                var a = (ToothAction)mi.Tag;   // ✅ was TouchAction
+                var a = (ToothAction)mi.Tag;
+
+                // Persist selection
                 await _repo.AddAsync(Client.Id, a.Fdi, a.Procedure, a.Tier, a.Price);
 
+                // Update in-memory model
                 if (!_toothProcedures.TryGetValue(a.Fdi, out var set))
                 {
                     set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -161,6 +227,7 @@ namespace MyOrganizer.Wpf.MVVM
                 }
                 set.Add(a.Procedure);
 
+                // Refresh visuals
                 RefreshBadges(btn, set);
                 Tint(btn, Colors.LightSkyBlue);
             };
@@ -168,7 +235,7 @@ namespace MyOrganizer.Wpf.MVVM
             return mi;
         }
 
-        // ====== badges ======
+        // ===== Badges =====
 
         private sealed class BadgeVM
         {
@@ -186,8 +253,9 @@ namespace MyOrganizer.Wpf.MVVM
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Select(p => new BadgeVM
                 {
-                    Code = _procShort.TryGetValue(p, out var sc) ? sc :
-                           p.Substring(0, Math.Min(2, p.Length)).ToUpperInvariant(),
+                    Code = _procShort.TryGetValue(p, out var sc)
+                        ? sc
+                        : p.Substring(0, Math.Min(2, p.Length)).ToUpperInvariant(),
                     Brush = _procBrush.TryGetValue(p, out var br) ? br : Brushes.SlateGray
                 })
                 .ToList();
@@ -199,7 +267,7 @@ namespace MyOrganizer.Wpf.MVVM
         {
             _toothProcedures.Clear();
 
-            var works = await _repo.GetByClientAsync(clientId); // ToothFdi + Procedure
+            var works = await _repo.GetByClientAsync(clientId); // should return ToothFdi + ProcedureName
 
             foreach (var g in works.GroupBy(w => w.ToothFdi))
             {
@@ -211,7 +279,8 @@ namespace MyOrganizer.Wpf.MVVM
             }
         }
 
-        // ====== visuals/tint helpers ======
+        // ===== Visual helpers =====
+
         private static void ToggleHighlight(Button b)
         {
             if (b.Effect == null)
@@ -234,21 +303,22 @@ namespace MyOrganizer.Wpf.MVVM
         {
             if (VisualTreeHelper.GetChildrenCount(b) > 0)
             {
-                var grid = VisualTreeHelper.GetChild(b, 0) as Grid;
-                if (grid != null && grid.Children.OfType<Shape>().FirstOrDefault() is Shape s)
-                    s.Fill = new SolidColorBrush(Color.FromArgb(60, c.R, c.G, c.B));
+                if (VisualTreeHelper.GetChild(b, 0) is Grid grid)
+                {
+                    var shape = grid.Children.OfType<Shape>().FirstOrDefault();
+                    if (shape != null)
+                        shape.Fill = new SolidColorBrush(Color.FromArgb(60, c.R, c.G, c.B)); // 60 alpha
+                }
             }
         }
 
         private Button? FindToothButton(string fdi)
         {
-            // Search all Buttons whose ToolTip == FDI
+            // Find any Button whose ToolTip equals the FDI code
             return this.GetVisualDescendants()
                 .OfType<Button>()
-                .FirstOrDefault(b => (b.ToolTip ?? "").ToString() == fdi);
+                .FirstOrDefault(b => string.Equals((b.ToolTip ?? "").ToString(), fdi, StringComparison.Ordinal));
         }
-
-        // small helper to traverse visual tree
     }
 
     internal static class VisualTreeExtensions
@@ -271,5 +341,4 @@ namespace MyOrganizer.Wpf.MVVM
             }
         }
     }
-
 }

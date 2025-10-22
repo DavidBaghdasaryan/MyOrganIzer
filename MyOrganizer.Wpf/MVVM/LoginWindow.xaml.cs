@@ -99,10 +99,18 @@ namespace MyOrganizer.Wpf.MVVM
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // allow dragging since WindowStyle=None
-            if (e.ButtonState == MouseButtonState.Pressed)
+            // Не перетаскиваем окно, если клик по интерактивным элементам
+            if (e.OriginalSource is DependencyObject source &&
+                (source is ComboBox || source is TextBox || source is PasswordBox || source is Button))
+                return;
+
+            try
+            {
                 DragMove();
+            }
+            catch { }
         }
+
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {

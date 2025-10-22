@@ -13,6 +13,102 @@
         ShowInTaskbar="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
+    <Window.Resources>
+        <!-- ModernComboBox with PART_Popup -->
+        <Style x:Key="ModernComboBox" TargetType="ComboBox">
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="Border" CornerRadius="6" Padding="6"
+                                    BorderBrush="#33000000" BorderThickness="1" Background="White">
+                                <DockPanel>
+                                    <!-- Toggle button -->
+                                    <ToggleButton x:Name="ToggleButton"
+                                                  DockPanel.Dock="Right"
+                                                  Focusable="False"
+                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  ClickMode="Press"
+                                                  Background="Transparent"
+                                                  BorderBrush="{x:Null}"
+                                                  BorderThickness="0"
+                                                  Width="34">
+                                        <Path Data="M0,0 L6,6 L12,0"
+                                              Width="12" Height="6"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Stroke="Black" StrokeThickness="1.4"
+                                              StrokeEndLineCap="Square"/>
+                                    </ToggleButton>
+
+                                    <!-- Selected item -->
+                                    <ContentPresenter Margin="0,0,4,0"
+                                                      HorizontalAlignment="Left"
+                                                      VerticalAlignment="Center"
+                                                      Content="{TemplateBinding SelectionBoxItem}"/>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- Drop-down (PART_Popup) -->
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="Slide">
+                                <Border CornerRadius="6"
+                                        Background="White"
+                                        BorderBrush="#33000000" BorderThickness="1">
+                                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#66000000"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.6"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
+            <!-- Items -->
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Padding" Value="8,4"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="ItemBorder" Background="Transparent">
+                                        <ContentPresenter Margin="6,2"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="#F2F6FF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="#E6F0FF"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <!-- Blue border bars -->
         <Rectangle Fill="#00B7FF" Height="21" VerticalAlignment="Top" Margin="21,-6,0,0"/>
@@ -21,7 +117,7 @@
         <Rectangle Fill="#00B7FF" Height="21" VerticalAlignment="Bottom" Margin="100,0,0,0"/>
 
         <!-- App title -->
-        <TextBlock Text="Stom Organizer"
+        <TextBlock Text="{loc:Loc AppTitle}"
                    FontFamily="Centaur"
                    FontSize="22"
                    Foreground="DarkBlue"
@@ -44,42 +140,44 @@
                    Margin="0,176,0,1"/>
 
             <!-- Center form -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Grid.ColumnSpan="2" >
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Grid.ColumnSpan="2">
 
-                <!-- 🔹 Language dropdown -->
+                <!-- Language dropdown -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8" HorizontalAlignment="Right" Height="34">
                     <TextBlock Text="{loc:Loc CurLanguage}" Foreground="White" FontWeight="ExtraBlack"
                                VerticalAlignment="Center" Margin="0,0,6,0"/>
                     <ComboBox x:Name="CmbLanguage"
-                          Width="100" Height="30"
-                          Style="{StaticResource ModernComboBox}"
-                          SelectedValuePath="Tag"
-                          SelectionChanged="CmbLanguage_SelectionChanged">
-                        <ComboBoxItem Content="Հայերեն (AM)" Tag="hy"/>
-                        <ComboBoxItem Content="Русский (RU)" Tag="ru"/>
-                        <ComboBoxItem Content="English (EN)" Tag="en"/>
+                              Width="121" Height="33"
+                              Style="{StaticResource ModernComboBox}"
+                              SelectedValuePath="Tag"
+                              SelectionChanged="CmbLanguage_SelectionChanged">
+                        <!-- You can keep these literals, or localize them too: -->
+                        <ComboBoxItem Content="{loc:Loc ArmenianAM}" Tag="hy"/>
+                        <ComboBoxItem Content="{loc:Loc RussianRU}"  Tag="ru"/>
+                        <ComboBoxItem Content="{loc:Loc EnglishEN}"  Tag="en"/>
                     </ComboBox>
-
                 </StackPanel>
 
-                <!-- PasswordBox with watermark -->
+                <!-- Password with watermark -->
                 <Grid Width="303" Height="30" HorizontalAlignment="Left" Margin="0,0,0,10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="13*"/>
+                        <RowDefinition Height="17*"/>
+                    </Grid.RowDefinitions>
                     <PasswordBox x:Name="PasswordBox"
-                                 HorizontalAlignment="Stretch"
-                                 VerticalAlignment="Center"
+                                 VerticalAlignment="Top"
                                  Padding="8,2,8,2"
                                  PasswordChar="*"
                                  PreviewMouseDown="PasswordBox_PreviewMouseDown"
                                  KeyDown="PasswordBox_KeyDown"
-                                 PasswordChanged="PasswordBox_PasswordChanged"/>
+                                 PasswordChanged="PasswordBox_PasswordChanged" Margin="0,4,0,0" Grid.RowSpan="2"/>
                     <TextBlock x:Name="Watermark"
                                Text="{loc:Loc Enterpassword}"
                                Foreground="#FFFF8080"
                                FontStyle="Italic"
                                IsHitTestVisible="False"
-                               VerticalAlignment="Center"
-                               Margin="10,0,0,0"
-                               Opacity="0.9"/>
+                               VerticalAlignment="Top"
+                               Opacity="0.9" HorizontalAlignment="Right" Width="293" Margin="0,6,0,0" Grid.RowSpan="2"/>
                 </Grid>
 
                 <!-- Login button -->

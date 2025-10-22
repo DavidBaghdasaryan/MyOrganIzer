@@ -1,71 +1,91 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using Microsoft.EntityFrameworkCore;
+using MyOrganizer.Wpf.Data;
+using MyOrganizer.Wpf.Entities.Procedures;
+using MyOrganizer.Wpf.MVVM.DTOs;
 
 namespace MyOrganizer.Wpf.MVVM
 {
     public partial class SetPricesDialog : Window
     {
-        private readonly List<Row> _rows;
+        private readonly AppDbContext _db;
+        public ObservableCollection<PriceRowDto> Items { get; } = new();
 
-        public SetPricesDialog(string[] byugel, string[] protez, string[] implzr, string[] implmk,
-                               string[] zrkemax, string[] mk30, string[] rest, string[] plomb, string[] shift, string[] endo)
+        public SetPricesDialog(AppDbContext db)
         {
             InitializeComponent();
+            _db = db;
+            Loaded += async (_, __) => await LoadAsync();
+        }
 
-            _rows = new()
+        private async Task LoadAsync()
+        {
+            // Get all active procedures
+            var procs = await _db.Procedures
+                                 .AsNoTracking()
+                                 .Where(p => p.IsActive)
+                                 .OrderBy(p => p.Id)
+                                 .ToListAsync();
+
+            // For each proc, pick the "current" price = latest by Id (no schema changes needed)
+            // If you later add CreatedAtUtc/IsCurrent, switch the ordering to that instead.
+            var latestPrices = await _db.ProcedurePrices
+                                        .AsNoTracking()
+                                        .GroupBy(pp => pp.ProcedureId)
+                                        .Select(g => g.OrderByDescending(pp => pp.Id).First())
+                                        .ToListAsync();
+
+            var map = latestPrices.ToDictionary(x => x.ProcedureId);
+
+            Items.Clear();
+            foreach (var p in procs)
             {
-                new Row("Բյուգել", byugel),
-                new Row("Պրոթեզ", protez),
-                new Row("Ի/Ց/Կ", implzr),
-                new Row("Ի/Մ/Կ", implmk),
-                new Row("Ց/Կ", zrkemax),
-                new Row("Մ/Կ", mk30),
-                new Row("Պսակի վկ․ում", rest),
-                new Row("Ատամնալիցք", plomb),
-                new Row("Գամիկ", shift),
-                new Row("Արմատալիցք", endo),
-            };
+                map.TryGetValue(p.Id, out var price);
+                Items.Add(new PriceRowDto
+                {
+                    ProcedureId = p.Id,
+                    Name = p.Name,
+                    Tier1 = price?.Tier1 ?? 0m,
+                    Tier2 = price?.Tier2 ?? 0m,
+                    Tier3 = price?.Tier3 ?? 0m,
+                    Currency = price?.Currency ?? "AMD"
+                });
+            }
 
-            dg.ItemsSource = _rows;
+            dg.ItemsSource = Items;
         }
 
-        public (string[] byugel, string[] protez, string[] implzr, string[] implmk,
-                string[] zrkemax, string[] mk30, string[] rest, string[] plomb, string[] shift, string[] endo)
-            GetAllArrays()
+        private async void Ok_Click(object sender, RoutedEventArgs e)
         {
-            string[] arr(string name) =>
-                _rows.First(r => r.Name == name).ToArray();
+            // Basic validation (optional)
+            foreach (var row in Items)
+            {
+                if (row.Tier1 < 0 || row.Tier2 < 0 || row.Tier3 < 0)
+                {
+                    MessageBox.Show("Tiers must be non-negative.", "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
 
-            return (arr("Բյուգել"), arr("Պրոթեզ"), arr("Ի/Ց/Կ"), arr("Ի/Մ/Կ"),
-                    arr("Ց/Կ"), arr("Մ/Կ"), arr("Պսակի վկ․ում"),
-                    arr("Ատամնալիցք"), arr("Գամիկ"), arr("Արմատալիցք"));
-        }
+            // Append NEW price rows to preserve history (no updates to old rows)
+            foreach (var row in Items)
+            {
+                _db.ProcedurePrices.Add(new ProcedurePrice
+                {
+                    ProcedureId = row.ProcedureId,
+                    Tier1 = row.Tier1,
+                    Tier2 = row.Tier2,
+                    Tier3 = row.Tier3,
+                    Currency = row.Currency
+                });
+            }
 
-        private void Ok_Click(object sender, RoutedEventArgs e)
-        {
+            await _db.SaveChangesAsync();
             DialogResult = true;
             Close();
-        }
-
-        public class Row
-        {
-            public string Name { get; }
-            public string Tier1 { get; set; }
-            public string Tier2 { get; set; }
-            public string Tier3 { get; set; }
-
-            public Row(string name, string[] tiers)
-            {
-                Name = name;
-                Tier1 = tiers.ElementAtOrDefault(0) ?? "0";
-                Tier2 = tiers.ElementAtOrDefault(1) ?? "0";
-                Tier3 = tiers.ElementAtOrDefault(2) ?? "0";
-            }
-            public string[] ToArray() => new[] { Tier1, Tier2, Tier3 };
         }
     }
 }

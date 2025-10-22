@@ -11,12 +11,18 @@
   <ItemGroup>
     <None Remove="appsettings.json" />
     <None Remove="Assets\add.png" />
+    <None Remove="Assets\debt2.png" />
     <None Remove="Assets\delete.png" />
     <None Remove="Assets\edit.png" />
     <None Remove="Assets\exit.png" />
     <None Remove="Assets\login_icon.jpg" />
     <None Remove="Assets\minimize.png" />
     <None Remove="Assets\patients.png" />
+    <None Remove="Assets\price.png" />
+    <None Remove="Assets\price2.png" />
+    <None Remove="Assets\price3.png" />
+    <None Remove="Assets\price355.png" />
+    <None Remove="Assets\priceing.png" />
     <None Remove="Assets\senders.png" />
     <None Remove="Assets\techs.png" />
   </ItemGroup>
@@ -44,6 +50,9 @@
     <Resource Include="Assets\add.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\debt2.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\delete.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
@@ -60,12 +69,25 @@
     <Resource Include="Assets\patients.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\price.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\price355.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\priceing.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\senders.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Assets\techs.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Themes\" />
   </ItemGroup>
 
 </Project>

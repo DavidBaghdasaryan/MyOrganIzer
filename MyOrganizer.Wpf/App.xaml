@@ -5,7 +5,9 @@
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <ResourceDictionary>
-
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/AppTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
             <!-- ========= ContextMenu tokens ========= -->
             <SolidColorBrush x:Key="MenuBgBrush" Color="#03d7fc"/>
             <SolidColorBrush x:Key="MenuBorderBrush" Color="#1A000000"/>

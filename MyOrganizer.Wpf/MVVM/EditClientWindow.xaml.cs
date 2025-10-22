@@ -175,7 +175,7 @@ namespace MyOrganizer.Wpf.MVVM
             dpDateDouble.SelectedDate = null;
         }
 
-        // Կատարվող աշխատանքներ (open teeth window)
+       
         private void btnWork_Click(object sender, RoutedEventArgs e)
         {
             if (!ValidateClient()) return;

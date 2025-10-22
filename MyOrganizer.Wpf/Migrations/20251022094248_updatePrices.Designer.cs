@@ -12,8 +12,8 @@ using MyOrganizer.Wpf.Data;
 namespace MyOrganizer.Wpf.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251007133134_AddLocalizationTables")]
-    partial class AddLocalizationTables
+    [Migration("20251022094248_updatePrices")]
+    partial class updatePrices
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -213,7 +213,124 @@ namespace MyOrganizer.Wpf.Migrations
                     b.ToTable("Languages");
                 });
 
-            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Tecno", b =>
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Procedures.Procedure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Procedures", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IsActive = true,
+                            Name = "Removable Partial Denture (Metal Framework)"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            IsActive = true,
+                            Name = "Full Denture"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            IsActive = true,
+                            Name = "Implant with Zirconia Crown"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            IsActive = true,
+                            Name = "Implant with Metal-Ceramic Crown"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            IsActive = true,
+                            Name = "Zirconia or E-max Crown"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            IsActive = true,
+                            Name = "Metal-Ceramic Crown"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            IsActive = true,
+                            Name = "Composite or Inlay Restoration"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            IsActive = true,
+                            Name = "Filling (Composite / Amalgam)"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            IsActive = true,
+                            Name = "Work Shift / Appointment Slot"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            IsActive = true,
+                            Name = "Endodontic Treatment (Root Canal)"
+                        });
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Procedures.ProcedurePrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("ProcedureId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Tier1")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Tier2")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Tier3")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcedureId");
+
+                    b.ToTable("ProcedurePrices", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Technic", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -238,7 +355,7 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Tecnos", (string)null);
+                    b.ToTable("Technics", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.ToothWork", b =>
@@ -297,6 +414,17 @@ namespace MyOrganizer.Wpf.Migrations
                     b.Navigation("Key");
                 });
 
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Procedures.ProcedurePrice", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.Procedures.Procedure", "Procedure")
+                        .WithMany("Prices")
+                        .HasForeignKey("ProcedureId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Procedure");
+                });
+
             modelBuilder.Entity("MyOrganizer.Wpf.Data.Entities.Client", b =>
                 {
                     b.Navigation("ClientTooths");
@@ -305,6 +433,11 @@ namespace MyOrganizer.Wpf.Migrations
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.L10nKey", b =>
                 {
                     b.Navigation("Values");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Procedures.Procedure", b =>
+                {
+                    b.Navigation("Prices");
                 });
 #pragma warning restore 612, 618
         }

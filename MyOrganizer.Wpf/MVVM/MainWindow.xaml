@@ -3,7 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
-        Title="My Organizer"
+        Title="{loc:Loc AppTitle}"
         WindowStyle="None"
         ResizeMode="NoResize"
         Width="1486" Height="806"
@@ -52,12 +52,14 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0" Text="Stom Organizer" Style="{StaticResource TitleText}"
+                <TextBlock Grid.Column="0"
+                           Text="{loc:Loc AppTitle}"
+                           Style="{StaticResource TitleText}"
                            VerticalAlignment="Center" Margin="8,0"/>
 
                 <Button Grid.Column="2" x:Name="BtnMessage" Style="{StaticResource CircleButton}"
                         Width="60" Height="60" Margin="0,24,8,0" VerticalAlignment="Top"
-                        ToolTip="Հաղորդագրություններ"
+                        ToolTip="{loc:Loc Messages}"
                         Visibility="Collapsed"
                         Click="BtnMessage_Click">
                     <Image Width="30" Height="30"
@@ -75,29 +77,34 @@
 
         <!-- Top-right action buttons -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,146,16,0" VerticalAlignment="Top">
-            <Button x:Name="BtnPcainet" Style="{StaticResource CircleButton}" ToolTip="Հաճախորդներ"
+            <Button x:Name="BtnPcainet" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Clients}"
                     Click="BtnPcainet_Click" Margin="0,0,12,0">
                 <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/patients.png"/>
             </Button>
 
-            <Button x:Name="BtnSenders" Style="{StaticResource CircleButton}" ToolTip="Առաքիչներ"
+            <Button x:Name="BtnSenders" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Senders}"
                     Click="BtnSenders_Click" Margin="0,0,12,0">
                 <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/senders.png"/>
             </Button>
 
-            <Button x:Name="BtnTexniqs" Style="{StaticResource CircleButton}" ToolTip="Տեխնիկներ"
-                    Click="BtnTexniqs_Click">
+            <Button x:Name="BtnTexniqs" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Technicians}"
+                    Click="BtnTexniqs_Click" Margin="0,0,12,0">
                 <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/techs.png"/>
+            </Button>
+
+            <Button x:Name="BtnSetPricing" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Price}"
+                    Click="BtnSetPrice_CLick" Height="78" Width="86">
+                <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/priceing.png"/>
             </Button>
         </StackPanel>
 
         <!-- Bottom-right Min/Exit -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,10">
-            <Button x:Name="BtnMinimize" Style="{StaticResource CircleButton}" ToolTip="Ծալել"
+            <Button x:Name="BtnMinimize" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Minimize}"
                     Click="BtnMinimize_Click" Margin="0,0,12,0">
                 <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/minimize.png"/>
             </Button>
-            <Button x:Name="BtnExit" Style="{StaticResource CircleButton}" ToolTip="Անջատել"
+            <Button x:Name="BtnExit" Style="{StaticResource CircleButton}" ToolTip="{loc:Loc Exit}"
                     Click="BtnExit_Click">
                 <Image Width="40" Height="40" Source="/MyOrganizer.Wpf;component/Assets/exit.png"/>
             </Button>

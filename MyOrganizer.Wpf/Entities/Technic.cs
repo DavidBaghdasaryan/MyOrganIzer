@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MyOrganizer.Wpf.Entities
 {
-    public class Tecno
+    public class Technic
     {
         public int Id { get; set; }
         public string Type { get; set; } = "";

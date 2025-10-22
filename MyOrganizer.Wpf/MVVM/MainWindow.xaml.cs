@@ -73,7 +73,13 @@ namespace MyOrganizer.Wpf
             win.Owner = this;
             win.ShowDialog();
         }
-
+        private void BtnSetPrice_CLick(object sender, RoutedEventArgs e)
+        {
+            var win = App.HostInstance.Services.GetRequiredService<SetPricesDialog>();
+            win.Owner = this;
+            win.ShowDialog();
+        }
+        
 
         private void BtnSenders_Click(object sender, RoutedEventArgs e)
         {
@@ -83,8 +89,9 @@ namespace MyOrganizer.Wpf
 
         private void BtnTexniqs_Click(object sender, RoutedEventArgs e)
         {
-            // TODO: open Technicians window/page
-            MessageBox.Show("Open Technicians", "Info");
+            var win = App.HostInstance.Services.GetRequiredService<TechnicsWindow>();
+            win.Owner = this;
+            win.ShowDialog();
         }
 
         private void BtnMessage_Click(object sender, RoutedEventArgs e)

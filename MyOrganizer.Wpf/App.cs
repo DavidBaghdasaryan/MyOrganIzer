@@ -10,8 +10,6 @@ using MyOrganizer.Wpf.Repository;
 using MyOrganizer.Wpf.Services;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;
 
-
-
 namespace MyOrganizer.Wpf;
 
 public partial class App : Application
@@ -34,8 +32,9 @@ public partial class App : Application
                     var cs = ctx.Configuration.GetConnectionString("Default")!;
                     tt= cs; 
                     opt.UseSqlServer(cs);
+                    
                 });
-
+                
                 var rr = tt;
                 // register your services from Core/Data here, e.g.:
                 // services.AddScoped<IProjectService, ProjectService>();
@@ -44,18 +43,38 @@ public partial class App : Application
                 services.AddTransient<ClientsWindow>();
                 services.AddTransient<EditClientWindow>();
                 services.AddTransient<ToothWindow>();
+                services.AddTransient<TechnicsWindow>();
+                services.AddTransient<ProceduresCatalogWindow>();
+                services.AddTransient<SetPricesDialog>();
+
+                //Repos
                 services.AddTransient<IReminderService, ReminderService>();
                 services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
-                services.AddMemoryCache();
+
+                //Services
                 services.AddScoped<IDbLocalizationService, DbLocalizationService>();
-             
+                services.AddScoped<IProcedureService, ProcedureService>();
+
+
+                services.AddMemoryCache();
 
             })
             .Build();
 
         HostInstance.Start();
-        //var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
-        //loc.WarmUpAsync(AppSettings.CurrentLang).GetAwaiter().GetResult();
+
+        using (var scope = HostInstance.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate(); // Automatically applies migrations if DB is missing/outdated
+        }
+
+        AppSettings.CurrentLang ??= "en"; // "ru" / "hy" etc.
+
+        // warm the localization cache
+        var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
+         loc.WarmUpAsync(AppSettings.CurrentLang);
+
         var login = HostInstance.Services.GetRequiredService<LoginWindow>();
         login.Show();
         base.OnStartup(e);
