@@ -1,5 +1,5 @@
 ﻿<!-- MainWindow.xaml -->
-<Window x:Class="MyOrganizer.Wpf.MainWindow"
+<Window x:Class="MyOrganizer.Wpf.MVVM.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
@@ -44,7 +44,7 @@
 
     <Grid>
         <!-- Header -->
-        <Border Background="#B0D5E8" Height="107" VerticalAlignment="Top">
+        <Border Background="#B0D5E8" Height="60" VerticalAlignment="Top">
             <Grid Margin="8,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -54,7 +54,9 @@
 
                 <TextBlock Grid.Column="0"
                            Text="{loc:Loc AppTitle}"
-                           Style="{StaticResource TitleText}"
+                           FontStyle="Italic"
+                           Style="{StaticResource  H2}"
+                           Height="45"
                            VerticalAlignment="Center" Margin="8,0"/>
 
                 <Button Grid.Column="2" x:Name="BtnMessage" Style="{StaticResource CircleButton}"

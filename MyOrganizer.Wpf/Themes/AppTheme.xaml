@@ -140,6 +140,83 @@
         </Setter>
     </Style>
 
+    <!-- ========================================================= -->
+    <!--       Modern Tooth ContextMenu (for ToothWindow)          -->
+    <!-- ========================================================= -->
+    <Style x:Key="ModernToothContextMenu" TargetType="ContextMenu">
+        <Setter Property="Background" Value="DarkGray"/>
+        <Setter Property="BorderBrush" Value="#2C2D33"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="10"
+                        Effect="{DynamicResource DropShadow}">
+                        <ScrollViewer CanContentScroll="True">
+                            <StackPanel IsItemsHost="True"/>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- MenuItem style for modern flat look -->
+    <Style x:Key="ModernToothMenuItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="Black"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Background" Value="Gray"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bg"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="6"
+                        Margin="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ContentPresenter x:Name="Icon" Margin="4,0" />
+                            <ContentPresenter Grid.Column="1"
+                                          ContentSource="Header"
+                                          VerticalAlignment="Center"
+                                          Margin="4,0,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#333842"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#454A56"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- subtle drop shadow resource -->
+    <DropShadowEffect x:Key="DropShadow"
+                  ShadowDepth="0"
+                  BlurRadius="20"
+                  Opacity="0.5"
+                  Color="#000000"/>
+
 
 
     <!-- ========================================================= -->
@@ -200,7 +277,174 @@
     <Setter Property="BorderThickness" Value="1"/>
   </Style>
 
-  <!-- ========================================================= -->
+
+    <!-- Modern Context Menu -->
+    <Style x:Key="ModernContextMenu" TargetType="ContextMenu">
+        <Setter Property="Background" Value="#F9FAFB"/>
+        <Setter Property="BorderBrush" Value="#D1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="4"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="6">
+                        <ScrollViewer CanContentScroll="True">
+                            <StackPanel IsItemsHost="True"/>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Modern Menu Item (FIXED: single root Grid) -->
+    <Style x:Key="ModernMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="#111827"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <!-- SINGLE ROOT -->
+                    <Grid>
+                        <!-- Main surface -->
+                        <Border x:Name="Bg"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="4">
+                            <Grid Margin="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="16"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Icon -->
+                                <ContentPresenter Grid.Column="0"
+                                ContentSource="Icon"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"/>
+
+                                <!-- Header text -->
+                                <ContentPresenter Grid.Column="1"
+                                ContentSource="Header"
+                                RecognizesAccessKey="True"
+                                VerticalAlignment="Center"
+                                Margin="6,0,0,0"/>
+
+                                <!-- Submenu arrow -->
+                                <Path x:Name="Arrow"
+                    Grid.Column="2"
+                    Data="M0,0 L4,4 L0,8"
+                    Stroke="#6B7280"
+                    StrokeThickness="1.4"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Visibility="Collapsed"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Submenu popup -->
+                        <Popup x:Name="SubmenuPopup"
+                 Placement="Right"
+                 HorizontalOffset="2"
+                 VerticalOffset="-2"
+                 IsOpen="{TemplateBinding IsSubmenuOpen}"
+                 AllowsTransparency="True"
+                 Focusable="False"
+                 PopupAnimation="Fade"
+                 PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="#F9FAFB"
+                    BorderBrush="#D1D5DB"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                                <ScrollViewer CanContentScroll="True">
+                                    <StackPanel IsItemsHost="True" Margin="2"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+
+                    <ControlTemplate.Triggers>
+                        <!-- hover -->
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="#E5E7EB"/>
+                        </Trigger>
+
+                        <!-- show arrow only for submenu headers -->
+                        <Trigger Property="Role" Value="SubmenuHeader">
+                            <Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+
+                        <!-- auto-open submenu on hover (optional) -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="Role" Value="SubmenuHeader"/>
+                                <Condition Property="IsHighlighted" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <Setter Property="IsSubmenuOpen" Value="True"/>
+                        </MultiTrigger>
+
+                        <!-- disabled -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}"/>
+        <Setter Property="Background" Value="{StaticResource Brush.Card}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="PasswordBox">
+                    <Grid>
+                        <Border x:Name="Bd"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="8"/>
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="8,4,8,4"/>
+                        <TextBlock x:Name="Watermark"
+                     Text="{TemplateBinding Tag}"
+                     Margin="12,0,8,0"
+                     Foreground="{StaticResource Brush.Text.Secondary}"
+                     Opacity="0.7"
+                     IsHitTestVisible="False"
+                     VerticalAlignment="Center"
+                     Visibility="Collapsed"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Brush.Accent}"/>
+                            <Setter TargetName="Bd" Property="BorderThickness" Value="2"/>
+                        </Trigger>
+                        <!-- show watermark when empty -->
+                        <Trigger Property="TextBlock.Text" Value="">
+                            <Setter TargetName="Watermark" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- ========================================================= -->
   <!--                         TEXTBOX                           -->
   <!-- ========================================================= -->
   <Style x:Key="ModernTextBox" TargetType="TextBox">

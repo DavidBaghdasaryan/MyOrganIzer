@@ -1,5 +1,5 @@
 ﻿<!-- MVVM/ProceduresCatalogWindow.xaml -->
-<Window x:Class="MyOrganizer.Wpf.MVVM.ProceduresCatalogWindow"
+<Window x:Class="MyOrganizer.Wpf.MVVM.UI.ProceduresCatalogWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"

@@ -11,8 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Data.Entities;
 using MyOrganizer.Wpf.Extensions;
+using MyOrganizer.Wpf.MVVM.Helpers;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class ClientsWindow : Window
     {
@@ -134,7 +135,7 @@ namespace MyOrganizer.Wpf.MVVM
             var selected = GetSelected();
             if (selected is null)
             {
-                MessageBox.Show("SelectClient".T(), "Info");
+                ModernDialog.Show("SelectClient".T(), "Info");
                 return;
             }
 
@@ -164,12 +165,12 @@ namespace MyOrganizer.Wpf.MVVM
             var selected = GetSelected();
             if (selected is null)
             {
-                MessageBox.Show("Selecttheclienttodelete".T(), "Info");
+                ModernDialog.Show("Selecttheclienttodelete".T(), "Info");
                 return;
             }
 
-            var confirm = MessageBox.Show("Ջնջե՞լ ընտրված հաճախորդին։",
-                "Հաստատել", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            var confirm = ModernDialog.Show("Deletelient.".T(),
+                "Confirm".T(), MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (confirm != MessageBoxResult.Yes) return;
 
@@ -219,13 +220,13 @@ namespace MyOrganizer.Wpf.MVVM
             // Map Armenian labels to entity properties
             string col = key switch
             {
-                "Անուն" => "FirstName",
-                "Ազգանուն" => "LastName",
-                "Հայրանուն" => "MidlName",
-                "Հեռախոսահամար" => "Phone",
+                "Անուն" => "FirstName".T(),
+                "Ազգանուն" => "LastName".T(),
+                "Հայրանուն" => "MidlName".T(),
+                "Հեռախոսահամար" => "Phone".T(),
                 _ => ""
-            };
-
+            };  
+                
             if (!string.IsNullOrWhiteSpace(text) && !string.IsNullOrEmpty(col))
             {
                 q = col switch

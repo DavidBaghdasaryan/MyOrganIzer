@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MyOrganizer.Wpf.Config;
 using MyOrganizer.Wpf.Data;
-using MyOrganizer.Wpf.MVVM;
+using MyOrganizer.Wpf.MVVM.UI;
 using MyOrganizer.Wpf.Repository;
 using MyOrganizer.Wpf.Services;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;
@@ -18,26 +18,36 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        string tt = "";
         HostInstance = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration(cfg =>
             {
+                // Host.CreateDefaultBuilder already loads appsettings.json + env vars,
+                // but this keeps your "reloadOnChange" behavior:
                 cfg.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
             })
             .ConfigureServices((ctx, services) =>
             {
+                var provider = Environment.GetEnvironmentVariable("EF_PROVIDER")
+                                ?? ctx.Configuration.GetValue<string>("Database:Provider")
+                                ?? "SqlServer";
 
                 services.AddDbContext<AppDbContext>(opt =>
                 {
-                    var cs = ctx.Configuration.GetConnectionString("Default")!;
-                    tt= cs; 
-                    opt.UseSqlServer(cs);
-                    
+                    if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var sqliteConn = ctx.Configuration.GetConnectionString("Sqlite")
+                                         ?? "Data Source=MyOrganizerDemo.db";
+                        opt.UseSqlite(sqliteConn);
+                    }
+                    else
+                    {
+                        var sqlConn = ctx.Configuration.GetConnectionString("SqlServer")
+                                      ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True";
+                        opt.UseSqlServer(sqlConn);
+                    }
                 });
-                
-                var rr = tt;
-                // register your services from Core/Data here, e.g.:
-                // services.AddScoped<IProjectService, ProjectService>();
+
+                // windows
                 services.AddTransient<LoginWindow>();
                 services.AddTransient<MainWindow>();
                 services.AddTransient<ClientsWindow>();
@@ -47,17 +57,12 @@ public partial class App : Application
                 services.AddTransient<ProceduresCatalogWindow>();
                 services.AddTransient<SetPricesDialog>();
 
-                //Repos
+                // repos & services
                 services.AddTransient<IReminderService, ReminderService>();
                 services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
-
-                //Services
                 services.AddScoped<IDbLocalizationService, DbLocalizationService>();
                 services.AddScoped<IProcedureService, ProcedureService>();
-
-
                 services.AddMemoryCache();
-
             })
             .Build();
 
@@ -66,19 +71,19 @@ public partial class App : Application
         using (var scope = HostInstance.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            db.Database.Migrate(); // Automatically applies migrations if DB is missing/outdated
+            db.Database.Migrate(); // auto-create/upgrade on start (works for SqlServer and Sqlite)
         }
 
-        AppSettings.CurrentLang ??= "en"; // "ru" / "hy" etc.
-
-        // warm the localization cache
+        AppSettings.CurrentLang ??= "en";
         var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
-         loc.WarmUpAsync(AppSettings.CurrentLang);
+        loc.WarmUpAsync(AppSettings.CurrentLang);
 
         var login = HostInstance.Services.GetRequiredService<LoginWindow>();
         login.Show();
+
         base.OnStartup(e);
     }
+
 
     protected override async void OnExit(ExitEventArgs e)
     {

@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     // MVVM/ProceduresCatalogWindow.xaml.cs
     public partial class ProceduresCatalogWindow : Window

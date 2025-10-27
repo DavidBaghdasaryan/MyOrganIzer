@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf.MVVM;
 using MyOrganizer.Wpf.Services;
 
-namespace MyOrganizer.Wpf
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class MainWindow : Window
     {

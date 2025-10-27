@@ -6,7 +6,7 @@ using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf.Data.Entities;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class EditClientWindow : Window
     {

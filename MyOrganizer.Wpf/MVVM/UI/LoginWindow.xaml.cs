@@ -7,7 +7,7 @@ using MyOrganizer.Wpf.Config;
 using MyOrganizer.Wpf.Extensions;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class LoginWindow : Window
     {

@@ -11,10 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;                 // AppDbContext
 using MyOrganizer.Wpf.Data.Entities;        // your data entities if needed
 using MyOrganizer.Wpf.Entities;             // Client, etc.
+using MyOrganizer.Wpf.Extensions;
 using MyOrganizer.Wpf.MVVM;                 // namespace of this file (keep consistent)
 using MyOrganizer.Wpf.Repository;           // IToothWorkRepository
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class ToothWindow : Window
     {
@@ -174,21 +175,29 @@ namespace MyOrganizer.Wpf.MVVM
         private void Tooth_ContextMenu(object sender, ContextMenuEventArgs e)
         {
             var btn = (Button)sender;
-            var cm = new ContextMenu();
+
+            var cm = new ContextMenu
+            {
+                Style = (Style)FindResource("ModernToothContextMenu")
+            };
+            cm.Resources[typeof(Separator)] = (Style)FindResource("ModernSeparator");
+
+            // ✅ Apply MenuItem style through Resources so it won't affect Separator
+            cm.Resources[typeof(MenuItem)] = (Style)FindResource("ModernToothMenuItem");
 
             foreach (var proc in Procedures)
             {
                 var mi = new MenuItem { Header = proc };
-
+                // style also applies to subitems automatically via resources
                 var prices = _priceTable.TryGetValue(proc, out var pr) ? pr : new[] { 0, 0, 0 };
                 mi.Items.Add(BuildTierItem(btn, proc, "A", prices.ElementAtOrDefault(0)));
                 mi.Items.Add(BuildTierItem(btn, proc, "B", prices.ElementAtOrDefault(1)));
                 mi.Items.Add(BuildTierItem(btn, proc, "C", prices.ElementAtOrDefault(2)));
-
                 cm.Items.Add(mi);
             }
 
-            cm.Items.Add(new Separator());
+            cm.Items.Add(new Separator());   // ✅ no crash now
+
             var clear = new MenuItem { Header = "Clear tooth" };
             clear.Click += async (_, __) =>
             {
@@ -203,12 +212,40 @@ namespace MyOrganizer.Wpf.MVVM
             btn.ContextMenu = cm;
         }
 
+
         private MenuItem BuildTierItem(Button btn, string proc, string tier, int price)
         {
             var fdi = (btn.ToolTip ?? "").ToString();
+            string currency = "currency".T();
             var mi = new MenuItem
             {
-                Header = $"{tier} — {price.ToString("N0", CultureInfo.InvariantCulture)} ֏",
+                Header = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Children =
+                           {
+                               new Ellipse
+                               {
+                                   Width = 10,
+                                   Height = 10,
+                                   Margin = new Thickness(0,0,6,0),
+                                   Fill = tier switch
+                                   {
+                                       "A" => Brushes.LimeGreen,
+                                       "B" => Brushes.Goldenrod,
+                                       "C" => Brushes.IndianRed,
+                                       _ => Brushes.Gray
+                                   }
+                               },
+                               new TextBlock
+                               {
+                                   Text = $"{tier} — {price.ToString("N0", CultureInfo.InvariantCulture)} {currency}",
+                                   Foreground = Brushes.White,
+                                   VerticalAlignment = VerticalAlignment.Center
+                               }
+                           }
+                },
+
                 Tag = new ToothAction { Fdi = fdi, Procedure = proc, Tier = tier, Price = price }
             };
 

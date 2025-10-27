@@ -7,7 +7,7 @@ using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Entities.Procedures;
 using MyOrganizer.Wpf.MVVM.DTOs;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class SetPricesDialog : Window
     {

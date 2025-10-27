@@ -40,8 +40,8 @@ namespace MyOrganizer.Wpf.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Key = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Group = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Group = table.Column<string>(type: "nvarchar(200)", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(200)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -95,8 +95,8 @@ namespace MyOrganizer.Wpf.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Price = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(200)", nullable: false),
+                    Price = table.Column<int>(type: "int", nullable : false),
                     Date = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false)
                 },
@@ -112,9 +112,9 @@ namespace MyOrganizer.Wpf.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ClientId = table.Column<int>(type: "int", nullable: false),
-                    ToothFdi = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ProcedureName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Tier = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ToothFdi = table.Column<string>(type: "nvarchar(200)", nullable: false),
+                    ProcedureName = table.Column<string>(type: "nvarchar(200)", nullable: false),
+                    Tier = table.Column<string>(type: "nvarchar(200)", nullable: false),
                     Price = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },

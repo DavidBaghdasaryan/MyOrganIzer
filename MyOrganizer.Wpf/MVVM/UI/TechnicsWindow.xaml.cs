@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Entities;
 
-namespace MyOrganizer.Wpf.MVVM
+namespace MyOrganizer.Wpf.MVVM.UI
 {
     public partial class TechnicsWindow : Window
     {

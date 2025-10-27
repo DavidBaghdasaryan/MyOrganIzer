@@ -9,7 +9,7 @@
                 <ResourceDictionary Source="/Themes/AppTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <!-- ========= ContextMenu tokens ========= -->
-            <SolidColorBrush x:Key="MenuBgBrush" Color="#03d7fc"/>
+            <SolidColorBrush x:Key="MenuBgBrush" Color="#34abeb"/>
             <SolidColorBrush x:Key="MenuBorderBrush" Color="#1A000000"/>
             <SolidColorBrush x:Key="MenuItemFg" Color="#111827"/>
             <SolidColorBrush x:Key="MenuItemFgSecondary" Color="#6B7280"/>
@@ -32,6 +32,19 @@
             <SolidColorBrush x:Key="ComboItemHoverBg"      Color="#F2F6FF"/>
             <SolidColorBrush x:Key="ComboItemSelectedBg"   Color="#E6F0FF"/>
             <SolidColorBrush x:Key="ComboItemFgSecondary"  Color="#6B7280"/>
+
+            <Style x:Key="ModernSeparator" TargetType="Separator">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Separator">
+                            <Border Margin="6,4"
+                Height="1"
+                Background="#2C2D33"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
 
             <!-- ========= MenuItem template (define before it's referenced) ========= -->
             <Style x:Key="ModernMenuItem" TargetType="{x:Type MenuItem}">
