@@ -17,14 +17,21 @@
     <None Remove="Assets\exit.png" />
     <None Remove="Assets\login_icon.jpg" />
     <None Remove="Assets\minimize.png" />
+    <None Remove="Assets\molar.png" />
+    <None Remove="Assets\msg.png" />
     <None Remove="Assets\patients.png" />
     <None Remove="Assets\price.png" />
     <None Remove="Assets\price2.png" />
     <None Remove="Assets\price3.png" />
     <None Remove="Assets\price355.png" />
     <None Remove="Assets\priceing.png" />
+    <None Remove="Assets\search.png" />
     <None Remove="Assets\senders.png" />
     <None Remove="Assets\techs.png" />
+    <None Remove="Assets\Teeth\canine.png" />
+    <None Remove="Assets\Teeth\incisor.png" />
+    <None Remove="Assets\Teeth\molar.png" />
+    <None Remove="Assets\Teeth\premolar.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,6 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
@@ -67,6 +75,9 @@
     <Resource Include="Assets\minimize.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\msg.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\patients.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
@@ -79,16 +90,30 @@
     <Resource Include="Assets\priceing.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\search.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
     <Resource Include="Assets\senders.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Assets\techs.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\Teeth\canine.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Teeth\incisor.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Teeth\molar.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Assets\Teeth\premolar.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Migrations\Sqlite\" />
     <Folder Include="Themes\" />
   </ItemGroup>
 

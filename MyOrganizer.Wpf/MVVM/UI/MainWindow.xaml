@@ -45,7 +45,7 @@
     <Grid>
         <!-- Header -->
         <Border Background="#B0D5E8" Height="60" VerticalAlignment="Top">
-            <Grid Margin="8,0">
+            <Grid Margin="8,0,8,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -57,13 +57,13 @@
                            FontStyle="Italic"
                            Style="{StaticResource  H2}"
                            Height="45"
-                           VerticalAlignment="Center" Margin="8,0"/>
+                           VerticalAlignment="Center" Margin="8,0,0,0"/>
 
-                <Button Grid.Column="2" x:Name="BtnMessage" Style="{StaticResource CircleButton}"
-                        Width="60" Height="60" Margin="0,24,8,0" VerticalAlignment="Top"
+                <Button Grid.Column="2" x:Name="BtnMessage" Style="{StaticResource  CircleButton}"
+                        Width="60" Height="60" VerticalAlignment="Center"
                         ToolTip="{loc:Loc Messages}"
-                        Visibility="Collapsed"
-                        Click="BtnMessage_Click">
+                        Background="#B0D5E8"
+                        Click="BtnMessage_Click" HorizontalAlignment="Right">
                     <Image Width="30" Height="30"
                            Source="/MyOrganizer.Wpf;component/Assets/msg.png"/>
                 </Button>

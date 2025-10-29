@@ -29,8 +29,8 @@ public class Client
     [MaxLength(50)]
     public string? PhoneNumber { get; set; }
 
-    public DateTime DateJoin { get; set; } = new DateTime(1900, 1, 1);
-    public DateTime DateDobleJoin { get; set; } = new DateTime(1900, 1, 1);
+    public DateTime DateJoin { get; set; } = DateTime.UtcNow;
+    public DateTime? DateDobleJoin { get; set; } 
 
     [NotMapped]
     public string? DateJoinString { get; set; }

@@ -104,7 +104,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             if (chbDouble.IsChecked == true && dpDateDouble.SelectedDate.HasValue)
             {
                 Model.DateDobleJoin = dpDateDouble.SelectedDate.Value;
-                Model.DateJoinString = Model.DateDobleJoin.ToString("dd-MM-yyyy HH:mm:ss");
+                Model.DateJoinString = Model.DateDobleJoin.Value.ToString("dd-MM-yyyy HH:mm:ss");
             }
             else
             {

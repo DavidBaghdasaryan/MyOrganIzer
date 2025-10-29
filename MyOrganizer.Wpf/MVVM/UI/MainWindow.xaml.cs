@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using MyOrganizer.Wpf.Extensions;
 using MyOrganizer.Wpf.MVVM;
 using MyOrganizer.Wpf.Services;
 
@@ -23,17 +24,17 @@ namespace MyOrganizer.Wpf.MVVM.UI
         {
             InitializeComponent();
             _reminderService = reminderService;
-
+            BtnMessage.Visibility=Visibility.Collapsed;
             // Load today's reminders and start blinking if any
             Loaded += async (_, __) =>
             {
                 var items = await _reminderService.LoadTodaysAsync();
-
+                string session = "session".T();
                 if (items.Count > 0)
                 {
                     _messages = items
                         .OrderBy(i => i.When)
-                        .Select(i => $"{i.FullName} -ն {i.When:HH:mm}-ին  այց")
+                        .Select(i => $"{i.FullName}  {i.When:HH:mm}  {session}")
                         .ToArray();
 
                     BtnMessage.Visibility = Visibility.Visible;
@@ -51,7 +52,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
         private void Blink()
         {
             _blink = !_blink;
-            BtnMessage.Background = _blink ? Brushes.OrangeRed : Brushes.Wheat;
+            BtnMessage.Background = _blink ? Brushes.SkyBlue : Brushes.DeepSkyBlue;
         }
 
         // Drag the window (WindowStyle=None)
@@ -84,7 +85,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
         private void BtnSenders_Click(object sender, RoutedEventArgs e)
         {
             // TODO: open Couriers/Senders window/page
-            MessageBox.Show("Open Couriers", "Info");
+            ModernDialog.Show("Open Couriers", "Info");
         }
 
         private void BtnTexniqs_Click(object sender, RoutedEventArgs e)
@@ -98,7 +99,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
         {
             _timer.Stop();
             var message = string.Join(Environment.NewLine, _messages);
-            MessageBox.Show(message, "Այսօրվա հիշեցումներ");
+            ModernDialog.Show(message, "Reminders".T());
             BtnMessage.Visibility = Visibility.Collapsed;
         }
     }

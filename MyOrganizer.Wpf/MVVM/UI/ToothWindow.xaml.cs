@@ -356,6 +356,11 @@ namespace MyOrganizer.Wpf.MVVM.UI
                 .OfType<Button>()
                 .FirstOrDefault(b => string.Equals((b.ToolTip ?? "").ToString(), fdi, StringComparison.Ordinal));
         }
+
+        
+
+        private void pictureBox2_Click(object sender, RoutedEventArgs e) => Close();
+        
     }
 
     internal static class VisualTreeExtensions

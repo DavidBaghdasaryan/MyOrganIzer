@@ -1,0 +1,19 @@
+SQLIT--------
+
+dotnet ef migrations add NewUpdate1 --project "MyOrganizer.Wpf" --startup-project "MyOrganizer.Wpf" --context "MyOrganizer.Wpf.Data.AppDbContext" --output-dir "Data/Migrations/Sqlite"
+
+
+
+
+SQSERVER-----
+param([Parameter(Mandatory=$true)][string]$Name)
+
+setx EF_PROVIDER "SqlServer" | Out-Null
+
+dotnet ef migrations add UpdateNulable `
+  --project "MyOrganizer.Wpf" `
+  --startup-project "MyOrganizer.Wpf" `
+  --context "MyOrganizer.Wpf.Data.AppDbContext" `
+  --output-dir "Data/Migrations/SqlServer"
+
+

@@ -16,17 +16,14 @@ public class ReminderService : IReminderService
 
     public async Task<IReadOnlyList<ReminderItem>> LoadTodaysAsync()
     {
-        // WinForms code queried “Client.SalectDatduoblejoin()” and then “Answers”.
-        // We’ll use Clients.DateDobleJoin as the appointment time and Client’s names.
-        // Adjust if you add an Answers table later.
         var today = DateTime.Today;
 
         var data = await _db.Clients
-            .Where(c => c.DateDobleJoin.Date == today)
+            .Where(c => c.DateJoin.Date == today)
             .Select(c => new ReminderItem(
                 c.Id,
                 ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim(),
-                c.DateDobleJoin
+                c.DateJoin
             ))
             .ToListAsync();
 

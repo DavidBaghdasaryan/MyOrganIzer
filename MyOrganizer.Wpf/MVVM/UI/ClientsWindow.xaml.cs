@@ -190,7 +190,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             if (datemounth.SelectedDate is not DateTime d) return;
 
             var sum = await _db.Clients
-                .Where(c => c.DateDobleJoin.Year == d.Year && c.DateDobleJoin.Month == d.Month)
+                .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
                 .SumAsync(c => c.Debet ?? 0m);
 
             txtSum.Text = sum.ToString("0.##");
@@ -202,7 +202,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             if (datemounth.SelectedDate is not DateTime d) return;
 
             var sum = await _db.Clients
-                .Where(c => c.DateDobleJoin.Year == d.Year && c.DateDobleJoin.Month == d.Month)
+                .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
                 .SumAsync(c => c.Price ?? 0m);
 
             txtSum.Text = sum.ToString("0.##");
@@ -241,14 +241,9 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
             // Month filter (like MONTH(DateJoin) in WinForms; we use DateDobleJoin)
             if (month is DateTime m)
-                q = q.Where(c => c.DateDobleJoin.Year == m.Year && c.DateDobleJoin.Month == m.Month);
+                q = q.Where(c => c.DateDobleJoin!=null && c.DateDobleJoin.Value.Year == m.Year && c.DateDobleJoin.Value.Month == m.Month);
 
-            // Toggles
-            if (chPrice.IsChecked == true)
-                q = q.Where(c => c.Price != null && c.Price != 0);
-
-            if (chbDebt.IsChecked == true)
-                q = q.Where(c => c.Debet != null && c.Debet != 0);
+           
 
             var list = await q
                 .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
@@ -260,14 +255,6 @@ namespace MyOrganizer.Wpf.MVVM.UI
         }
 
         // Keep toggles mutually exclusive
-        private void chPrice_Checked(object sender, RoutedEventArgs e)
-        {
-            if (chPrice.IsChecked == true) chbDebt.IsChecked = false;
-        }
-
-        private void chbDebt_Checked(object sender, RoutedEventArgs e)
-        {
-            if (chbDebt.IsChecked == true) chPrice.IsChecked = false;
-        }
+       
     }
 }

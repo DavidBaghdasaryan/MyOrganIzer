@@ -6,14 +6,14 @@
         WindowStyle="None"
         ResizeMode="NoResize"
         Width="1150" Height="600"
-        Background="#DEB887"
+        Background="#104891"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
     <Grid>
         <!-- Header -->
-        <Border Background="DarkGoldenrod" Height="50" VerticalAlignment="Top">
+        <Border Background="#041d3d" Height="50" VerticalAlignment="Top">
             <Grid Margin="10,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -43,7 +43,7 @@
             <StackPanel Orientation="Horizontal" >
 
                 <StackPanel Margin="0,0,16,0">
-                    <TextBlock Text="{loc:Loc Materials}" FontWeight="Bold"/>
+                    <TextBlock Text="{loc:Loc Materials}" FontWeight="Bold" />
                     <ComboBox x:Name="cmbTechnics" Style="{StaticResource ModernComboBox}" Width="200" Height="36"/>
                 </StackPanel>
 
@@ -66,10 +66,10 @@
 
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                <Button Content="{loc:Loc Save}"  Style="{StaticResource ModernButton}"     Background="Yellow"     Margin="0,0,8,0"  Foreground="White" Width="100" Click="BtnAdd_Click"/>
-                <Button Content="{loc:Loc Edit}"        Style="{StaticResource ModernButton}" Background="Orange" Margin="0,0,8,0" Foreground="White" Width="100" Click="BtnEdit_Click"/>
-                <Button Content="{loc:Loc Delete}"      Style="{StaticResource ModernButton}" Background="Red"     Foreground="White" Width="100" Click="BtnDelete_Click"/>
-                <Button    Style="{StaticResource ModernButton}"  Margin="650,0,8,0" Background="Peru" Foreground="White" Width="120" Click="BtnSum_Click">
+                <Button Content="{loc:Loc Save}"  Style="{StaticResource ModernButton}"     Background="#2091fa"     Margin="0,0,8,0"  Foreground="White" Width="100" Click="BtnAdd_Click"/>
+                <Button Content="{loc:Loc Edit}"        Style="{StaticResource ModernButton}" Background="#1a6fbd" Margin="0,0,8,0" Foreground="White" Width="100" Click="BtnEdit_Click"/>
+                <Button Content="{loc:Loc Delete}"      Style="{StaticResource ModernButton}" Background="#8c3f52"     Foreground="White" Width="100" Click="BtnDelete_Click"/>
+                <Button    Style="{StaticResource ModernButton}"  Margin="650,0,8,0" Background="#3f6e8c" Foreground="White" Width="120" Click="BtnSum_Click">
                     <TextBlock Text="{loc:Loc ViewAmount}" Foreground="Wheat" FontWeight="Bold" Height="23" />
                 </Button>
             </StackPanel>
@@ -85,7 +85,7 @@
 
             <!-- Sum -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock Text="{loc:Loc PaidPerMonth}" FontWeight="Bold" Foreground="OrangeRed" Margin="0,10,8,0"/>
+                <TextBlock Text="{loc:Loc PaidPerMonth}" FontWeight="Bold" Foreground="#96c5e3" Margin="0,10,8,0"/>
                 <TextBox  Style="{StaticResource ModernTextBox}" x:Name="txtSum" Margin="0,10,8,0" Width="150" Height="36"/>
             </StackPanel>
         </StackPanel>

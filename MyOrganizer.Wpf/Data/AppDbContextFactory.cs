@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.EntityFrameworkCore.Diagnostics; // <-- ВАЖНО
 using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
@@ -10,7 +11,6 @@ namespace MyOrganizer.Wpf.Data
     {
         public AppDbContext CreateDbContext(string[] args)
         {
-            // Load appsettings (optional but handy)
             var cfg = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: true)
@@ -18,23 +18,26 @@ namespace MyOrganizer.Wpf.Data
                 .Build();
 
             var provider = Environment.GetEnvironmentVariable("EF_PROVIDER")
-                           ?? cfg["EF_PROVIDER"]
-                           ?? "SqlServer"; // default
+                           ?? cfg["Database:Provider"]
+                           ?? "SqlServer";
 
             var options = new DbContextOptionsBuilder<AppDbContext>();
 
             if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
             {
-                // use your SQLite conn string (or fallback)
-                var cs = cfg.GetConnectionString("Sqlite") ?? "Data Source=app.db";
-                options.UseSqlite(cs);
+                // клади файл в папку проекта Data\MyOrganizerDemo.db
+                var cs = cfg["Database:Sqlite:ConnectionString"] ?? "Data Source=Data\\MyOrganizerDemo.db";
+                options
+                    .UseSqlite(cs)
+                    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)); // <-- ВАЖНО
             }
             else
             {
-                // SQL Server default
-                var cs = cfg.GetConnectionString("Default")
-                         ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True;";
-                options.UseSqlServer(cs);
+                var cs = cfg["Database:SqlServer:ConnectionString"]
+                      ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True;";
+                options
+                    .UseSqlServer(cs)
+                    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)); // <-- ВАЖНО
             }
 
             return new AppDbContext(options.Options);

@@ -6,7 +6,7 @@
         WindowStyle="None"
         ResizeMode="NoResize"
         Width="1309" Height="666"
-        Background="#20B2AA"
+        Background="#41a8e8"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
@@ -77,7 +77,7 @@
                     <TextBlock FontFamily="Segoe Fluent Icons"
                                Text="&#xE70F;"
                                FontSize="14"
-                               Foreground="#10B981"/>
+                               Foreground="#64f2fa"/>
                 </MenuItem.Icon>
             </MenuItem>
 
@@ -91,12 +91,12 @@
             </MenuItem>
         </ContextMenu>
         <!-- Grid context menu -->
-        
+
     </Window.Resources>
 
     <Grid>
         <!-- Top header -->
-        <Border Background="#008B8B" Height="51" VerticalAlignment="Top">
+        <Border Background="#045080" Height="51" VerticalAlignment="Top">
             <Grid Margin="8,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -121,13 +121,14 @@
         </Border>
 
         <!-- Decorative teal bars -->
-        <Rectangle Fill="Teal" Width="26" HorizontalAlignment="Left" Margin="0,64,0,0"/>
-        <Rectangle Fill="Teal" Height="21" VerticalAlignment="Bottom" Margin="102,0,0,0"/>
+        <Rectangle Fill="#045080" Width="26" HorizontalAlignment="Left" Margin="0,64,0,0"/>
+        <Rectangle Fill="#045080" Height="21" VerticalAlignment="Bottom" Margin="102,0,0,0"/>
 
         <!-- Main content area -->
         <Grid Margin="32,70,16,16">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="48*"/>
+                <ColumnDefinition Width="1003*"/>
                 <ColumnDefinition Width="210"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -136,13 +137,13 @@
             </Grid.RowDefinitions>
 
             <!-- Search row -->
-            <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="0" Margin="0,0,0,8" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center" Grid.ColumnSpan="3">
                 <TextBlock Text="{loc:Loc SearchBy}" Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                <ComboBox x:Name="cmbFind" Height="36" Style="{StaticResource ModernComboBox}" Width="140" Margin="0,0,8,0" Background="White" Panel.ZIndex="1000"/>
-                <TextBox x:Name="txtFind" Height="36" Width="180" Style="{StaticResource ModernTextBox}"  Margin="0,0,8,0" Background="White"/>
-                <Button x:Name="btnFind" Style="{StaticResource CircleIconButton}"
-                        ToolTip="{loc:Loc Search}" Click="btnFind_Click" Margin="0,0,8,0">
-                    <Image Source="/MyOrganizer.Wpf;component/Assets/search.png" Width="36" Height="36"/>
+                <ComboBox x:Name="cmbFind" Height="36" Style="{StaticResource ModernComboBox}" Width="140" Margin="0,0,8,10" Background="White" Panel.ZIndex="1000"/>
+                <TextBox x:Name="txtFind" Height="36" Width="180" Style="{StaticResource ModernTextBox}"  Margin="0,0,8,10" Background="White"/>
+                <Button x:Name="btnFind" Style="{StaticResource ModernButton}"
+                        ToolTip="{loc:Loc Search}" Click="btnFind_Click" Background="Transparent" BorderBrush="LightBlue" Margin="0,0,0,10">
+                    <Image Source="/MyOrganizer.Wpf;component/Assets/search.png" Height="34" Width="52"/>
                 </Button>
             </StackPanel>
 
@@ -154,7 +155,7 @@
                       CanUserAddRows="False"
                       IsReadOnly="True"
                       SelectionMode="Extended"
-                      ContextMenu="{StaticResource ModernGridContextMenu}">
+                      ContextMenu="{StaticResource ModernGridContextMenu}" Grid.ColumnSpan="3">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="{loc:Loc S.N}" Binding="{Binding Id}" Width="60"/>
                     <DataGridTextColumn Header="{loc:Loc FirstName}" Binding="{Binding FirstName}" Width="*"/>
@@ -169,20 +170,12 @@
             </DataGrid>
 
             <!-- Right tools panel -->
-            <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Margin="12,0,0,0">
-                <Border Background="Teal" Padding="8" Margin="0,0,0,8" CornerRadius="8" Height="325">
+            <StackPanel Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" Margin="5,0,0,0">
+                <Border Background="#324163" Padding="8" Margin="0,0,0,10" CornerRadius="8" Height="330">
                     <StackPanel>
                         <DatePicker Style="{StaticResource ModernDatePicker}" x:Name="datemounth" Margin="0,0,0,1" Height="42"/>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,-5">
-                            <CheckBox x:Name="chPrice" Margin="0,0,16,0" ToolTip="{loc:Loc Price}"
-                                      Checked="chPrice_Checked">
-                                <Image Source="/MyOrganizer.Wpf;component/Assets/money.png" Width="24" Height="24"/>
-                            </CheckBox>
-                            <CheckBox x:Name="chbDebt" ToolTip="{loc:Loc Debt}" Checked="chbDebt_Checked">
-                                <Image Source="/MyOrganizer.Wpf;component/Assets/debt.png" Width="24" Height="24"/>
-                            </CheckBox>
-                        </StackPanel>
+                        
 
                         <Button x:Name="btnMonthIncome" Style="{StaticResource CircleIconButton}"
                                 ToolTip="{loc:Loc MonthIncome}"
@@ -203,28 +196,30 @@
                 </Border>
 
                 <!-- Add / Edit / Delete / Exit -->
+                <Border Background="#3885b5" Padding="8" Margin="0,0,0,0" CornerRadius="8" Height="235" Width="197">
                 <StackPanel >
-                    <Button x:Name="btnSave1" Style="{StaticResource CircleIconButton}" ToolTip="{loc:Loc Add}"
-                            Click="btnSave_Click" Margin="0,50,130,8" Background="#66CDAA">
-                        <Image Source="/MyOrganizer.Wpf;component/Assets/add.png" Width="36" Height="36"/>
+                    <Button x:Name="btnSave1" Style="{StaticResource ModernButton}" ToolTip="{loc:Loc Add}"
+                            Click="btnSave_Click" Margin="0,20,0,18" Background="#6fbffc"   >
+                            <Image Source="/MyOrganizer.Wpf;component/Assets/add.png" Width="36" Height="36" />
                     </Button>
 
-                    <Button x:Name="btnEdit1" Style="{StaticResource CircleIconButton}" ToolTip="{loc:Loc Edit}"
-                            Click="btnEdit_Click" Margin="0,0,130,8" Background="#00CED1">
+                    <Button x:Name="btnEdit1" Style="{StaticResource ModernButton}" ToolTip="{loc:Loc Edit}"
+                            Click="btnEdit_Click" Margin="0,0,0,18" Background="#5981f0">
                         <Image Source="/MyOrganizer.Wpf;component/Assets/edit.png" Width="36" Height="36"/>
                     </Button>
 
                     <Button x:Name="btrDelete"
-                            Style="{StaticResource CircleIconButton}"
-                            Background="Red"
+                            Style="{StaticResource ModernButton}"
+                            Background="#f05c3e"
                             ToolTip="{loc:Loc Delete}"
                             Click="btrDelete_Click"
-                            Margin="0,0,130,8">
-                        <Image Source="/MyOrganizer.Wpf;component/Assets/delete.png" Width="36" Height="36"/>
+                            Margin="0,0,0,18">
+                        <Image Source="/MyOrganizer.Wpf;component/Assets/delete.png" Width="36" Height="36" />
                     </Button>
 
-                   
+
                 </StackPanel>
+                </Border>
             </StackPanel>
         </Grid>
     </Grid>

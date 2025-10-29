@@ -23,7 +23,7 @@ namespace MyOrganizer.Wpf.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("DateDobleJoin")
+                    b.Property<DateTime?>("DateDobleJoin")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
@@ -34,6 +34,7 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
                     b.Property<decimal?>("Debet")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FirstName")
@@ -53,6 +54,7 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -145,9 +147,11 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Group")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Key")
@@ -160,7 +164,7 @@ namespace MyOrganizer.Wpf.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("L10nKeys");
+                    b.ToTable("L10nKeys", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.L10nValue", b =>
@@ -178,7 +182,7 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.HasKey("KeyId", "Lang");
 
-                    b.ToTable("L10nValues");
+                    b.ToTable("L10nValues", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.Language", b =>
@@ -295,13 +299,16 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Tier1")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("Tier2")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("Tier3")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -329,6 +336,7 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -353,14 +361,17 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.Property<string>("ProcedureName")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Tier")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ToothFdi")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

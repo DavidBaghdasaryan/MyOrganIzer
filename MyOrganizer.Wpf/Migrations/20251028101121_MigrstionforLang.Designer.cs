@@ -8,11 +8,11 @@ using MyOrganizer.Wpf.Data;
 
 #nullable disable
 
-namespace MyOrganizer.Wpf.Migrations.Sqlite
+namespace MyOrganizer.Wpf.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251024170254_Sqlite_Initial")]
-    partial class Sqlite_Initial
+    [Migration("20251028101121_MigrstionforLang")]
+    partial class MigrstionforLang
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,7 +26,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("DateDobleJoin")
+                    b.Property<DateTime?>("DateDobleJoin")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT")
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
@@ -37,6 +37,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
                     b.Property<decimal?>("Debet")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FirstName")
@@ -56,6 +57,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -148,9 +150,11 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Group")
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Key")
@@ -163,7 +167,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("L10nKeys");
+                    b.ToTable("L10nKeys", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.L10nValue", b =>
@@ -181,7 +185,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
 
                     b.HasKey("KeyId", "Lang");
 
-                    b.ToTable("L10nValues");
+                    b.ToTable("L10nValues", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.Language", b =>
@@ -298,13 +302,16 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Tier1")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("Tier2")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("Tier3")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -332,6 +339,7 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
 
                     b.Property<string>("Type")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -356,14 +364,17 @@ namespace MyOrganizer.Wpf.Migrations.Sqlite
 
                     b.Property<string>("ProcedureName")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Tier")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ToothFdi")
                         .IsRequired()
+                        .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

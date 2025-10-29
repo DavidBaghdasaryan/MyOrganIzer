@@ -26,10 +26,6 @@ namespace MyOrganizer.Wpf.Data
         {
             base.OnModelCreating(b);
 
-            // =========================
-            // Shared (provider-agnostic)
-            // =========================
-
             // Client
             b.Entity<Client>(e =>
             {
@@ -41,9 +37,13 @@ namespace MyOrganizer.Wpf.Data
                 e.Property(x => x.MidlName).HasMaxLength(100);
                 e.Property(x => x.PhoneNumber).HasMaxLength(50);
 
-                // default dates
+                // dates
                 e.Property(x => x.DateJoin).HasDefaultValue(new DateTime(1900, 1, 1));
                 e.Property(x => x.DateDobleJoin).HasDefaultValue(new DateTime(1900, 1, 1));
+
+                // money: use precision (provider-agnostic)
+                e.Property(x => x.Price).HasPrecision(18, 2);
+                e.Property(x => x.Debet).HasPrecision(18, 2);
 
                 e.HasMany(x => x.ClientTooths)
                  .WithOne(t => t.Client!)
@@ -76,6 +76,9 @@ namespace MyOrganizer.Wpf.Data
                 e.ToTable("Technics");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+
+                // Was nvarchar(max). Use a big but finite length to avoid "(max)"
+                e.Property(x => x.Type).IsRequired().HasMaxLength(2000);
             });
 
             // ToothWork
@@ -83,7 +86,11 @@ namespace MyOrganizer.Wpf.Data
             {
                 e.ToTable("ToothWorks");
                 e.HasKey(x => x.Id);
-                // All properties are simple types; no explicit provider types here
+
+                // These were nvarchar(max) before — give them finite max
+                e.Property(x => x.ToothFdi).IsRequired().HasMaxLength(2000);
+                e.Property(x => x.ProcedureName).IsRequired().HasMaxLength(2000);
+                e.Property(x => x.Tier).IsRequired().HasMaxLength(2000);
             });
 
             // Localization
@@ -92,8 +99,11 @@ namespace MyOrganizer.Wpf.Data
                 e.ToTable("L10nKeys");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Key).HasMaxLength(200).IsRequired();
-                // Group / Description left without explicit column type,
-                // so SQL Server uses nvarchar(max) and SQLite uses TEXT
+
+                // Avoid nvarchar(max) -> use large finite length
+                e.Property(x => x.Group).HasMaxLength(2000);
+                e.Property(x => x.Description).HasMaxLength(2000);
+
                 e.HasIndex(x => x.Key).IsUnique();
             });
 
@@ -128,10 +138,14 @@ namespace MyOrganizer.Wpf.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Currency).HasMaxLength(10);
                 e.HasIndex(x => x.ProcedureId);
-                // decimal tier mapping is handled per-provider below
+
+                // precision instead of HasColumnType
+                e.Property(x => x.Tier1).HasPrecision(18, 2);
+                e.Property(x => x.Tier2).HasPrecision(18, 2);
+                e.Property(x => x.Tier3).HasPrecision(18, 2);
             });
 
-            // Seed (shared)
+            // Seed (unchanged)
             b.Entity<Procedure>().HasData(
                 new Procedure { Id = 1, Name = "Removable Partial Denture (Metal Framework)", IsActive = true },
                 new Procedure { Id = 2, Name = "Full Denture", IsActive = true },
@@ -144,47 +158,7 @@ namespace MyOrganizer.Wpf.Data
                 new Procedure { Id = 9, Name = "Work Shift / Appointment Slot", IsActive = true },
                 new Procedure { Id = 10, Name = "Endodontic Treatment (Root Canal)", IsActive = true }
             );
-
-            // ======================
-            // Provider-specific bits
-            // ======================
-
-            if (Database.ProviderName!.Contains("SqlServer"))
-            {
-                // Money/decimal precision for SQL Server
-                b.Entity<Client>(e =>
-                {
-                    e.Property(x => x.Price).HasColumnType("decimal(18,2)");
-                    e.Property(x => x.Debet).HasColumnType("decimal(18,2)");
-                });
-
-                b.Entity<ProcedurePrice>(e =>
-                {
-                    e.Property(x => x.Tier1).HasColumnType("decimal(18,2)");
-                    e.Property(x => x.Tier2).HasColumnType("decimal(18,2)");
-                    e.Property(x => x.Tier3).HasColumnType("decimal(18,2)");
-                });
-            }
-            else if (Database.ProviderName!.Contains("Sqlite"))
-            {
-                // SQLite doesn’t have a true DECIMAL—by default EF will map to TEXT/NUMERIC.
-                // If you want exact math, you can store cents as INTEGER using a conversion:
-                //
-                // b.Entity<Client>(e =>
-                // {
-                //     e.Property(x => x.Price).HasConversion<long>(v => (long)(v * 100m), v => v / 100m);
-                //     e.Property(x => x.Debet).HasConversion<long>(v => (long)(v * 100m), v => v / 100m);
-                // });
-                //
-                // b.Entity<ProcedurePrice>(e =>
-                // {
-                //     e.Property(x => x.Tier1).HasConversion<long>(v => (long)(v * 100m), v => v / 100m);
-                //     e.Property(x => x.Tier2).HasConversion<long>(v => (long)(v * 100m), v => v / 100m);
-                //     e.Property(x => x.Tier3).HasConversion<long>(v => (long)(v * 100m), v => v / 100m);
-                // });
-
-                // Leaving decimals without explicit column type is also fine for demos.
-            }
         }
+
     }
 }

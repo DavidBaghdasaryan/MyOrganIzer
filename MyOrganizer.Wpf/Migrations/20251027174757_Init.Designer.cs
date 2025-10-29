@@ -12,15 +12,15 @@ using MyOrganizer.Wpf.Data;
 namespace MyOrganizer.Wpf.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251022094248_updatePrices")]
-    partial class updatePrices
+    [Migration("20251027174757_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.9")
+                .HasAnnotation("ProductVersion", "9.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -33,7 +33,7 @@ namespace MyOrganizer.Wpf.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("DateDobleJoin")
+                    b.Property<DateTime?>("DateDobleJoin")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
@@ -44,6 +44,7 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasDefaultValue(new DateTime(1900, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
                     b.Property<decimal?>("Debet")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("FirstName")
@@ -63,6 +64,7 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -161,10 +163,12 @@ namespace MyOrganizer.Wpf.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Group")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -176,7 +180,7 @@ namespace MyOrganizer.Wpf.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("L10nKeys");
+                    b.ToTable("L10nKeys", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.L10nValue", b =>
@@ -194,7 +198,7 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.HasKey("KeyId", "Lang");
 
-                    b.ToTable("L10nValues");
+                    b.ToTable("L10nValues", (string)null);
                 });
 
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Languages.Language", b =>
@@ -315,12 +319,15 @@ namespace MyOrganizer.Wpf.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Tier1")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("Tier2")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("Tier3")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -351,7 +358,8 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.HasKey("Id");
 
@@ -377,15 +385,18 @@ namespace MyOrganizer.Wpf.Migrations
 
                     b.Property<string>("ProcedureName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Tier")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("ToothFdi")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.HasKey("Id");
 
