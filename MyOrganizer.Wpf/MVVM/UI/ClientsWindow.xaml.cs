@@ -116,6 +116,8 @@ namespace MyOrganizer.Wpf.MVVM.UI
         // ADD
         private async void btnSave_Click(object? sender, RoutedEventArgs e)
         {
+            if (!await CheckClientLimitAsync())
+                return;
             var dlg = new EditClientWindow();
             dlg.Owner = this;
             if (dlg.ShowDialog() == true)
@@ -127,6 +129,43 @@ namespace MyOrganizer.Wpf.MVVM.UI
                 _items.Add(c);
                 dgvClients.SelectedItem = c;
             }
+        }
+        private const int DemoClientLimit = 1;
+
+        private async Task<bool> CheckClientLimitAsync()
+        {
+            // count rows in Clients table
+            int count = await _db.Clients.CountAsync();
+
+            if (count >= DemoClientLimit)
+            {
+                ModernDialog.Show(
+                    $"Demo limit reached.\nYou can store up to {DemoClientLimit} clients.\n\n" +
+                    "Please contact us to unlock the full version.",
+                    "Demo Limit",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                // optional: open your email link
+                // Process.Start(new ProcessStartInfo {
+                //     FileName = "mailto:myorganizer.dental@gmail.com?subject=Upgrade%20Request",
+                //     UseShellExecute = true
+                // });
+
+                return false; // block add
+            }
+
+            // warn user when nearing limit
+            if (count >= DemoClientLimit * 0.8)
+            {
+                MessageBox.Show(
+                    "You’re nearing the demo limit (80%).\nUpgrade anytime to keep adding clients.",
+                    "Demo Warning",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            return true;
         }
 
         // EDIT

@@ -139,7 +139,7 @@ FROM (VALUES
 (28,'en',N'Middle name'),(28,'hy',N'Ազգանուն'),(28,'ru',N'Отчество'),
 (29,'en',N'Phone'),(29,'hy',N'Հեռախոս'),(29,'ru',N'Телефон'),
 (30,'en',N'Password request'),(30,'hy',N'Գաղտնաբառի հարցում'),(30,'ru',N'Запрос пароля'),
-(31,'en',N'Stom Organizer'),(31,'hy',N'Ստոմ կազմակերպիչ'),(31,'ru',N'Организатор STOM'),
+(31,'en',N'Myorganizer.dental'),(31,'hy',N'Myorganizer.dental'),(31,'ru',N'Myorganizer.dental'),
 (32,'en',N'Enter'),(32,'hy',N'Մուտքագրել'),(32,'ru',N'Ввод'),
 (33,'en',N'Armenian (AM)'),(33,'hy',N'Հայերեն (AM)'),(33,'ru',N'Армянский (AM)'),
 (34,'en',N'Russian (RU)'),(34,'hy',N'Ռուսերեն (RU)'),(34,'ru',N'Русский (RU)'),
