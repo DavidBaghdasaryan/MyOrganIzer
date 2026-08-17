@@ -93,7 +93,8 @@ WITH seed(Id,[Key],[Group],[Description]) AS (
 (54,N'Tier3',NULL,NULL),
 (55,N'OK',NULL,NULL),
 (56,'Reminders',NULL,NULL),
-(57,'Currency',NULL,NULL)
+(57,'Currency',NULL,NULL),
+(58,'Materialnotspecified',NULL,NULL)
 ) AS t(Id,[Key],[Group],[Description])
 )
 INSERT INTO [L10nKeys](Id,[Key],[Group],[Description])
@@ -165,7 +166,8 @@ FROM (VALUES
 (54,'en',N'Tier 3'),(54,'hy',N'Մակարդակ 3'),(54,'ru',N'Уровень 3'),
 (55,'en',N'OK'),(55,'hy',N'ԼԱՎ'),(55,'ru',N'OK'),
 (56,'en',N'Reminders for today'),(56,'hy','Այսօրվա հիշեցումներ'),(56,'ru','Напоминания на сегодня'),
-(57,'en','$'),(57,'hy','֏'),(57,'ru','₽')
+(57,'en','$'),(57,'hy','֏'),(57,'ru','₽'),
+(58,'en','The type of material carrier is not specified'),(58,'hy','Նյութական միջոցի տեսակը նշված չէ'),(58,'ru','Тип материального носителя не указан')
 ) AS v([KeyId],[Lang],[Value])
 WHERE NOT EXISTS (SELECT 1 FROM [L10nValues] x WHERE x.[KeyId]=v.[KeyId] AND x.[Lang]=v.[Lang]);
 ");
@@ -256,7 +258,8 @@ INSERT OR IGNORE INTO L10nKeys(Id,[Key],[Group],[Description]) VALUES
 (54,'Tier3',NULL,NULL),
 (55,'OK',NULL,NULL),
 (56,'Reminders',NULL,NULL),
-(57,'Currency',NULL,NULL);
+(57,'Currency',NULL,NULL),
+(58,'Materialnotspecified',NULL,NULL);
 ");
 
                 // L10nValues
@@ -318,7 +321,8 @@ INSERT OR IGNORE INTO L10nValues(KeyId,Lang,Value) VALUES
 (54,'en','Tier 3'),(54,'hy','Մակարդակ 3'),(54,'ru','Уровень 3'),
 (55,'en','OK'),(55,'hy','ԼԱՎ'),(55,'ru','OK'),
 (56,'en','Reminders for today'),(56,'hy','Այսօրվա հիշեցումներ'),(56,'ru','Напоминания на сегодня'),
-(57,'en','$'),(57,'hy','֏'),(57,'ru','₽')
+(57,'en','$'),(57,'hy','֏'),(57,'ru','₽'),
+(58,'en','The type of material carrier is not specified'),(58,'hy','Նյութական միջոցի տեսակը նշված չէ'),(58,'ru','Тип материального носителя не указан')
 ");
                 // для SQLite хранимую процедуру не создаём
             }

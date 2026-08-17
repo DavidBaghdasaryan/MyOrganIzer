@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -130,7 +131,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
                 dgvClients.SelectedItem = c;
             }
         }
-        private const int DemoClientLimit = 1;
+        private const int DemoClientLimit = 10;
 
         private async Task<bool> CheckClientLimitAsync()
         {
@@ -139,18 +140,16 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
             if (count >= DemoClientLimit)
             {
-                ModernDialog.Show(
-                    $"Demo limit reached.\nYou can store up to {DemoClientLimit} clients.\n\n" +
-                    "Please contact us to unlock the full version.",
-                    "Demo Limit",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ModernDialog.ShowWithLink(
+                  beforeText: $"Demo limit reached.\nYou can store up to {DemoClientLimit} clients.\n\nPlease ",
+                  linkText: "contact us by email",
+                  navigateUri: "mailto:myorganizer.dental@gmail.com?subject=Upgrade%20Request",
+                  afterText: " to unlock the full version.",
+                  caption: "Demo Limit",
+                  buttons: MessageBoxButton.OK,
+                  icon: MessageBoxImage.Information
+);
 
-                // optional: open your email link
-                // Process.Start(new ProcessStartInfo {
-                //     FileName = "mailto:myorganizer.dental@gmail.com?subject=Upgrade%20Request",
-                //     UseShellExecute = true
-                // });
 
                 return false; // block add
             }

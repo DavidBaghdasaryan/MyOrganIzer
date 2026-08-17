@@ -9,7 +9,7 @@ namespace MyOrganIzer
     class Products
     {
         public string ProductName { get; set; }
-        public int Count { get; set; }
+        public decimal Count { get; set; }
         public string Value { get; set; }
     }
 }

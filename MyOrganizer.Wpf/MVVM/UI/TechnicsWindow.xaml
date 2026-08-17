@@ -26,7 +26,7 @@
                            VerticalAlignment="Center"/>
                 <Button Grid.Column="1"
                         Content="✕"
-                        Background="Transparent"
+                        Background="#104891"
                         BorderThickness="0"
                         FontSize="20"
                         Foreground="White"

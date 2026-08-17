@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Entities;
+using MyOrganizer.Wpf.Extensions;
 
 namespace MyOrganizer.Wpf.MVVM.UI
 {
@@ -21,10 +22,12 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
         private async void TechnicsWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            cmbTechnics.ItemsSource = new[]
-            {
-                "Ի/Մ/Կ", "Մ/կ", "Ց/կ", "Բյուգել", "Պրոթեզ", "M & S abatments"
-            };
+            cmbTechnics.ItemsSource = await _db.Procedures
+                                 .AsNoTracking()
+                                 .Where(p => p.IsActive)
+                                 .OrderBy(p => p.Id).Select(x=>x.Name)
+                                 .ToListAsync();
+
             cmbTechnics.PreviewMouseLeftButtonDown += (s, e) =>
             {
                 // If the drop-down is closed and we clicked on the header area, open it
@@ -55,7 +58,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
         {
             if (cmbTechnics.SelectedItem == null)
             {
-                MessageBox.Show("Նյութական միջոցի տեսակը նշված չէ");
+                ModernDialog.Show("Materialnotspecified".T());
                 return;
             }
 
@@ -78,7 +81,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
             if (cmbTechnics.SelectedItem == null)
             {
-                MessageBox.Show("Նյութական միջոցի տեսակը նշված չէ");
+                ModernDialog.Show("Materialnotspecified".T());
                 return;
             }
 
@@ -106,7 +109,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
         {
             if (cmbTechnics.SelectedItem == null)
             {
-                MessageBox.Show("Նյութական միջոցի տեսակը ընտրված չէ");
+                ModernDialog.Show("Materialnotspecified".T());
                 return;
             }
 

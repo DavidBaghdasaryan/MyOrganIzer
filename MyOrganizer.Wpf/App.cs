@@ -59,6 +59,7 @@ namespace MyOrganizer.Wpf
                     }
                     else
                     {
+
                         var cs = ctx.Configuration["Database:SqlServer:ConnectionString"]
                                   ?? ctx.Configuration.GetConnectionString("SqlServer")
                                   ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True";

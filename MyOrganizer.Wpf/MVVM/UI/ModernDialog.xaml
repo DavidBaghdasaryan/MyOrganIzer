@@ -9,9 +9,9 @@
 
     <!-- Chrome -->
     <Border CornerRadius="12"
-          Background="{DynamicResource Brush.Card}"
-          BorderBrush="{DynamicResource Brush.Border}"
-          BorderThickness="1" Padding="16">
+            Background="{DynamicResource Brush.Card}"
+            BorderBrush="{DynamicResource Brush.Border}"
+            BorderThickness="1" Padding="16">
 
         <Grid>
             <Grid.RowDefinitions>
@@ -26,19 +26,19 @@
             <!-- Title bar -->
             <DockPanel Grid.Row="0">
                 <TextBlock x:Name="TxtTitle"
-                   Text="Title"
-                   FontSize="18"
-                   FontWeight="SemiBold"
-                   Foreground="{DynamicResource Brush.Text}"
-                   VerticalAlignment="Center"
-                   Margin="0,0,8,0"/>
+                           Text="Title"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.Text}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"/>
                 <Button x:Name="BtnClose"
-                Content="✕"
-                Width="28" Height="28"
-                HorizontalAlignment="Right"
-                Style="{DynamicResource SecondaryButton}"
-                Click="BtnClose_Click"
-                DockPanel.Dock="Right"/>
+                        Content="✕"
+                        Width="28" Height="28"
+                        HorizontalAlignment="Right"
+                        Style="{DynamicResource SecondaryButton}"
+                        Click="BtnClose_Click"
+                        DockPanel.Dock="Right"/>
             </DockPanel>
 
             <!-- Body: icon + message -->
@@ -50,28 +50,29 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock x:Name="IconGlyph"
-                   Grid.Column="0"
-                   FontFamily="Segoe Fluent Icons"
-                   FontSize="24"
-                   VerticalAlignment="Top"
-                   Foreground="{DynamicResource Brush.Primary}"
-                   Text="&#xE946;"/>
+                           Grid.Column="0"
+                           FontFamily="Segoe Fluent Icons"
+                           FontSize="24"
+                           VerticalAlignment="Top"
+                           Foreground="{DynamicResource Brush.Primary}"
+                           Text="&#xE946;"/>
+
+                <!-- Важно: используем Inlines, чтобы можно было вставлять Hyperlink -->
                 <TextBlock x:Name="TxtMessage"
-                   Grid.Column="2"
-                   Text="Message text…"
-                   TextWrapping="Wrap"
-                   Foreground="{DynamicResource Brush.Text}"
-                   MaxWidth="560"/>
+                           Grid.Column="2"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text}"
+                           MaxWidth="560"/>
             </Grid>
 
             <!-- Buttons -->
             <StackPanel x:Name="ButtonsPanel"
-                  Grid.Row="2"
-                  Orientation="Horizontal"
-                  HorizontalAlignment="Right"
-                  Margin="0,0,0,0"
-                  KeyboardNavigation.TabNavigation="Cycle"
-                  KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,0,0"
+                        KeyboardNavigation.TabNavigation="Cycle"
+                        KeyboardNavigation.DirectionalNavigation="Cycle"/>
         </Grid>
     </Border>
 </Window>

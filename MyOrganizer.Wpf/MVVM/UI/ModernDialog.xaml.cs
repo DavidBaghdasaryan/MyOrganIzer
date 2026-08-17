@@ -1,8 +1,14 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 
 namespace MyOrganizer.Wpf.MVVM.UI
@@ -15,13 +21,17 @@ namespace MyOrganizer.Wpf.MVVM.UI
         {
             InitializeComponent();
 
-            // Drag window by background
+            // Позволяем перетаскивать окно
             MouseLeftButtonDown += (_, e) =>
             {
                 if (e.ChangedButton == MouseButton.Left) DragMove();
             };
 
-            // Keyboard shortcuts
+            // Кликабельные ссылки внутри TxtMessage
+            TxtMessage.AddHandler(Hyperlink.RequestNavigateEvent,
+                new RequestNavigateEventHandler(Hyperlink_RequestNavigate));
+
+            // Горячие клавиши
             PreviewKeyDown += (_, e) =>
             {
                 if (e.Key == Key.Escape)
@@ -72,7 +82,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             };
 
             dlg.TxtTitle.Text = caption;
-            dlg.TxtMessage.Text = text;
+            dlg.SetPlainText(text); // <-- простой текст без ссылок
             dlg.ApplyIcon(icon);
             dlg.BuildButtons(buttons, defaultResult);
 
@@ -80,7 +90,58 @@ namespace MyOrganizer.Wpf.MVVM.UI
             return dlg._result;
         }
 
-        // ---------- NEW: Async API with optional auto-close & cancellation ----------
+        // ---------- NEW: Rich API with hyperlink ----------
+
+        /// <summary>
+        /// Показывает диалог с текстом + выделенной ссылкой (mailto или https),
+        /// напр.: ShowWithLink("Demo limit.", "Contact us", "mailto:...").
+        /// </summary>
+        public static MessageBoxResult ShowWithLink(
+            string beforeText,
+            string linkText,
+            string navigateUri,
+            string? afterText = null,
+            string caption = "Message",
+            MessageBoxButton buttons = MessageBoxButton.OK,
+            MessageBoxImage icon = MessageBoxImage.Information,
+            Window? owner = null)
+        {
+            var dlg = new ModernDialog
+            {
+                Owner = owner ?? Application.Current?.MainWindow,
+                WindowStartupLocation = owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen
+            };
+
+            dlg.TxtTitle.Text = caption;
+            dlg.SetInlines(beforeText, linkText, navigateUri, afterText);
+            dlg.ApplyIcon(icon);
+            dlg.BuildButtons(buttons, DefaultFor(buttons));
+
+            dlg.ShowDialog();
+            return dlg._result;
+        }
+
+        /// <summary>
+        /// Быстрый helper: открывает сразу Gmail compose в браузере.
+        /// </summary>
+        public static MessageBoxResult ShowWithGmailLink(
+            string beforeText,
+            string linkText,
+            string toEmail,
+            string subject = "Upgrade Request",
+            string? afterText = null,
+            string caption = "Message",
+            MessageBoxButton buttons = MessageBoxButton.OK,
+            MessageBoxImage icon = MessageBoxImage.Information,
+            Window? owner = null)
+        {
+            string gmailUrl =
+                $"https://mail.google.com/mail/?view=cm&fs=1&to={Uri.EscapeDataString(toEmail)}&su={Uri.EscapeDataString(subject)}";
+
+            return ShowWithLink(beforeText, linkText, gmailUrl, afterText, caption, buttons, icon, owner);
+        }
+
+        // ---------- Async API с таймером/отменой (как у тебя было) ----------
 
         public static Task<MessageBoxResult> ShowAsync(
             string text,
@@ -116,7 +177,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             };
 
             dlg.TxtTitle.Text = caption;
-            dlg.TxtMessage.Text = text;
+            dlg.SetPlainText(text); // обычный текст
             dlg.ApplyIcon(icon);
             dlg.BuildButtons(buttons, defaultResult == MessageBoxResult.None ? DefaultFor(buttons) : defaultResult);
 
@@ -161,22 +222,55 @@ namespace MyOrganizer.Wpf.MVVM.UI
                 });
             }
 
-            // When closed, complete the TCS
             dlg.Closed += (_, __) =>
             {
-                try { timer?.Stop(); } catch { /* ignore */ }
+                try { timer?.Stop(); } catch { }
                 ctr.Dispose();
                 tcs.TrySetResult(dlg._result);
             };
 
-            // Show modeless, but keep owner disabled like a dialog
-            // (or use ShowDialog in a background await — but we want real async UI)
             dlg.Show();
-
             return tcs.Task;
         }
 
-        // ---------- Icon + Buttons ----------
+        // ---------- Helpers: текст/ссылки/иконки/кнопки ----------
+
+        private void SetPlainText(string text)
+        {
+            TxtMessage.Inlines.Clear();
+            TxtMessage.Inlines.Add(new Run(text));
+        }
+
+        private void SetInlines(string beforeText, string linkText, string navigateUri, string? afterText)
+        {
+            TxtMessage.Inlines.Clear();
+            if (!string.IsNullOrEmpty(beforeText))
+                TxtMessage.Inlines.Add(new Run(beforeText));
+
+            var link = new Hyperlink(new Run(linkText))
+            {
+                NavigateUri = new Uri(navigateUri)
+            };
+            // Подчёркивание и стиль можно настроить тут при желании
+            TxtMessage.Inlines.Add(link);
+
+            if (!string.IsNullOrEmpty(afterText))
+                TxtMessage.Inlines.Add(new Run(afterText));
+        }
+
+        private void Hyperlink_RequestNavigate(object? sender, RequestNavigateEventArgs e)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Cannot open link:\n{e.Uri}\n\n{ex.Message}", "Link error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            e.Handled = true;
+        }
 
         private void ApplyIcon(MessageBoxImage icon)
         {
