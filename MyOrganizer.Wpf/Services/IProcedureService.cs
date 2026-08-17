@@ -37,9 +37,10 @@ namespace MyOrganizer.Wpf.Services
 
         public async Task DeleteAsync(int id, CancellationToken ct = default)
         {
-            var p = await _db.Procedures.FindAsync(new object?[] { id }, ct);
-            if (p is null) return;
-            _db.Procedures.Remove(p);
+            var p = await _db.Procedures.FindAsync(new object[] { id }, ct);
+            if (p is null)
+                return;
+            p.IsActive = false;
             await _db.SaveChangesAsync(ct);
         }
 
@@ -53,12 +54,26 @@ namespace MyOrganizer.Wpf.Services
         public async Task UpsertPricesAsync(IEnumerable<(int procedureId, decimal t1, decimal t2, decimal t3, string currency)> items,
                                             CancellationToken ct = default)
         {
+            var latestIds = await _db.ProcedurePrices
+                .GroupBy(x => x.ProcedureId)
+                .Select(g => g.Max(x => x.Id))
+                .ToListAsync(ct);
+
+            var latest = await _db.ProcedurePrices
+                .Where(x => latestIds.Contains(x.Id))
+                .ToListAsync(ct);
+            var byProc = latest.ToDictionary(x => x.ProcedureId);
+
             foreach (var item in items)
             {
-                var price = await _db.ProcedurePrices
-                    .FirstOrDefaultAsync(x => x.ProcedureId == item.procedureId, ct);
-
-                if (price is null)
+                if (byProc.TryGetValue(item.procedureId, out var price))
+                {
+                    price.Tier1 = item.t1;
+                    price.Tier2 = item.t2;
+                    price.Tier3 = item.t3;
+                    price.Currency = item.currency;
+                }
+                else
                 {
                     _db.ProcedurePrices.Add(new ProcedurePrice
                     {
@@ -68,13 +83,6 @@ namespace MyOrganizer.Wpf.Services
                         Tier3 = item.t3,
                         Currency = item.currency
                     });
-                }
-                else
-                {
-                    price.Tier1 = item.t1;
-                    price.Tier2 = item.t2;
-                    price.Tier3 = item.t3;
-                    price.Currency = item.currency;
                 }
             }
             await _db.SaveChangesAsync(ct);

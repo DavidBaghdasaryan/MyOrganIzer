@@ -12,8 +12,8 @@ using MyOrganizer.Wpf.Data;                 // AppDbContext
 using MyOrganizer.Wpf.Data.Entities;        // your data entities if needed
 using MyOrganizer.Wpf.Entities;             // Client, etc.
 using MyOrganizer.Wpf.Extensions;
-using MyOrganizer.Wpf.MVVM;                 // namespace of this file (keep consistent)
-using MyOrganizer.Wpf.Repository;           // IToothWorkRepository
+using MyOrganizer.Wpf.MVVM.UI;
+using MyOrganizer.Wpf.Repository;
 
 namespace MyOrganizer.Wpf.MVVM.UI
 {
@@ -22,8 +22,9 @@ namespace MyOrganizer.Wpf.MVVM.UI
         private readonly IToothWorkRepository _repo;
         private readonly AppDbContext _db;
 
-        public Client Client;
+        public Client Client = null!;
         private string _clientFullName = string.Empty;
+        private List<string> _procedures = [];
 
         // In-memory selections per tooth: FDI -> set of procedure names
         private readonly Dictionary<string, HashSet<string>> _toothProcedures =
@@ -99,30 +100,35 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // show client name
             _clientFullName = string.Concat(Client?.FirstName ?? "", " ", Client?.LastName ?? "").Trim();
-            if (this.FindName("TxtClientName") is TextBlock tb)
+            if (FindName("TxtClientName") is TextBlock tb)
                 tb.Text = _clientFullName;
 
-            // Load prices from DB (with fallback defaults)
+            await LoadProceduresAsync();
             await LoadPriceTableAsync();
 
             if (Client?.Id > 0)
                 await LoadExistingBadgesAsync(Client.Id);
         }
 
+        private async Task LoadProceduresAsync()
+        {
+            var names = await _db.Procedures
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.Id)
+                .Select(p => p.Name)
+                .ToListAsync();
+
+            _procedures = names.Count > 0 ? names : [.. Procedures];
+        }
+
         // ===== DB-backed price loader with fallback defaults =====
 
         private async Task LoadPriceTableAsync()
         {
-            // latest price per procedure by Id (simple, no extra columns needed)
-            var latest = await _db.ProcedurePrices
-                                  .AsNoTracking()
-                                  .GroupBy(pp => pp.ProcedureId)
-                                  .Select(g => g.OrderByDescending(pp => pp.Id).First())
-                                  .ToListAsync();
+            var latest = await _db.LoadLatestPricesAsync();
 
-            // active procedures → map Id -> Name
             var procNames = await _db.Procedures
                                      .AsNoTracking()
                                      .Where(p => p.IsActive)
@@ -135,12 +141,12 @@ namespace MyOrganizer.Wpf.MVVM.UI
             foreach (var row in latest)
             {
                 if (!nameById.TryGetValue(row.ProcedureId, out var name)) continue;
-                _priceTable[name] = new[]
-                {
+                _priceTable[name] =
+                [
                     (int)Math.Round(row.Tier1, MidpointRounding.AwayFromZero),
                     (int)Math.Round(row.Tier2, MidpointRounding.AwayFromZero),
                     (int)Math.Round(row.Tier3, MidpointRounding.AwayFromZero),
-                };
+                ];
             }
 
             // ensure defaults exist for all menu items (if no DB rows yet)
@@ -185,7 +191,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
             // ✅ Apply MenuItem style through Resources so it won't affect Separator
             cm.Resources[typeof(MenuItem)] = (Style)FindResource("ModernToothMenuItem");
 
-            foreach (var proc in Procedures)
+            foreach (var proc in _procedures)
             {
                 var mi = new MenuItem { Header = proc };
                 // style also applies to subitems automatically via resources
@@ -199,9 +205,11 @@ namespace MyOrganizer.Wpf.MVVM.UI
             cm.Items.Add(new Separator());   // ✅ no crash now
 
             var clear = new MenuItem { Header = "Clear tooth" };
-            clear.Click += async (_, __) =>
+            clear.Click += async (_, _) =>
             {
-                var fdi = (btn.ToolTip ?? "").ToString();
+                if (Client is not { Id: > 0 })
+                    return;
+                var fdi = (btn.ToolTip ?? "").ToString() ?? "";
                 await _repo.ClearToothAsync(Client.Id, fdi);
                 _toothProcedures.Remove(fdi);
                 RefreshBadges(btn, Array.Empty<string>());
@@ -215,7 +223,7 @@ namespace MyOrganizer.Wpf.MVVM.UI
 
         private MenuItem BuildTierItem(Button btn, string proc, string tier, int price)
         {
-            var fdi = (btn.ToolTip ?? "").ToString();
+            var fdi = (btn.ToolTip ?? "").ToString() ?? "";
             string currency = "currency".T();
             var mi = new MenuItem
             {
@@ -249,11 +257,13 @@ namespace MyOrganizer.Wpf.MVVM.UI
                 Tag = new ToothAction { Fdi = fdi, Procedure = proc, Tier = tier, Price = price }
             };
 
-            mi.Click += async (_, __) =>
+            mi.Click += async (_, _) =>
             {
+                if (Client is not { Id: > 0 })
+                    return;
+
                 var a = (ToothAction)mi.Tag;
 
-                // Persist selection
                 await _repo.AddAsync(Client.Id, a.Fdi, a.Procedure, a.Tier, a.Price);
 
                 // Update in-memory model
@@ -360,27 +370,5 @@ namespace MyOrganizer.Wpf.MVVM.UI
         
 
         private void pictureBox2_Click(object sender, RoutedEventArgs e) => Close();
-        
-    }
-
-    internal static class VisualTreeExtensions
-    {
-        public static IEnumerable<DependencyObject> GetVisualDescendants(this DependencyObject root)
-        {
-            if (root == null) yield break;
-            var queue = new Queue<DependencyObject>();
-            queue.Enqueue(root);
-            while (queue.Count > 0)
-            {
-                var d = queue.Dequeue();
-                var count = VisualTreeHelper.GetChildrenCount(d);
-                for (int i = 0; i < count; i++)
-                {
-                    var child = VisualTreeHelper.GetChild(d, i);
-                    yield return child;
-                    queue.Enqueue(child);
-                }
-            }
-        }
     }
 }

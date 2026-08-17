@@ -1,6 +1,6 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -14,102 +14,147 @@ using MyOrganizer.Wpf.Repository;
 using MyOrganizer.Wpf.Services;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;
 
-namespace MyOrganizer.Wpf
+namespace MyOrganizer.Wpf;
+
+public partial class App : Application
 {
-    public partial class App : Application
+    public static IHost HostInstance { get; private set; } = null!;
+
+    protected override void OnStartup(StartupEventArgs e)
     {
-        public static IHost HostInstance { get; private set; } = null!;
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
 
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            HostInstance = Host.CreateDefaultBuilder()
-                .ConfigureAppConfiguration(cfg =>
-                {
-                    // reloadOnChange keeps JSON updates hot-reloaded during dev
-                    cfg.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
-                })
-                .ConfigureServices((ctx, services) =>
-                {
-                    // Prefer appsettings; let EF_PROVIDER env var override if present
-                    var configuredProvider = ctx.Configuration["Database:Provider"] ?? "SqlServer";
-                    var envProvider = string.Empty;
-                    var provider = string.IsNullOrWhiteSpace(envProvider) ? configuredProvider : envProvider;
+        AppSettings.Load();
 
-                    if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var cs = ctx.Configuration["Database:Sqlite:ConnectionString"]
-                                 ?? "Data Source=Data\\MyOrganizerDemo.db";
-
-                        // Normalize to absolute path and ensure directory exists
-                        var sb = new SqliteConnectionStringBuilder(cs);
-                        var dataSource = sb.DataSource;
-
-                        if (!Path.IsPathRooted(dataSource))
-                        {
-                            var baseDir = AppContext.BaseDirectory; // bin\Debug\netX\
-                            dataSource = Path.Combine(baseDir, dataSource);
-                        }
-
-                        Directory.CreateDirectory(Path.GetDirectoryName(dataSource)!);
-                        sb.DataSource = dataSource;
-
-                        services.AddDbContext<AppDbContext>(opt =>
-                            opt.UseSqlite(sb.ToString())
-                               .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
-                    }
-                    else
-                    {
-
-                        var cs = ctx.Configuration["Database:SqlServer:ConnectionString"]
-                                  ?? ctx.Configuration.GetConnectionString("SqlServer")
-                                  ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True";
-                        
-
-                        services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs).ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
-                    }
-
-                    // windows
-                    services.AddTransient<LoginWindow>();
-                    services.AddTransient<MainWindow>();
-                    services.AddTransient<ClientsWindow>();
-                    services.AddTransient<EditClientWindow>();
-                    services.AddTransient<ToothWindow>();
-                    services.AddTransient<TechnicsWindow>();
-                    services.AddTransient<ProceduresCatalogWindow>();
-                    services.AddTransient<SetPricesDialog>();
-
-                    // repos & services
-                    services.AddTransient<IReminderService, ReminderService>();
-                    services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
-                    services.AddScoped<IDbLocalizationService, DbLocalizationService>();
-                    services.AddScoped<IProcedureService, ProcedureService>();
-                    services.AddMemoryCache();
-                })
-                .Build();
-
-            HostInstance.Start();
-
-            using (var scope = HostInstance.Services.CreateScope())
+        HostInstance = Host.CreateDefaultBuilder()
+            .UseContentRoot(AppContext.BaseDirectory)
+            .ConfigureAppConfiguration(cfg =>
             {
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                db.Database.Migrate(); // create/upgrade on start
-            }
+                cfg.SetBasePath(AppContext.BaseDirectory);
+                cfg.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
+            })
+            .ConfigureServices((ctx, services) =>
+            {
+                var configuredProvider = ctx.Configuration["Database:Provider"] ?? "Sqlite";
+                var envProvider = Environment.GetEnvironmentVariable("EF_PROVIDER");
+                var provider = string.IsNullOrWhiteSpace(envProvider) ? configuredProvider : envProvider;
 
-            AppSettings.CurrentLang ??= "en";
-            var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
-            _ = loc.WarmUpAsync(AppSettings.CurrentLang);
+                void ConfigureDb(DbContextOptionsBuilder opt) =>
+                    opt.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
 
-            var login = HostInstance.Services.GetRequiredService<LoginWindow>();
-            login.Show();
+                if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+                {
+                    var cs = ctx.Configuration["Database:Sqlite:ConnectionString"]
+                             ?? "Data Source=MyOrganizer.db";
+                    var sb = new SqliteConnectionStringBuilder(cs);
+                    sb.DataSource = ResolveSqlitePath(sb.DataSource);
 
-            base.OnStartup(e);
-        }
+                    services.AddDbContext<AppDbContext>(opt =>
+                    {
+                        ConfigureDb(opt);
+                        opt.UseSqlite(sb.ToString());
+                    });
+                }
+                else
+                {
+                    var cs = ctx.Configuration["Database:SqlServer:ConnectionString"]
+                              ?? ctx.Configuration.GetConnectionString("SqlServer")
+                              ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True";
 
-        protected override async void OnExit(ExitEventArgs e)
+                    services.AddDbContext<AppDbContext>(opt =>
+                    {
+                        ConfigureDb(opt);
+                        opt.UseSqlServer(cs);
+                    });
+                }
+
+                services.AddTransient<LoginWindow>();
+                services.AddTransient<MainWindow>();
+                services.AddTransient<ClientsWindow>();
+                services.AddTransient<EditClientWindow>();
+                services.AddTransient<ToothWindow>();
+                services.AddTransient<TechnicsWindow>();
+                services.AddTransient<ProceduresCatalogWindow>();
+                services.AddTransient<SetPricesDialog>();
+
+                services.AddTransient<IReminderService, ReminderService>();
+                services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
+                services.AddSingleton<IDbLocalizationService, DbLocalizationService>();
+                services.AddScoped<IProcedureService, ProcedureService>();
+                services.AddMemoryCache();
+            })
+            .Build();
+
+        HostInstance.Start();
+
+        try
         {
-            if (HostInstance is not null) await HostInstance.StopAsync();
-            HostInstance?.Dispose();
-            base.OnExit(e);
+            using var scope = HostInstance.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
         }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Database", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(-1);
+            return;
+        }
+
+        try
+        {
+            var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
+            loc.WarmUpAsync(AppSettings.CurrentLang).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Localization", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        var login = HostInstance.Services.GetRequiredService<LoginWindow>();
+        login.Show();
+
+        base.OnStartup(e);
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        if (HostInstance is not null)
+            await HostInstance.StopAsync();
+        HostInstance?.Dispose();
+        base.OnExit(e);
+    }
+
+    private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        e.Handled = true;
+        try
+        {
+            ModernDialog.Show(e.Exception.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch
+        {
+            MessageBox.Show(e.Exception.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string ResolveSqlitePath(string dataSource)
+    {
+        var appDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "MyOrganizer");
+        Directory.CreateDirectory(appDir);
+
+        if (!Path.IsPathRooted(dataSource))
+            dataSource = Path.Combine(appDir, Path.GetFileName(dataSource));
+
+        var directory = Path.GetDirectoryName(dataSource);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
+        var legacy = Path.Combine(AppContext.BaseDirectory, "Data", "MyOrganizerDemo.db");
+        if (!File.Exists(dataSource) && File.Exists(legacy))
+            File.Copy(legacy, dataSource);
+
+        return dataSource;
     }
 }

@@ -1,10 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using MyOrganizer.Wpf.Repository;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Entities;
+
+namespace MyOrganizer.Wpf.Repository;
 
 public class ToothWorkRepository : IToothWorkRepository
 {
@@ -12,14 +10,17 @@ public class ToothWorkRepository : IToothWorkRepository
     public ToothWorkRepository(AppDbContext db) => _db = db;
 
     public Task<List<ToothWork>> GetByClientAsync(int clientId) =>
-        _db.Set<ToothWork>()
+        _db.ToothWorks
            .AsNoTracking()
            .Where(x => x.ClientId == clientId)
            .ToListAsync();
 
     public async Task AddAsync(int clientId, string toothFdi, string procedure, string tier, int price)
     {
-        _db.Add(new ToothWork
+        if (clientId <= 0)
+            throw new InvalidOperationException("Client must be saved before adding tooth work.");
+
+        _db.ToothWorks.Add(new ToothWork
         {
             ClientId = clientId,
             ToothFdi = toothFdi,
@@ -32,10 +33,8 @@ public class ToothWorkRepository : IToothWorkRepository
 
     public async Task ClearToothAsync(int clientId, string toothFdi)
     {
-        var rows = await _db.Set<ToothWork>()
-                            .Where(w => w.ClientId == clientId && w.ToothFdi == toothFdi)
-                            .ToListAsync();
-        _db.RemoveRange(rows);
-        await _db.SaveChangesAsync();
+        await _db.ToothWorks
+            .Where(w => w.ClientId == clientId && w.ToothFdi == toothFdi)
+            .ExecuteDeleteAsync();
     }
 }

@@ -22,6 +22,7 @@
         </DataGrid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Style="{StaticResource ModernButton}" Margin="0,0,10,0" Background="SteelBlue" Content="{loc:Loc Add}" Width="100" Click="Catalog_Click"/>
             <Button Style="{StaticResource ModernButton}" Margin="0,0,10,0" Background="DeepSkyBlue" Content="{loc:Loc OK}"  Width="100" IsDefault="True" Click="Ok_Click"/>
             <Button Style="{StaticResource ModernButton}" Content="{loc:Loc Cancel}" Background="LightGray" Width="100" IsCancel="True"/>
         </StackPanel>

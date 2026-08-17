@@ -8,9 +8,6 @@ public class Client
 {
     public int Id { get; set; }
 
-    [NotMapped] // static isn’t mapped anyway; this keeps intent clear
-    public static bool Edit { get; set; }
-
     [MaxLength(100)]
     public string? FirstName { get; set; }
 

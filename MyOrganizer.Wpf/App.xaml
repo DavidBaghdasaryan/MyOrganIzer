@@ -193,6 +193,7 @@
                                   HorizontalAlignment="Left"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True"
+                                  IsHitTestVisible="False"
                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                   ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                   Content="{TemplateBinding SelectionBoxItem}"/>
@@ -201,7 +202,18 @@
                            Text="&#xE70D;" FontFamily="Segoe MDL2 Assets"
                            FontSize="12" Foreground="{TemplateBinding Foreground}"
                            HorizontalAlignment="Right" VerticalAlignment="Center"
-                           Margin="0,0,10,0" Opacity="0.75"/>
+                           Margin="0,0,10,0" Opacity="0.75"
+                           IsHitTestVisible="False"/>
+
+                                <ToggleButton Background="Transparent" BorderThickness="0"
+                                              Focusable="False" ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
 
                                 <Popup x:Name="PART_Popup"
                        Placement="Bottom" AllowsTransparency="True"

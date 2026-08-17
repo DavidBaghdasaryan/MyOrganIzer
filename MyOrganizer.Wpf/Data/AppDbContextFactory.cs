@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Diagnostics; // <-- ВАЖНО
 using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
@@ -11,8 +10,25 @@ namespace MyOrganizer.Wpf.Data
     {
         public AppDbContext CreateDbContext(string[] args)
         {
+            var projectDir = Path.GetDirectoryName(typeof(AppDbContextFactory).Assembly.Location);
+            var basePath = Directory.Exists(Path.Combine(Directory.GetCurrentDirectory(), "Migrations"))
+                ? Directory.GetCurrentDirectory()
+                : (projectDir is not null && File.Exists(Path.Combine(projectDir, "appsettings.json"))
+                    ? projectDir
+                    : Directory.GetCurrentDirectory());
+
+            // Design-time: prefer the project folder so appsettings.json is found.
+            if (!File.Exists(Path.Combine(basePath, "appsettings.json")))
+            {
+                var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+                while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "appsettings.json")))
+                    dir = dir.Parent;
+                if (dir is not null)
+                    basePath = dir.FullName;
+            }
+
             var cfg = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
+                .SetBasePath(basePath)
                 .AddJsonFile("appsettings.json", optional: true)
                 .AddEnvironmentVariables()
                 .Build();
@@ -25,19 +41,14 @@ namespace MyOrganizer.Wpf.Data
 
             if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
             {
-                // клади файл в папку проекта Data\MyOrganizerDemo.db
                 var cs = cfg["Database:Sqlite:ConnectionString"] ?? "Data Source=Data\\MyOrganizerDemo.db";
-                options
-                    .UseSqlite(cs)
-                    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)); // <-- ВАЖНО
+                options.UseSqlite(cs);
             }
             else
             {
                 var cs = cfg["Database:SqlServer:ConnectionString"]
                       ?? "Server=.;Database=My_Organizer;Trusted_Connection=True;TrustServerCertificate=True;";
-                options
-                    .UseSqlServer(cs)
-                    .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)); // <-- ВАЖНО
+                options.UseSqlServer(cs);
             }
 
             return new AppDbContext(options.Options);

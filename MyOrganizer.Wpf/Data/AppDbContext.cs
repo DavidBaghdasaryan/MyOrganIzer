@@ -87,10 +87,15 @@ namespace MyOrganizer.Wpf.Data
                 e.ToTable("ToothWorks");
                 e.HasKey(x => x.Id);
 
-                // These were nvarchar(max) before — give them finite max
                 e.Property(x => x.ToothFdi).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.ProcedureName).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.Tier).IsRequired().HasMaxLength(2000);
+
+                e.HasIndex(x => x.ClientId);
+                e.HasOne<Client>()
+                 .WithMany()
+                 .HasForeignKey(x => x.ClientId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Localization
@@ -160,5 +165,19 @@ namespace MyOrganizer.Wpf.Data
             );
         }
 
+        public async Task<List<ProcedurePrice>> LoadLatestPricesAsync(CancellationToken ct = default)
+        {
+            var latestIds = await ProcedurePrices.AsNoTracking()
+                .GroupBy(p => p.ProcedureId)
+                .Select(g => g.Max(x => x.Id))
+                .ToListAsync(ct);
+
+            if (latestIds.Count == 0)
+                return [];
+
+            return await ProcedurePrices.AsNoTracking()
+                .Where(p => latestIds.Contains(p.Id))
+                .ToListAsync(ct);
+        }
     }
 }

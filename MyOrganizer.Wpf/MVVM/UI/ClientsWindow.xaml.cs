@@ -1,298 +1,264 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Data.Entities;
 using MyOrganizer.Wpf.Extensions;
-using MyOrganizer.Wpf.MVVM.Helpers;
 
-namespace MyOrganizer.Wpf.MVVM.UI
+namespace MyOrganizer.Wpf.MVVM.UI;
+
+public partial class ClientsWindow : Window
 {
-    public partial class ClientsWindow : Window
+    private const int DemoClientLimit = 10;
+    private readonly AppDbContext _db;
+    private ObservableCollection<Client> _items = [];
+
+    public ClientsWindow(AppDbContext db)
     {
-        private readonly AppDbContext _db;
-        private ObservableCollection<Client> _items = new();
+        InitializeComponent();
+        _db = db;
 
-        public ClientsWindow(AppDbContext db)
+        Loaded += async (_, _) =>
         {
-            InitializeComponent();
-            _db = db;
-
-            Loaded += async (_, __) =>
+            cmbFind.DisplayMemberPath = nameof(ClientSearchField.Label);
+            cmbFind.SelectedValuePath = nameof(ClientSearchField.Property);
+            cmbFind.ItemsSource = new ClientSearchField[]
             {
-                // Fill search fields and date
-                cmbFind.ItemsSource = new[]
-                {
-                    "FirstName".T(),
-                    "LastName".T(),
-                    "MidlName".T(),
-                    "Phone".T()
-                };
+                new("FirstName", "FirstName".T()),
+                new("LastName", "LastName".T()),
+                new("MidlName", "MidlName".T()),
+                new("Phone", "Phone".T())
+            };
+            cmbFind.SelectedIndex = 0;
+            datemounth.SelectedDate = DateTime.Today;
+            await LoadDataAsync();
+        };
+    }
 
-                cmbFind.PreviewMouseLeftButtonDown += (s, e) =>
-                {
-                    // If the drop-down is closed and we clicked on the header area, open it
-                    if (!cmbFind.IsDropDownOpen)
-                    {
-                        e.Handled = true;           // stop bubbling (prevents Window drag or other handlers)
-                        cmbFind.Focus();            // ensure it has focus
-                        cmbFind.IsDropDownOpen = true;
-                    }
-                };
+    private async Task LoadDataAsync()
+    {
+        var data = await _db.Clients
+            .AsNoTracking()
+            .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
+            .ToListAsync();
 
-                //cmbFind.PreviewKeyDown += (s, e) =>
-                //{
-                //    if (!cmbFind.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.F4))
-                //    {
-                //        e.Handled = true;
-                //        cmbFind.IsDropDownOpen = true;
-                //    }
-                //};
+        _items = new ObservableCollection<Client>(data);
+        dgvClients.ItemsSource = _items;
+    }
 
-                cmbFind.SelectedIndex = 0;
-                datemounth.SelectedDate = DateTime.Today;
+    private Client? GetSelected() => dgvClients.SelectedItem as Client;
 
-                await LoadDataAsync();
+    private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var src = e.OriginalSource as DependencyObject;
+        if (src is null)
+            return;
+
+        if (FindParent<ComboBox>(src) != null ||
+            FindParent<TextBoxBase>(src) != null ||
+            FindParent<PasswordBox>(src) != null ||
+            FindParent<ButtonBase>(src) != null ||
+            FindParent<ListBox>(src) != null ||
+            FindParent<DataGrid>(src) != null ||
+            FindParent<DatePicker>(src) != null)
+        {
+            return;
+        }
+
+        try { DragMove(); }
+        catch { /* ignore invalid drag */ }
+    }
+
+    private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        while (child != null)
+        {
+            if (child is T typed)
+                return typed;
+            child = System.Windows.Media.VisualTreeHelper.GetParent(child);
+        }
+        return null;
+    }
+
+    private void pictureBox2_Click(object sender, RoutedEventArgs e) => Close();
+
+    private async void btnSave_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!await CheckClientLimitAsync())
+            return;
+
+        var dlg = new EditClientWindow { Owner = this };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        await PersistClientAsync(dlg.Model);
+        await LoadDataAsync();
+        dgvClients.SelectedItem = _items.FirstOrDefault(c => c.Id == dlg.Model.Id);
+    }
+
+    private async Task PersistClientAsync(Client c)
+    {
+        if (c.Id == 0)
+        {
+            _db.Clients.Add(c);
+        }
+        else
+        {
+            var tracked = await _db.Clients.FirstOrDefaultAsync(x => x.Id == c.Id);
+            if (tracked is null)
+            {
+                _db.Clients.Add(c);
+            }
+            else
+            {
+                tracked.FirstName = c.FirstName;
+                tracked.LastName = c.LastName;
+                tracked.MidlName = c.MidlName;
+                tracked.PhoneNumber = c.PhoneNumber;
+                tracked.Price = c.Price;
+                tracked.Debet = c.Debet;
+                tracked.DateJoin = c.DateJoin;
+                tracked.DateDobleJoin = c.DateDobleJoin;
+                tracked.DateJoinString = c.DateJoinString;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task<bool> CheckClientLimitAsync()
+    {
+        var count = await _db.Clients.CountAsync();
+        if (count >= DemoClientLimit)
+        {
+            ModernDialog.ShowWithLink(
+                beforeText: $"Demo limit reached.\nYou can store up to {DemoClientLimit} clients.\n\nPlease ",
+                linkText: "contact us by email",
+                navigateUri: "mailto:myorganizer.dental@gmail.com?subject=Upgrade%20Request",
+                afterText: " to unlock the full version.",
+                caption: "Demo Limit",
+                buttons: MessageBoxButton.OK,
+                icon: MessageBoxImage.Information);
+            return false;
+        }
+
+        if (count >= DemoClientLimit * 0.8)
+        {
+            ModernDialog.Show(
+                "You’re nearing the demo limit (80%).\nUpgrade anytime to keep adding clients.",
+                "Demo Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+
+        return true;
+    }
+
+    private async void btnEdit_Click(object? sender, RoutedEventArgs e)
+    {
+        var selected = GetSelected();
+        if (selected is null)
+        {
+            ModernDialog.Show("SelectClient".T(), "Info");
+            return;
+        }
+
+        var entity = await _db.Clients.AsNoTracking().FirstAsync(x => x.Id == selected.Id);
+        var dlg = new EditClientWindow(entity) { Owner = this };
+        if (dlg.ShowDialog() != true)
+            return;
+
+        await PersistClientAsync(dlg.Model);
+        await LoadDataAsync();
+    }
+
+    private async void btrDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        var selected = GetSelected();
+        if (selected is null)
+        {
+            ModernDialog.Show("Selecttheclienttodelete".T(), "Info");
+            return;
+        }
+
+        var confirm = ModernDialog.Show(
+            "Deletelient.".T(),
+            "Confirm".T(),
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        var entity = await _db.Clients.FirstAsync(x => x.Id == selected.Id);
+        _db.Clients.Remove(entity);
+        await _db.SaveChangesAsync();
+        _items.Remove(selected);
+    }
+
+    private void btnExit_Click(object sender, RoutedEventArgs e) => Close();
+
+    private async void criculButton1_Click(object sender, RoutedEventArgs e)
+    {
+        if (datemounth.SelectedDate is not DateTime d)
+            return;
+
+        var sum = await _db.Clients
+            .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
+            .SumAsync(c => c.Debet ?? 0m);
+
+        txtSum.Text = sum.ToString("0.##");
+    }
+
+    private async void criculButton2_Click(object sender, RoutedEventArgs e)
+    {
+        if (datemounth.SelectedDate is not DateTime d)
+            return;
+
+        var sum = await _db.Clients
+            .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
+            .SumAsync(c => c.Price ?? 0m);
+
+        txtSum.Text = sum.ToString("0.##");
+    }
+
+    private async void btnFind_Click(object sender, RoutedEventArgs e)
+    {
+        var prop = (cmbFind.SelectedItem as ClientSearchField)?.Property;
+        var text = (txtFind.Text ?? string.Empty).Trim();
+        DateTime? month = datemounth.SelectedDate;
+
+        IQueryable<Client> q = _db.Clients.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(text) && !string.IsNullOrEmpty(prop))
+        {
+            q = prop switch
+            {
+                "FirstName" => q.Where(c => c.FirstName != null && c.FirstName.Contains(text)),
+                "LastName" => q.Where(c => c.LastName != null && c.LastName.Contains(text)),
+                "MidlName" => q.Where(c => c.MidlName != null && c.MidlName.Contains(text)),
+                "Phone" => q.Where(c => c.PhoneNumber != null && c.PhoneNumber.Contains(text)),
+                _ => q
             };
         }
 
-        private async Task LoadDataAsync()
-        {
-            var data = await _db.Clients
-                .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
-                .AsNoTracking()
-                .ToListAsync();
+        if (month is DateTime m)
+            q = q.Where(c => c.DateJoin.Year == m.Year && c.DateJoin.Month == m.Month);
 
-            _items = new ObservableCollection<Client>(data);
-            dgvClients.ItemsSource = _items;
-        }
+        var list = await q
+            .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
+            .ToListAsync();
 
-        private Client? GetSelected() => dgvClients.SelectedItem as Client;
+        _items = new ObservableCollection<Client>(list);
+        dgvClients.ItemsSource = _items;
+    }
 
-        // Dragging (WindowStyle=None)
-
-        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            var src = e.OriginalSource as DependencyObject;
-            if (src == null) return;
-
-            // If click is inside any interactive input, don't start DragMove
-            if (FindParent<ComboBox>(src) != null ||
-                FindParent<TextBoxBase>(src) != null ||
-                FindParent<PasswordBox>(src) != null ||
-                FindParent<ButtonBase>(src) != null ||
-                FindParent<ListBox>(src) != null ||
-                FindParent<DataGrid>(src) != null ||
-                FindParent<DatePicker>(src) != null)
-            {
-                return;
-            }
-
-            // Otherwise allow moving window
-            try { DragMove(); } catch { /* ignore */ }
-        }
-
-        private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
-        {
-            while (child != null)
-            {
-                if (child is T typed) return typed;
-                child = System.Windows.Media.VisualTreeHelper.GetParent(child);
-            }
-            return null;
-        }
-
-
-        // Close (top-right X)
-        private void pictureBox2_Click(object sender, RoutedEventArgs e) => Close();
-
-        // ADD
-        private async void btnSave_Click(object? sender, RoutedEventArgs e)
-        {
-            if (!await CheckClientLimitAsync())
-                return;
-            var dlg = new EditClientWindow();
-            dlg.Owner = this;
-            if (dlg.ShowDialog() == true)
-            {
-                var c = dlg.Model;
-                _db.Clients.Add(c);
-                await _db.SaveChangesAsync();
-
-                _items.Add(c);
-                dgvClients.SelectedItem = c;
-            }
-        }
-        private const int DemoClientLimit = 10;
-
-        private async Task<bool> CheckClientLimitAsync()
-        {
-            // count rows in Clients table
-            int count = await _db.Clients.CountAsync();
-
-            if (count >= DemoClientLimit)
-            {
-                ModernDialog.ShowWithLink(
-                  beforeText: $"Demo limit reached.\nYou can store up to {DemoClientLimit} clients.\n\nPlease ",
-                  linkText: "contact us by email",
-                  navigateUri: "mailto:myorganizer.dental@gmail.com?subject=Upgrade%20Request",
-                  afterText: " to unlock the full version.",
-                  caption: "Demo Limit",
-                  buttons: MessageBoxButton.OK,
-                  icon: MessageBoxImage.Information
-);
-
-
-                return false; // block add
-            }
-
-            // warn user when nearing limit
-            if (count >= DemoClientLimit * 0.8)
-            {
-                MessageBox.Show(
-                    "You’re nearing the demo limit (80%).\nUpgrade anytime to keep adding clients.",
-                    "Demo Warning",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-
-            return true;
-        }
-
-        // EDIT
-        private async void btnEdit_Click(object? sender, RoutedEventArgs e)
-        {
-            var selected = GetSelected();
-            if (selected is null)
-            {
-                ModernDialog.Show("SelectClient".T(), "Info");
-                return;
-            }
-
-            var entity = await _db.Clients.FirstAsync(x => x.Id == selected.Id);
-
-            var dlg = new EditClientWindow(entity) { Owner = this };
-            if (dlg.ShowDialog() == true)
-            {
-                entity.FirstName = dlg.Model.FirstName;
-                entity.LastName = dlg.Model.LastName;
-                entity.MidlName = dlg.Model.MidlName;
-                entity.PhoneNumber = dlg.Model.PhoneNumber;
-                entity.Price = dlg.Model.Price;
-                entity.Debet = dlg.Model.Debet;
-                entity.DateJoin = dlg.Model.DateJoin;
-                entity.DateDobleJoin = dlg.Model.DateDobleJoin;
-                entity.DateJoinString = dlg.Model.DateJoinString;
-
-                await _db.SaveChangesAsync();
-                await LoadDataAsync();
-            }
-        }
-
-        // DELETE
-        private async void btrDelete_Click(object? sender, RoutedEventArgs e)
-        {
-            var selected = GetSelected();
-            if (selected is null)
-            {
-                ModernDialog.Show("Selecttheclienttodelete".T(), "Info");
-                return;
-            }
-
-            var confirm = ModernDialog.Show("Deletelient.".T(),
-                "Confirm".T(), MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-            if (confirm != MessageBoxResult.Yes) return;
-
-            var entity = await _db.Clients.FirstAsync(x => x.Id == selected.Id);
-            _db.Clients.Remove(entity);
-            await _db.SaveChangesAsync();
-
-            _items.Remove(selected);
-        }
-
-        // EXIT button (right panel)
-        private void btnExit_Click(object sender, RoutedEventArgs e) => Close();
-
-        // MONTH DEBT SUM
-        private async void criculButton1_Click(object sender, RoutedEventArgs e)
-        {
-            if (datemounth.SelectedDate is not DateTime d) return;
-
-            var sum = await _db.Clients
-                .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
-                .SumAsync(c => c.Debet ?? 0m);
-
-            txtSum.Text = sum.ToString("0.##");
-        }
-
-        // MONTH INCOME SUM
-        private async void criculButton2_Click(object sender, RoutedEventArgs e)
-        {
-            if (datemounth.SelectedDate is not DateTime d) return;
-
-            var sum = await _db.Clients
-                .Where(c => c.DateJoin.Year == d.Year && c.DateJoin.Month == d.Month)
-                .SumAsync(c => c.Price ?? 0m);
-
-            txtSum.Text = sum.ToString("0.##");
-        }
-
-        // SEARCH
-        private async void btnFind_Click(object sender, RoutedEventArgs e)
-        {
-            var key = (cmbFind.SelectedItem as string) ?? "";
-            var text = (txtFind.Text ?? string.Empty).Trim();
-            DateTime? month = datemounth.SelectedDate;
-
-            IQueryable<Client> q = _db.Clients;
-
-            // Map Armenian labels to entity properties
-            string col = key switch
-            {
-                "Անուն" => "FirstName".T(),
-                "Ազգանուն" => "LastName".T(),
-                "Հայրանուն" => "MidlName".T(),
-                "Հեռախոսահամար" => "Phone".T(),
-                _ => ""
-            };  
-                
-            if (!string.IsNullOrWhiteSpace(text) && !string.IsNullOrEmpty(col))
-            {
-                q = col switch
-                {
-                    "FirstName" => q.Where(c => c.FirstName!.Contains(text)),
-                    "LastName" => q.Where(c => c.LastName!.Contains(text)),
-                    "MidlName" => q.Where(c => c.MidlName!.Contains(text)),
-                    "Phone" => q.Where(c => c.PhoneNumber!.Contains(text)),
-                    _ => q
-                };
-            }
-
-            // Month filter (like MONTH(DateJoin) in WinForms; we use DateDobleJoin)
-            if (month is DateTime m)
-                q = q.Where(c => c.DateDobleJoin!=null && c.DateDobleJoin.Value.Year == m.Year && c.DateDobleJoin.Value.Month == m.Month);
-
-           
-
-            var list = await q
-                .OrderBy(c => c.LastName).ThenBy(c => c.FirstName)
-                .AsNoTracking()
-                .ToListAsync();
-
-            _items = new ObservableCollection<Client>(list);
-            dgvClients.ItemsSource = _items;
-        }
-
-        // Keep toggles mutually exclusive
-       
+    public sealed class ClientSearchField(string property, string label)
+    {
+        public string Property { get; } = property;
+        public string Label { get; } = label;
+        public override string ToString() => Label;
     }
 }

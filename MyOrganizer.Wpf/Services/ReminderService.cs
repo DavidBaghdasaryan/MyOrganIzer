@@ -1,9 +1,4 @@
-﻿// Services/ReminderService.cs
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;
 
 namespace MyOrganizer.Wpf.Services;
@@ -16,17 +11,19 @@ public class ReminderService : IReminderService
 
     public async Task<IReadOnlyList<ReminderItem>> LoadTodaysAsync()
     {
-        var today = DateTime.Today;
+        var start = DateTime.Today;
+        var end = start.AddDays(1);
 
-        var data = await _db.Clients
-            .Where(c => c.DateJoin.Date == today)
+        return await _db.Clients
+            .AsNoTracking()
+            .Where(c =>
+                (c.DateJoin >= start && c.DateJoin < end) ||
+                (c.DateDobleJoin != null && c.DateDobleJoin >= start && c.DateDobleJoin < end))
             .Select(c => new ReminderItem(
                 c.Id,
                 ((c.FirstName ?? "") + " " + (c.LastName ?? "")).Trim(),
-                c.DateJoin
+                (c.DateJoin >= start && c.DateJoin < end) ? c.DateJoin : c.DateDobleJoin!.Value
             ))
             .ToListAsync();
-
-        return data;
     }
 }
