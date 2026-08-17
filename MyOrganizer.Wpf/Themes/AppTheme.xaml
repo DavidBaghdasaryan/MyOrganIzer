@@ -36,6 +36,30 @@
   <SolidColorBrush x:Key="Brush.Text.Secondary" Color="{StaticResource Color.Text.Secondary}"/>
   <SolidColorBrush x:Key="Brush.Text.Inverted" Color="{StaticResource Color.Text.Inverted}"/>
 
+  <!-- Shell aliases (keep existing keys for current screens) -->
+  <Color x:Key="Color.AppBackground">#F4F6F9</Color>
+  <Color x:Key="Color.Surface">#FFFFFFFF</Color>
+  <Color x:Key="Color.SurfaceSecondary">#EEF2F6</Color>
+  <Color x:Key="Color.PrimaryHover">#1E4D74</Color>
+  <Color x:Key="Color.SidebarBackground">#1E293B</Color>
+  <Color x:Key="Color.SidebarText">#CBD5E1</Color>
+  <Color x:Key="Color.SidebarHover">#334155</Color>
+  <Color x:Key="Color.SidebarSelected">#243044</Color>
+  <Color x:Key="Color.SidebarAccent">#3B82C4</Color>
+
+  <SolidColorBrush x:Key="Brush.AppBackground" Color="{StaticResource Color.AppBackground}"/>
+  <SolidColorBrush x:Key="Brush.Surface" Color="{StaticResource Color.Surface}"/>
+  <SolidColorBrush x:Key="Brush.SurfaceSecondary" Color="{StaticResource Color.SurfaceSecondary}"/>
+  <SolidColorBrush x:Key="Brush.PrimaryHover" Color="{StaticResource Color.PrimaryHover}"/>
+  <SolidColorBrush x:Key="Brush.TextPrimary" Color="{StaticResource Color.Text}"/>
+  <SolidColorBrush x:Key="Brush.TextSecondary" Color="{StaticResource Color.Text.Secondary}"/>
+  <SolidColorBrush x:Key="Brush.SidebarBackground" Color="{StaticResource Color.SidebarBackground}"/>
+  <SolidColorBrush x:Key="Brush.SidebarText" Color="{StaticResource Color.SidebarText}"/>
+  <SolidColorBrush x:Key="Brush.SidebarHover" Color="{StaticResource Color.SidebarHover}"/>
+  <SolidColorBrush x:Key="Brush.SidebarSelected" Color="{StaticResource Color.SidebarSelected}"/>
+  <SolidColorBrush x:Key="Brush.SidebarAccent" Color="{StaticResource Color.SidebarAccent}"/>
+  <SolidColorBrush x:Key="Brush.DialogOverlay" Color="#66000000"/>
+
   <!-- Base text styling via TextBlock style (no loose Setters in dictionary) -->
   <Style TargetType="TextBlock">
     <Setter Property="FontFamily" Value="Segoe UI"/>

@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -103,9 +103,9 @@ public partial class LoginWindow : Window
     private void OpenMainAndClose()
     {
         var main = WindowFactory.Create<MainWindow>();
-        Hide();
-        main.Closed += (_, _) => Close();
+        Application.Current.MainWindow = main;
         main.Show();
+        Close();
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)

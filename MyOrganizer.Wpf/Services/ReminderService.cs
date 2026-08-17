@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;
 
 namespace MyOrganizer.Wpf.Services;

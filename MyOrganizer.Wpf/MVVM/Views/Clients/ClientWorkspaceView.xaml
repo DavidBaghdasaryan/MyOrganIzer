@@ -1,0 +1,137 @@
+<UserControl x:Class="MyOrganizer.Wpf.MVVM.Views.Clients.ClientWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+             xmlns:vm="clr-namespace:MyOrganizer.Wpf.MVVM.ViewModels"
+             PreviewKeyDown="Workspace_PreviewKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <Button Command="{Binding BackCommand}"
+                    Style="{StaticResource SecondaryButton}"
+                    HorizontalAlignment="Left"
+                    Height="32"
+                    Padding="12,4"
+                    Margin="0,0,0,16"
+                    ToolTip="{loc:Loc Clients}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="{Binding BackLabel}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <Grid Visibility="{Binding ShowContent, Converter={StaticResource BoolToVis}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Style="{StaticResource Body}" Margin="0,4,0,0">
+                        <Run Text="{Binding Row.Phone, Mode=OneWay}"/>
+                        <Run Text="  ·  "/>
+                        <Run Text="{loc:Loc Debt}"/>
+                        <Run Text=" "/>
+                        <Run Text="{Binding Row.Debet, Mode=OneWay, StringFormat=0.##}"/>
+                    </TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="{loc:Loc Edit}"
+                            Command="{Binding EditCommand}"
+                            Style="{StaticResource ModernButton}"
+                            Height="36" MinWidth="108" Margin="0,0,8,0"
+                            ToolTip="{loc:Loc Edit}"
+                            Visibility="{Binding IsOverview, Converter={StaticResource BoolToVis}}"/>
+                    <Button x:Name="MoreButton"
+                            Style="{StaticResource IconButton}"
+                            Content="&#xE712;"
+                            ToolTip="{loc:Loc More}"
+                            Click="More_Click"/>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="2" Visibility="{Binding ShowContent, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="16"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton GroupName="ClientWorkspaceTabs"
+                                 Content="{loc:Loc Overview}"
+                                 Style="{StaticResource WorkspaceTab}"
+                                 IsChecked="{Binding IsOverview, Mode=OneWay}"
+                                 Command="{Binding SelectTabCommand}"
+                                 CommandParameter="{x:Static vm:ClientWorkspaceTab.Overview}"/>
+                    <RadioButton GroupName="ClientWorkspaceTabs"
+                                 Content="{loc:Loc ToothChart}"
+                                 Style="{StaticResource WorkspaceTab}"
+                                 IsChecked="{Binding IsDentalChart, Mode=OneWay}"
+                                 Command="{Binding SelectTabCommand}"
+                                 CommandParameter="{x:Static vm:ClientWorkspaceTab.DentalChart}"/>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding IsOverview, Converter={StaticResource BoolToVis}}">
+                    <WrapPanel>
+                        <Border Style="{StaticResource Card}" Width="280" Margin="0,0,16,16" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc Contact}" Style="{StaticResource SectionTitle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="{loc:Loc Phone}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.Phone}" Style="{StaticResource Body}" Margin="0,2,0,12"/>
+                                <TextBlock Text="{loc:Loc FullName}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.FullName}" Style="{StaticResource Body}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Width="280" Margin="0,0,16,16" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc Financial}" Style="{StaticResource SectionTitle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="{loc:Loc Price}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.Price, StringFormat=0.##}" Style="{StaticResource Body}" Margin="0,2,0,12"/>
+                                <TextBlock Text="{loc:Loc Debt}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.Debet, StringFormat=0.##}" Style="{StaticResource Body}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Card}" Width="280" Margin="0,0,16,16" Padding="20">
+                            <StackPanel>
+                                <TextBlock Text="{loc:Loc RegistrationDate}" Style="{StaticResource SectionTitle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="{loc:Loc DayOfRegistration}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.DateJoin, StringFormat=yyyy-MM-dd HH:mm}" Style="{StaticResource Body}" Margin="0,2,0,12"/>
+                                <TextBlock Text="{loc:Loc DoubleVisit}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding Row.Reminder, StringFormat=yyyy-MM-dd HH:mm}" Style="{StaticResource Body}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                </ScrollViewer>
+
+                <ContentControl Grid.Row="2"
+                                Content="{Binding Chart}"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"
+                                Visibility="{Binding IsDentalChart, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{loc:Loc LoadingPatient}" Style="{StaticResource SectionTitle}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding NotFound, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{loc:Loc ClientNotFound}" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
+            <Button Content="{Binding BackLabel}" Command="{Binding BackCommand}"
+                    Style="{StaticResource SecondaryButton}" Margin="0,16,0,0" Height="36" Padding="16,6"
+                    HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

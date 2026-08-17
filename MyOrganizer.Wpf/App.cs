@@ -10,6 +10,8 @@ using Microsoft.Extensions.Hosting;
 using MyOrganizer.Wpf.Config;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.MVVM.UI;
+using MyOrganizer.Wpf.MVVM.ViewModels;
+using MyOrganizer.Wpf.Navigation;
 using MyOrganizer.Wpf.Repository;
 using MyOrganizer.Wpf.Services;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;
@@ -77,6 +79,17 @@ public partial class App : Application
                 services.AddTransient<ProceduresCatalogWindow>();
                 services.AddTransient<SetPricesDialog>();
 
+                services.AddScoped<INavigationService, NavigationService>();
+                services.AddSingleton<IDialogService, DialogService>();
+                services.AddScoped<ILegacyWindowService, LegacyWindowService>();
+                services.AddScoped<ShellViewModel>();
+                services.AddTransient<DashboardViewModel>();
+                services.AddScoped<ClientsViewModel>();
+                services.AddTransient<ClientWorkspaceViewModel>();
+                services.AddTransient<DentalChartViewModel>();
+                services.AddScoped<ProceduresViewModel>();
+                services.AddScoped<TechniciansViewModel>();
+
                 services.AddTransient<IReminderService, ReminderService>();
                 services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
                 services.AddSingleton<IDbLocalizationService, DbLocalizationService>();
@@ -92,6 +105,8 @@ public partial class App : Application
             using var scope = HostInstance.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
+            var procedures = scope.ServiceProvider.GetRequiredService<IProcedureService>();
+            procedures.EnsureDefaultPrices();
         }
         catch (Exception ex)
         {

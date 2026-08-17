@@ -1,0 +1,152 @@
+<UserControl x:Class="MyOrganizer.Wpf.MVVM.Views.DentalChart.DentalChartView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True">
+    <Grid>
+        <Grid Visibility="{Binding HasError, Converter={StaticResource InverseBoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="{loc:Loc ToothChartHint}"
+                       Style="{StaticResource Caption}"
+                       Opacity="0.85"
+                       Margin="0,0,0,8"
+                       TextWrapping="Wrap"/>
+
+            <Grid Grid.Row="1" Margin="0,0,0,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="{loc:Loc UpperArch}"
+                           Style="{StaticResource Caption}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource Brush.TextPrimary}"
+                           Margin="4,0,0,4"/>
+                <Border Grid.Row="1"
+                        Background="{StaticResource Brush.Surface}"
+                        BorderBrush="{StaticResource Brush.Border}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,8"
+                        ClipToBounds="False">
+                    <Grid x:Name="ChartUpper" ClipToBounds="False"/>
+                </Border>
+
+                <TextBlock Grid.Row="2"
+                           Text="{loc:Loc LowerArch}"
+                           Style="{StaticResource Caption}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource Brush.TextPrimary}"
+                           Margin="4,10,0,4"/>
+                <Border Grid.Row="3"
+                        Background="{StaticResource Brush.Surface}"
+                        BorderBrush="{StaticResource Brush.Border}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="14,8"
+                        ClipToBounds="False">
+                    <Grid x:Name="ChartLower" ClipToBounds="False"/>
+                </Border>
+            </Grid>
+
+            <Border Grid.Row="2"
+                    Background="{StaticResource Brush.SurfaceSecondary}"
+                    BorderBrush="{StaticResource Brush.Border}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="14,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Text="{loc:Loc NoSurfaceSelected}"
+                               Style="{StaticResource Body}"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVis}}"/>
+
+                    <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{loc:Loc SelectedTooth}" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SelectedTooth}"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource Brush.TextPrimary}"
+                                   Margin="0,1,0,4"/>
+                        <TextBlock Text="{loc:Loc SelectedSurfaces}" Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SelectedSurfaces}"
+                                   Style="{StaticResource Body}"
+                                   Margin="0,1,0,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="{loc:Loc ClearSelectedSurfaces}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Height="28" Padding="10,2" FontSize="12"
+                                    Visibility="{Binding HasSurfaceSelection, Converter={StaticResource BoolToVis}}"
+                                    Click="ClearSurfaces_Click"/>
+                            <Button Content="{loc:Loc ClearTooth}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Height="28" Padding="10,2" FontSize="12"
+                                    Margin="8,0,0,0"
+                                    Click="ClearTooth_Click"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Style="{StaticResource Caption}"
+                                   Foreground="{StaticResource Brush.Success}"
+                                   Margin="0,6,0,0"
+                                   Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="1"
+                            Content="{loc:Loc ApplyProcedure}"
+                            Style="{StaticResource ModernButton}"
+                            Height="36"
+                            MinWidth="160"
+                            VerticalAlignment="Center"
+                            Margin="16,0,0,0"
+                            IsEnabled="{Binding HasSelection}"
+                            Click="ApplyProcedure_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{loc:Loc ChartLoadFailed}"
+                       Style="{StaticResource SectionTitle}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"/>
+            <TextBlock Text="{Binding Error}"
+                       Style="{StaticResource Body}"
+                       Margin="0,8,0,0"
+                       MaxWidth="480"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Center"/>
+            <Button Content="{loc:Loc Retry}"
+                    Command="{Binding RetryCommand}"
+                    Style="{StaticResource SecondaryButton}"
+                    Height="36"
+                    Padding="16,6"
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <Border Background="#AAF4F6F9"
+                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                IsHitTestVisible="True">
+            <TextBlock Text="{loc:Loc LoadingChart}"
+                       Style="{StaticResource SectionTitle}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Border>
+    </Grid>
+</UserControl>

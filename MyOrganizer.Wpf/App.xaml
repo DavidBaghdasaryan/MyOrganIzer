@@ -1,13 +1,59 @@
 ﻿<Application x:Class="MyOrganizer.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:MyOrganizer.Wpf.MVVM.ViewModels"
+             xmlns:views="clr-namespace:MyOrganizer.Wpf.MVVM.Views"
+             xmlns:cviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Clients"
+             xmlns:dviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.DentalChart"
+             xmlns:pviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Procedures"
+             xmlns:tviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Technicians"
+             xmlns:dlgs="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Dialogs"
              xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Themes/AppTheme.xaml"/>
+                <ResourceDictionary Source="/Themes/ShellTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                <views:DashboardView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ClientsViewModel}">
+                <cviews:ClientsView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ClientWorkspaceViewModel}">
+                <cviews:ClientWorkspaceView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DentalChartViewModel}">
+                <dviews:DentalChartView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
+                <views:PlaceholderView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ProceduresViewModel}">
+                <pviews:ProceduresView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:TechniciansViewModel}">
+                <tviews:TechniciansView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ApplyProcedureDialogViewModel}">
+                <dlgs:ApplyProcedureDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditClientDialogViewModel}">
+                <dlgs:EditClientDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditProcedureDialogViewModel}">
+                <dlgs:EditProcedureDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditTechnicianDialogViewModel}">
+                <dlgs:EditTechnicianDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ConfirmDialogViewModel}">
+                <dlgs:ConfirmDialogView/>
+            </DataTemplate>
+
             <!-- ========= ContextMenu tokens ========= -->
             <SolidColorBrush x:Key="MenuBgBrush" Color="#34abeb"/>
             <SolidColorBrush x:Key="MenuBorderBrush" Color="#1A000000"/>

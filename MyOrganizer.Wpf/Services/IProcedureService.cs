@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data;
 using MyOrganizer.Wpf.Entities.Procedures;
 using System;
@@ -13,8 +13,10 @@ namespace MyOrganizer.Wpf.Services
     {
         Task<List<Procedure>> GetAllAsync(CancellationToken ct = default);
         Task<Procedure> AddAsync(string name, CancellationToken ct = default);
+        Task UpdateAsync(int id, string name, CancellationToken ct = default);
         Task DeleteAsync(int id, CancellationToken ct = default);
         Task<List<Procedure>> GetAllWithPricesAsync(CancellationToken ct = default);
+        void EnsureDefaultPrices();
         Task UpsertPricesAsync(IEnumerable<(int procedureId, decimal t1, decimal t2, decimal t3, string currency)> items,
                                CancellationToken ct = default);
     }
@@ -35,6 +37,15 @@ namespace MyOrganizer.Wpf.Services
             return p;
         }
 
+        public async Task UpdateAsync(int id, string name, CancellationToken ct = default)
+        {
+            var p = await _db.Procedures.FindAsync(new object[] { id }, ct);
+            if (p is null)
+                return;
+            p.Name = name.Trim();
+            await _db.SaveChangesAsync(ct);
+        }
+
         public async Task DeleteAsync(int id, CancellationToken ct = default)
         {
             var p = await _db.Procedures.FindAsync(new object[] { id }, ct);
@@ -44,12 +55,62 @@ namespace MyOrganizer.Wpf.Services
             await _db.SaveChangesAsync(ct);
         }
 
-        public Task<List<Procedure>> GetAllWithPricesAsync(CancellationToken ct = default) =>
-            _db.Procedures
-               .Where(p => p.IsActive)
-               .Include(p => p.Prices)
-               .OrderBy(p => p.Name)
-               .ToListAsync(ct);
+        public async Task<List<Procedure>> GetAllWithPricesAsync(CancellationToken ct = default)
+        {
+            var procedures = await _db.Procedures
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.Name)
+                .ToListAsync(ct);
+
+            var latest = await _db.LoadLatestPricesAsync(ct);
+            var byId = latest.ToDictionary(x => x.ProcedureId);
+            foreach (var procedure in procedures)
+            {
+                procedure.Prices = byId.TryGetValue(procedure.Id, out var price)
+                    ? [price]
+                    : [];
+            }
+
+            return procedures;
+        }
+
+        public void EnsureDefaultPrices()
+        {
+            var procedures = _db.Procedures
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .Select(p => new { p.Id, p.Name })
+                .ToList();
+            if (procedures.Count == 0)
+                return;
+
+            var existing = _db.ProcedurePrices
+                .AsNoTracking()
+                .Select(p => p.ProcedureId)
+                .Distinct()
+                .ToHashSet();
+
+            foreach (var procedure in procedures)
+            {
+                if (existing.Contains(procedure.Id))
+                    continue;
+                if (!ProcedureCatalogPrices.Defaults.TryGetValue(procedure.Name, out var tiers))
+                    continue;
+
+                _db.ProcedurePrices.Add(new ProcedurePrice
+                {
+                    ProcedureId = procedure.Id,
+                    Tier1 = tiers.Tier1,
+                    Tier2 = tiers.Tier2,
+                    Tier3 = tiers.Tier3,
+                    Currency = "AMD"
+                });
+            }
+
+            if (_db.ChangeTracker.HasChanges())
+                _db.SaveChanges();
+        }
 
         public async Task UpsertPricesAsync(IEnumerable<(int procedureId, decimal t1, decimal t2, decimal t3, string currency)> items,
                                             CancellationToken ct = default)

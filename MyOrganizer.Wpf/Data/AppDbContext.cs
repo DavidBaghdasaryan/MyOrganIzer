@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Data.Entities;
 using MyOrganizer.Wpf.Entities;
@@ -90,6 +90,7 @@ namespace MyOrganizer.Wpf.Data
                 e.Property(x => x.ToothFdi).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.ProcedureName).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.Tier).IsRequired().HasMaxLength(2000);
+                e.Property(x => x.Surface).HasMaxLength(20).HasDefaultValue("");
 
                 e.HasIndex(x => x.ClientId);
                 e.HasOne<Client>()
@@ -167,17 +168,11 @@ namespace MyOrganizer.Wpf.Data
 
         public async Task<List<ProcedurePrice>> LoadLatestPricesAsync(CancellationToken ct = default)
         {
-            var latestIds = await ProcedurePrices.AsNoTracking()
+            var prices = await ProcedurePrices.AsNoTracking().ToListAsync(ct);
+            return prices
                 .GroupBy(p => p.ProcedureId)
-                .Select(g => g.Max(x => x.Id))
-                .ToListAsync(ct);
-
-            if (latestIds.Count == 0)
-                return [];
-
-            return await ProcedurePrices.AsNoTracking()
-                .Where(p => latestIds.Contains(p.Id))
-                .ToListAsync(ct);
+                .Select(g => g.MaxBy(x => x.Id)!)
+                .ToList();
         }
     }
 }

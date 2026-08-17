@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +14,12 @@ namespace MyOrganizer.Wpf.Entities
         public string ProcedureName { get; set; } = "";
         public string Tier { get; set; } = "";
         public int Price { get; set; }
+
+        /// <summary>
+        /// Empty means the whole tooth (legacy rows). Otherwise a <see cref="Controls.ToothSurfaceType"/> name.
+        /// </summary>
+        public string Surface { get; set; } = "";
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 

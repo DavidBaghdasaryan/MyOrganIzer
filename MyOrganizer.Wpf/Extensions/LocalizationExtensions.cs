@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf;
 using MyOrganizer.Wpf.Config;
 using MyOrganizer.Wpf.Services.DB_LocalizationService;

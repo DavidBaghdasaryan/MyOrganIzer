@@ -1,101 +1,160 @@
-﻿using System.Windows;
+﻿using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Threading;
-using MyOrganizer.Wpf;
 using MyOrganizer.Wpf.Extensions;
-using MyOrganizer.Wpf.Services;
+using MyOrganizer.Wpf.MVVM.ViewModels;
 
 namespace MyOrganizer.Wpf.MVVM.UI;
 
 public partial class MainWindow : Window
 {
-    private readonly IReminderService _reminderService;
-    private readonly DispatcherTimer _timer;
-    private bool _blink;
-    private string[] _messages = [];
+    private readonly ShellViewModel _shell;
 
-    public MainWindow(IReminderService reminderService)
+    public MainWindow(ShellViewModel shell)
     {
+        _shell = shell;
+        DataContext = shell;
         InitializeComponent();
-        _reminderService = reminderService;
-        BtnMessage.Visibility = Visibility.Collapsed;
-
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += (_, _) => Blink();
-        Closed += (_, _) => _timer.Stop();
-
-        Loaded += async (_, _) =>
+        StateChanged += (_, _) => ApplyWindowState();
+        SourceInitialized += (_, _) =>
         {
-            try
-            {
-                var items = await _reminderService.LoadTodaysAsync();
-                var session = "session".T();
-                if (items.Count == 0)
-                    return;
-
-                _messages = items
-                    .OrderBy(i => i.When)
-                    .Select(i => $"{i.FullName}  {i.When:HH:mm}  {session}")
-                    .ToArray();
-
-                BtnMessage.Visibility = Visibility.Visible;
-                _timer.Start();
-            }
-            catch (Exception ex)
-            {
-                ModernDialog.Show(ex.Message, "Error".T(), MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            var source = (HwndSource)PresentationSource.FromVisual(this)!;
+            source.AddHook(WndProc);
         };
+        ApplyWindowState();
     }
 
-    private void Blink()
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _blink = !_blink;
-        BtnMessage.Background = _blink ? Brushes.SkyBlue : Brushes.DeepSkyBlue;
-    }
+        if (FindParent<Button>(e.OriginalSource as DependencyObject) is not null)
+            return;
+        if (FindParent<ComboBox>(e.OriginalSource as DependencyObject) is not null)
+            return;
 
-    private void Window_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximize();
+            return;
+        }
+
+        if (e.LeftButton == MouseButtonState.Pressed)
             DragMove();
+    }
+
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T match)
+                return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
     }
 
     private void BtnMinimize_Click(object sender, RoutedEventArgs e) =>
         WindowState = WindowState.Minimized;
 
+    private void BtnMaximize_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
+
     private void BtnExit_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void BtnPcainet_Click(object sender, RoutedEventArgs e)
+    private void Window_Closed(object sender, EventArgs e) => _shell.Detach();
+
+    private void ToggleMaximize()
     {
-        var win = WindowFactory.Create<ClientsWindow>();
-        win.Owner = this;
-        win.ShowDialog();
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
     }
 
-    private void BtnSetPrice_CLick(object sender, RoutedEventArgs e)
+    private void ApplyWindowState()
     {
-        var win = WindowFactory.Create<SetPricesDialog>();
-        win.Owner = this;
-        win.ShowDialog();
+        var maximized = WindowState == WindowState.Maximized;
+        MaximizeIcon.Visibility = maximized ? Visibility.Collapsed : Visibility.Visible;
+        RestoreIcon.Visibility = maximized ? Visibility.Visible : Visibility.Collapsed;
+        BtnMaximize.ToolTip = maximized ? "Restore".T() : "Maximize".T();
+
+        if (maximized)
+        {
+            var work = SystemParameters.WorkArea;
+            MaxWidth = work.Width;
+            MaxHeight = work.Height;
+            RootBorder.BorderThickness = new Thickness(0);
+        }
+        else
+        {
+            MaxWidth = double.PositiveInfinity;
+            MaxHeight = double.PositiveInfinity;
+            RootBorder.BorderThickness = new Thickness(1);
+        }
     }
 
-    private void BtnSenders_Click(object sender, RoutedEventArgs e)
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        ModernDialog.Show("Open Couriers", "Info");
+        const int wmGetMinMaxInfo = 0x0024;
+        if (msg != wmGetMinMaxInfo)
+            return IntPtr.Zero;
+
+        var info = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        var monitor = MonitorFromWindow(hwnd, 0x00000002);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            var work = monitorInfo.Work;
+            var screen = monitorInfo.Monitor;
+            info.MaxPosition.X = Math.Abs(work.Left - screen.Left);
+            info.MaxPosition.Y = Math.Abs(work.Top - screen.Top);
+            info.MaxSize.X = Math.Abs(work.Right - work.Left);
+            info.MaxSize.Y = Math.Abs(work.Bottom - work.Top);
+            Marshal.StructureToPtr(info, lParam, true);
+            handled = true;
+        }
+
+        return IntPtr.Zero;
     }
 
-    private void BtnTexniqs_Click(object sender, RoutedEventArgs e)
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
     {
-        var win = WindowFactory.Create<TechnicsWindow>();
-        win.Owner = this;
-        win.ShowDialog();
+        public PointInt Reserved;
+        public PointInt MaxSize;
+        public PointInt MaxPosition;
+        public PointInt MinTrack;
+        public PointInt MaxTrack;
     }
 
-    private void BtnMessage_Click(object sender, RoutedEventArgs e)
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PointInt
     {
-        _timer.Stop();
-        var message = string.Join(Environment.NewLine, _messages);
-        ModernDialog.Show(message, "Reminders".T());
-        BtnMessage.Visibility = Visibility.Collapsed;
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RectInt
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public RectInt Monitor;
+        public RectInt Work;
+        public uint Flags;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Markup;
 using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf;
