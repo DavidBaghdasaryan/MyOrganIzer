@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using MyOrganizer.Wpf.Controls;
+using MyOrganizer.Wpf.MVVM.ViewModels;
 
 namespace MyOrganizer.Wpf.MVVM.Views.DentalChart;
 
@@ -8,6 +10,19 @@ public partial class ToothLabView : UserControl
     public ToothLabView()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        MeshView.InteractionChanged += OnInteraction;
+        ApplySurfaceDebug();
+    }
+
+    private void OnInteraction(object? sender, ToothLabHitEventArgs e)
+    {
+        if (DataContext is ToothLabViewModel vm)
+            vm.SetInteraction(e.Hover, e.Selected);
     }
 
     private void OnOcclusal(object sender, RoutedEventArgs e) => MeshView.ResetToOcclusal();

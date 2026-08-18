@@ -8,7 +8,7 @@ namespace MyOrganizer.Wpf.MVVM.ViewModels;
 public sealed class ToothLabViewModel : ObservableObject
 {
     private double _toothSize = 340;
-    private string _status = "Canonical occlusal view of Dundee FDI 16. Orbit to inspect; Occlusal View resets.";
+    private string _status = "Hover: None\nSelected: None";
     private IReadOnlyList<ToothSurfaceType> _selected = [];
     private IReadOnlyDictionary<ToothSurfaceType, ToothSurfaceVisual> _surfaceStates;
 
@@ -30,7 +30,7 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string ToothNumber => "16";
     public string Hint =>
-        "Clinical preset is orthographic occlusal. Drag for free inspection of crown and roots. Reset returns to Occlusal View.";
+        "Hover a crown surface to highlight it. Click to select; click again to clear. Drag to orbit. Segmentation debug stays off unless you turn it on.";
 
     public string SourceNote =>
         "Mesh: Maxillary First Molar, University of Dundee School of Dentistry (Emily McDougall; " +
@@ -77,6 +77,11 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         get => _surfaceStates;
         private set => SetProperty(ref _surfaceStates, value);
+    }
+
+    public void SetInteraction(string? hover, string? selected)
+    {
+        Status = "Hover: " + (hover ?? "None") + "\nSelected: " + (selected ?? "None");
     }
 
     public void OnSurfaceClicked(ToothSurfaceEventArgs e)

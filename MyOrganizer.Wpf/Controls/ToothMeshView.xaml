@@ -6,7 +6,7 @@
              SnapsToDevicePixels="False">
     <Grid Background="#C8CED6">
         <Viewbox Stretch="Fill">
-            <Viewport3D x:Name="View3D" Width="768" Height="768" IsHitTestVisible="False">
+            <Viewport3D x:Name="View3D" Width="768" Height="768" IsHitTestVisible="True">
                 <Viewport3D.Camera>
                     <OrthographicCamera x:Name="OrthoCam"
                                        Width="1.8"
@@ -81,6 +81,8 @@
                     </ModelVisual3D.Content>
                 </ModelVisual3D>
                 <ModelVisual3D x:Name="SurfaceOverlayVisual"/>
+                <ModelVisual3D x:Name="SelectedOverlayVisual"/>
+                <ModelVisual3D x:Name="HoverOverlayVisual"/>
             </Viewport3D>
         </Viewbox>
 
@@ -99,7 +101,7 @@
                    Margin="0,0,10,0" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
 
         <TextBlock x:Name="HintCaption"
-                   Text="Drag to inspect · scroll to zoom · Occlusal View resets"
+                   Text="Hover a surface · click to select · drag to inspect"
                    HorizontalAlignment="Center" VerticalAlignment="Bottom"
                    Margin="0,0,0,8" Foreground="#C22F3A46" FontSize="11"
                    IsHitTestVisible="False"/>
