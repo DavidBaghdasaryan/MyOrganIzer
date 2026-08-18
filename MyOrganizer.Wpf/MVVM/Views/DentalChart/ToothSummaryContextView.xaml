@@ -1,0 +1,22 @@
+<UserControl x:Class="MyOrganizer.Wpf.MVVM.Views.DentalChart.ToothSummaryContextView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization">
+    <StackPanel>
+        <TextBlock Text="{loc:Loc SelectProcedure}"
+                   Style="{StaticResource Caption}"
+                   Opacity="0.85"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding HasUnclassifiedProcedure, Converter={StaticResource InverseBoolToVis}}"/>
+        <TextBlock Text="{loc:Loc UnclassifiedProcedureHint}"
+                   Style="{StaticResource Caption}"
+                   Opacity="0.85"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding HasUnclassifiedProcedure, Converter={StaticResource BoolToVis}}"/>
+        <TextBlock Text="{Binding UnclassifiedProcedure}"
+                   Style="{StaticResource Body}"
+                   Margin="0,4,0,0"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding HasUnclassifiedProcedure, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
+</UserControl>

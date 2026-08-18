@@ -33,7 +33,7 @@ public sealed class ApplyProcedureDialogViewModel : DialogViewModel
         SurfacesDisplay = IsWholeTooth
             ? "WholeTooth".T()
             : string.Join("  ·  ", surfaces.Select(s =>
-                ToothControl.SurfaceDisplayName(s, ToothFdi.Kind(toothNumber)).T()));
+                ToothControl.SurfaceDisplayName(s, toothNumber).T()));
         _allProcedures = procedures;
         _pricesFor = pricesFor;
         _apply = apply;
@@ -132,26 +132,10 @@ public sealed class ApplyProcedureDialogViewModel : DialogViewModel
         if (string.IsNullOrWhiteSpace(SelectedProcedure))
             return;
 
-        var prices = _pricesFor(SelectedProcedure);
-        var currency = "Currency".T();
-        Tiers.Add(Tier("A", prices.ElementAtOrDefault(0), currency, Color.FromRgb(0x22, 0xC5, 0x5E)));
-        Tiers.Add(Tier("B", prices.ElementAtOrDefault(1), currency, Color.FromRgb(0xD9, 0x77, 0x06)));
-        Tiers.Add(Tier("C", prices.ElementAtOrDefault(2), currency, Color.FromRgb(0xDC, 0x26, 0x26)));
+        foreach (var tier in PriceTierOption.FromPrices(_pricesFor(SelectedProcedure)))
+            Tiers.Add(tier);
         SelectedTier = Tiers[0];
         OnPropertyChanged(nameof(Tiers));
-    }
-
-    private static PriceTierOption Tier(string code, int price, string currency, Color color)
-    {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        return new PriceTierOption
-        {
-            Code = code,
-            Price = price,
-            Display = $"{code}  —  {price.ToString("N0", CultureInfo.InvariantCulture)} {currency}",
-            Marker = brush
-        };
     }
 
     private async Task ApplyAsync()
@@ -186,4 +170,28 @@ public sealed class PriceTierOption
     public required int Price { get; init; }
     public required string Display { get; init; }
     public required Brush Marker { get; init; }
+
+    public static IReadOnlyList<PriceTierOption> FromPrices(int[] prices)
+    {
+        var currency = "Currency".T();
+        return
+        [
+            Create("A", prices.ElementAtOrDefault(0), currency, Color.FromRgb(0x22, 0xC5, 0x5E)),
+            Create("B", prices.ElementAtOrDefault(1), currency, Color.FromRgb(0xD9, 0x77, 0x06)),
+            Create("C", prices.ElementAtOrDefault(2), currency, Color.FromRgb(0xDC, 0x26, 0x26))
+        ];
+    }
+
+    private static PriceTierOption Create(string code, int price, string currency, Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return new PriceTierOption
+        {
+            Code = code,
+            Price = price,
+            Display = $"{code}  —  {price.ToString("N0", CultureInfo.InvariantCulture)} {currency}",
+            Marker = brush
+        };
+    }
 }

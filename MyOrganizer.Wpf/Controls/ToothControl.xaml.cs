@@ -2,9 +2,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Shapes;
-using MyOrganizer.Wpf.Extensions;
+using MyOrganizer.Wpf.Dental;
 
 namespace MyOrganizer.Wpf.Controls;
 
@@ -22,6 +21,7 @@ public sealed class ToothMark
     public string Procedure { get; init; } = "";
     public string Code { get; init; } = "";
     public Brush Brush { get; init; } = Brushes.SlateGray;
+    public ToothClinicalKind Kind { get; init; }
 }
 
 public partial class ToothControl : UserControl
@@ -46,42 +46,58 @@ public partial class ToothControl : UserControl
         set => SetValue(IsToothSelectedProperty, value);
     }
 
-    public event EventHandler<ToothSurfaceEventArgs>? SurfaceClicked;
-    public event EventHandler<ToothSurfaceEventArgs>? SurfaceContextRequested;
     public event EventHandler<ToothSurfaceEventArgs>? ToothClicked;
 
-    private readonly Dictionary<ToothSurfaceType, Path> _paths = [];
-    private Path? _outline;
+    private readonly Dictionary<ToothSurfaceType, Path> _surfaceOverlays = [];
+    private readonly Dictionary<ToothSurfaceType, Path> _lesionOverlays = [];
+    private readonly Dictionary<ToothSurfaceType, Geometry> _surfaceGeometry = [];
+    private readonly List<Path> _rootParts = [];
+    private readonly List<Path> _crownParts = [];
+    private readonly List<Path> _detailParts = [];
+    private Path? _implant;
+    private Path? _canal;
+    private Path? _crownMetal;
+    private Path? _hit;
+    private Path? _selectionFill;
+    private bool _hovered;
     private readonly HashSet<ToothSurfaceType> _selected = [];
-    private ToothSurfaceType? _hovered;
-    private IReadOnlyList<ToothMark> _marks = [];
+    private ToothCurrentState _current = ToothCurrentState.Healthy("11");
 
     public ToothControl()
     {
         InitializeComponent();
         Loaded += (_, _) => Rebuild();
+        MouseEnter += (_, _) => { _hovered = true; ApplyChrome(); };
+        MouseLeave += (_, _) => { _hovered = false; ApplyChrome(); };
         ToolTip = " ";
         ToolTipOpening += OnToolTipOpening;
     }
 
     public IReadOnlyCollection<ToothSurfaceType> SelectedSurfaces => _selected;
-
     public bool HasSurfaceSelection => _selected.Count > 0;
 
     public void ClearSurfaceSelection()
     {
         _selected.Clear();
-        RefreshFills();
+    }
+
+    public void PreviewSelect(params ToothSurfaceType[] surfaces)
+    {
+        _selected.Clear();
+        foreach (var surface in surfaces)
+            _selected.Add(surface);
+    }
+
+    public void SetCurrentState(ToothCurrentState? state)
+    {
+        _current = state ?? ToothCurrentState.Healthy(ToothNumber);
+        if (IsLoaded)
+            ApplyClinical();
     }
 
     public void SetMarks(IReadOnlyList<ToothMark> marks)
     {
-        _marks = marks;
-        PartBadges.ItemsSource = marks
-            .Select(m => new { m.Code, m.Brush })
-            .DistinctBy(m => m.Code)
-            .ToList();
-        RefreshFills();
+        PartBadges.ItemsSource = null;
     }
 
     private static void OnToothNumberChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -93,122 +109,183 @@ public partial class ToothControl : UserControl
     private static void OnToothSelectedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is ToothControl { IsLoaded: true } c)
-            c.ApplyWholeToothChrome();
+            c.ApplyChrome();
     }
 
     private void Rebuild()
     {
         PartCanvas.Children.Clear();
-        _paths.Clear();
+        _surfaceOverlays.Clear();
+        _lesionOverlays.Clear();
+        _surfaceGeometry.Clear();
+        _rootParts.Clear();
+        _crownParts.Clear();
+        _detailParts.Clear();
 
-        var kind = ToothFdi.Kind(ToothNumber);
-        var geo = ToothGeometries.Get(kind);
-        var visual = CreateToothTransform();
+        var art = ToothVectorArt.Build(ToothNumber);
+        var visual = CreateVisualTransform();
 
-        _outline = new Path
+        foreach (var part in art.Parts)
         {
-            Data = geo.Outline,
-            Fill = ToothBrushes.Enamel,
-            Stroke = ToothBrushes.Outline,
-            StrokeThickness = 1.5,
-            StrokeLineJoin = PenLineJoin.Round,
-            IsHitTestVisible = false,
-            RenderTransform = visual
-        };
-        PartCanvas.Children.Add(_outline);
+            var path = Decor(part.Data, part.Fill, part.Stroke, part.StrokeThickness, visual);
+            if (part.Kind == ToothPartKind.Fissure)
+            {
+                path.StrokeStartLineCap = PenLineCap.Round;
+                path.StrokeEndLineCap = PenLineCap.Round;
+            }
 
-        PartCanvas.Children.Add(new Path
+            switch (part.Kind)
+            {
+                case ToothPartKind.Root:
+                    _rootParts.Add(path);
+                    break;
+                case ToothPartKind.Crown:
+                    _crownParts.Add(path);
+                    break;
+                default:
+                    _detailParts.Add(path);
+                    break;
+            }
+        }
+
+        _implant = Decor(art.Implant, ToothBrushes.ImplantFill, ToothBrushes.ImplantStroke, 1.05, visual);
+        _implant.Visibility = Visibility.Collapsed;
+
+        _canal = Decor(art.Canal, Brushes.Transparent, ToothBrushes.CanalStroke, 2.1, visual);
+        _canal.StrokeStartLineCap = PenLineCap.Round;
+        _canal.StrokeEndLineCap = PenLineCap.Round;
+        _canal.Visibility = Visibility.Collapsed;
+
+        _hit = Decor(art.Body, Brushes.Transparent, Brushes.Transparent, 0, visual);
+        _hit.IsHitTestVisible = true;
+        _hit.Cursor = Cursors.Hand;
+        _hit.MouseLeftButtonDown += Whole_MouseLeftButtonDown;
+        _hit.MouseRightButtonDown += Whole_MouseRightButtonDown;
+
+        foreach (var path in _rootParts.Concat(_crownParts).Append(_implant))
         {
-            Data = geo.Highlight,
-            Fill = ToothBrushes.Highlight,
-            IsHitTestVisible = false,
-            RenderTransform = visual
-        });
+            path.IsHitTestVisible = true;
+            path.Cursor = Cursors.Hand;
+            path.MouseLeftButtonDown += Whole_MouseLeftButtonDown;
+            path.MouseRightButtonDown += Whole_MouseRightButtonDown;
+        }
 
-        AddSurface(ToothSurfaceType.Buccal, geo.Buccal);
-        AddSurface(ToothSurfaceType.Lingual, geo.Lingual);
-        AddSurface(ToothSurfaceType.Mesial, geo.Mesial);
-        AddSurface(ToothSurfaceType.Distal, geo.Distal);
-        AddSurface(ToothSurfaceType.Occlusal, geo.Occlusal);
+        _crownMetal = Decor(art.Crown, ToothBrushes.CrownMetal, ToothBrushes.ImplantStroke, 0.7, visual);
+        _crownMetal.Opacity = 0.88;
+        _crownMetal.Visibility = Visibility.Collapsed;
 
-        ApplyWholeToothChrome();
-        RefreshFills();
+        AddSurfaceOverlay(ToothSurfaceType.Buccal, art.Buccal, visual);
+        AddSurfaceOverlay(ToothSurfaceType.Lingual, art.Lingual, visual);
+        AddSurfaceOverlay(ToothSurfaceType.Mesial, art.Mesial, visual);
+        AddSurfaceOverlay(ToothSurfaceType.Distal, art.Distal, visual);
+        AddSurfaceOverlay(ToothSurfaceType.Occlusal, art.Occlusal, visual);
+
+        AddLesionOverlay(ToothSurfaceType.Buccal, art.Buccal, visual);
+        AddLesionOverlay(ToothSurfaceType.Lingual, art.Lingual, visual);
+        AddLesionOverlay(ToothSurfaceType.Mesial, art.Mesial, visual);
+        AddLesionOverlay(ToothSurfaceType.Distal, art.Distal, visual);
+        AddLesionOverlay(ToothSurfaceType.Occlusal, art.Occlusal, visual);
+
+        _selectionFill = Decor(art.Body, ToothBrushes.SelectedPlate, Brushes.Transparent, 0, visual);
+        _selectionFill.Visibility = Visibility.Collapsed;
+
+        ApplyClinical();
+        ApplyChrome();
     }
 
-    private void AddSurface(ToothSurfaceType surface, Geometry data)
+    private Transform CreateVisualTransform()
+    {
+        var group = new TransformGroup();
+        group.Children.Add(new ScaleTransform(
+            ToothFdi.MesialOnLeft(ToothNumber) ? 1 : -1,
+            ToothFdi.IsUpper(ToothNumber) ? -1 : 1,
+            44, 68));
+        group.Freeze();
+        return group;
+    }
+
+    private Path Decor(Geometry data, Brush fill, Brush stroke, double thickness, Transform visual)
     {
         var path = new Path
         {
             Data = data,
-            Stroke = ToothBrushes.Seam,
-            StrokeThickness = 0.85,
+            Fill = fill,
+            Stroke = stroke,
+            StrokeThickness = thickness,
             StrokeLineJoin = PenLineJoin.Round,
-            Cursor = Cursors.Hand,
-            Tag = surface,
-            RenderTransform = CreateToothTransform()
+            IsHitTestVisible = false,
+            RenderTransform = visual
         };
-        path.MouseEnter += (_, _) => { _hovered = surface; RefreshFills(); };
-        path.MouseLeave += (_, _) => { if (_hovered == surface) _hovered = null; RefreshFills(); };
-        path.MouseLeftButtonDown += Surface_MouseLeftButtonDown;
-        path.MouseRightButtonDown += Surface_MouseRightButtonDown;
-        _paths[surface] = path;
+        PartCanvas.Children.Add(path);
+        return path;
+    }
+
+    private void AddSurfaceOverlay(ToothSurfaceType surface, Geometry data, Transform visual)
+    {
+        var path = new Path
+        {
+            Data = data,
+            Fill = ToothBrushes.Filling,
+            Stroke = ToothBrushes.FillingStroke,
+            StrokeThickness = 0.4,
+            StrokeLineJoin = PenLineJoin.Round,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+            Tag = surface,
+            RenderTransform = visual
+        };
+        _surfaceOverlays[surface] = path;
+        _surfaceGeometry[surface] = data;
         PartCanvas.Children.Add(path);
     }
 
-    private void Surface_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void AddLesionOverlay(ToothSurfaceType surface, Geometry data, Transform visual)
     {
-        if (sender is not Path { Tag: ToothSurfaceType surface })
-            return;
+        var path = new Path
+        {
+            Fill = ToothBrushes.CariesDeep,
+            Stroke = Brushes.Transparent,
+            IsHitTestVisible = false,
+            Visibility = Visibility.Collapsed,
+            Tag = surface,
+            RenderTransform = visual
+        };
+        _lesionOverlays[surface] = path;
+        PartCanvas.Children.Add(path);
+    }
 
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == 0)
-            _selected.Clear();
-
-        if (!_selected.Add(surface))
-            _selected.Remove(surface);
-
-        RefreshFills();
-        SurfaceClicked?.Invoke(this, CreateArgs(surface));
+    private void Whole_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        SelectWholeTooth();
         e.Handled = true;
     }
 
-    private void Surface_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void Whole_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is not Path { Tag: ToothSurfaceType surface })
-            return;
+        if (!IsToothSelected)
+        {
+            _selected.Clear();
+            IsToothSelected = true;
+            ApplyChrome();
+            ToothClicked?.Invoke(this, CreateArgs(null, wholeTooth: true));
+        }
+    }
 
-        if (_selected.Count == 0)
-            _selected.Add(surface);
-
-        RefreshFills();
-        SurfaceContextRequested?.Invoke(this, CreateArgs(surface));
+    private void SelectWholeTooth()
+    {
+        _selected.Clear();
+        IsToothSelected = !IsToothSelected;
+        ApplyChrome();
+        ToothClicked?.Invoke(this, CreateArgs(null, wholeTooth: true));
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
-        if (e.OriginalSource is Path)
+        if (e.Handled)
             return;
-
-        _selected.Clear();
-        IsToothSelected = !IsToothSelected;
-        RefreshFills();
-        ToothClicked?.Invoke(this, CreateArgs(null, wholeTooth: true));
-    }
-
-    /// <summary>
-    /// Canonical geometry is buccal-top, mesial-left. Scale around the 100×100 design
-    /// origin so Mesial/Distal and Buccal/Lingual tags stay correct after mirroring.
-    /// </summary>
-    private Transform CreateToothTransform()
-    {
-        var group = new TransformGroup();
-        group.Children.Add(new ScaleTransform(
-            ToothFdi.MesialOnLeft(ToothNumber) ? 1 : -1,
-            ToothFdi.IsUpper(ToothNumber) ? 1 : -1,
-            50, 50));
-        group.Children.Add(new TranslateTransform(6, 6));
-        group.Freeze();
-        return group;
+        SelectWholeTooth();
+        e.Handled = true;
     }
 
     private ToothSurfaceEventArgs CreateArgs(ToothSurfaceType? surface, bool wholeTooth = false) => new()
@@ -219,93 +296,107 @@ public partial class ToothControl : UserControl
         WholeTooth = wholeTooth || _selected.Count == 0
     };
 
-    private void ApplyWholeToothChrome()
+    private void ApplyChrome()
     {
-        if (_outline is null)
+        if (_hit is null || _selectionFill is null)
             return;
 
-        if (IsToothSelected)
+        var selected = IsToothSelected;
+        var hover = _hovered && !selected;
+        _selectionFill.Fill = selected
+            ? ToothBrushes.SelectedPlate
+            : hover
+                ? ToothBrushes.HoverPlate
+                : Brushes.Transparent;
+        _selectionFill.Visibility = selected || hover ? Visibility.Visible : Visibility.Collapsed;
+        _hit.Fill = Brushes.Transparent;
+
+        PartNumber.Foreground = selected ? ToothBrushes.WholeSelected : ToothBrushes.Number;
+        PartNumber.FontWeight = selected ? FontWeights.Bold : FontWeights.SemiBold;
+    }
+
+    private void ApplyClinical()
+    {
+        if (_implant is null || _canal is null || _crownMetal is null)
+            return;
+
+        var state = _current.ToothFdi == ToothNumber
+            ? _current
+            : ToothCurrentState.Healthy(ToothNumber);
+        var missing = ToothClinicalLayers.ShowMissing(state);
+        var implant = ToothClinicalLayers.ShowImplant(state);
+        var crown = ToothClinicalLayers.ShowCrown(state);
+        var endo = ToothClinicalLayers.ShowEndodontic(state);
+
+        foreach (var path in _rootParts)
         {
-            _outline.Stroke = ToothBrushes.WholeSelected;
-            _outline.StrokeThickness = 2.35;
-            _outline.Effect = new DropShadowEffect
+            path.Fill = missing ? Brushes.Transparent : ToothVectorArt.RootFill;
+            path.Stroke = missing ? ToothBrushes.MissingStroke : ToothVectorArt.RootStroke;
+            path.StrokeDashArray = missing ? new DoubleCollection { 2.2, 1.8 } : null;
+            path.StrokeThickness = missing ? 1.4 : 0.45;
+            path.Visibility = implant ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        foreach (var path in _crownParts)
+        {
+            path.Fill = missing ? Brushes.Transparent : ToothVectorArt.EnamelFill;
+            path.Stroke = missing ? ToothBrushes.MissingStroke : ToothVectorArt.CrownStroke;
+            path.StrokeDashArray = missing ? new DoubleCollection { 2.2, 1.8 } : null;
+            path.StrokeThickness = missing ? 1.4 : 0.55;
+            path.Opacity = missing ? 0.9 : 1;
+        }
+
+        foreach (var path in _detailParts)
+            path.Visibility = missing || crown ? Visibility.Collapsed : Visibility.Visible;
+
+        _implant.Visibility = implant ? Visibility.Visible : Visibility.Collapsed;
+        _canal.Visibility = endo ? Visibility.Visible : Visibility.Collapsed;
+        _crownMetal.Visibility = crown && !missing ? Visibility.Visible : Visibility.Collapsed;
+
+        foreach (var (surface, path) in _surfaceOverlays)
+        {
+            var show = ToothClinicalLayers.ShowFilling(state, surface);
+            path.Fill = ToothBrushes.Filling;
+            path.Visibility = show && !crown ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        foreach (var (surface, path) in _lesionOverlays)
+        {
+            if (!ToothClinicalLayers.ShowCaries(state, surface)
+                || !_surfaceGeometry.TryGetValue(surface, out var geo))
             {
-                Color = Color.FromRgb(0x1D, 0x4E, 0xD8),
-                BlurRadius = 4,
-                ShadowDepth = 0,
-                Opacity = 0.35
-            };
-            PartNumber.Foreground = ToothBrushes.WholeSelected;
-            PartNumber.FontWeight = FontWeights.Bold;
+                path.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            var level = ToothClinicalLayers.CariesLevel(state.Surface(surface)) ?? 0.34;
+            var bounds = geo.Bounds;
+            var cx = bounds.X + bounds.Width / 2;
+            var cy = bounds.Y + bounds.Height / 2;
+            var rx = Math.Max(2.2, bounds.Width * level / 2);
+            var ry = Math.Max(1.8, bounds.Height * level / 2);
+            path.Data = new EllipseGeometry(new Point(cx, cy), rx, ry);
+            path.Fill = ToothClinicalLayers.CariesBrush(state.Surface(surface));
+            path.Visibility = Visibility.Visible;
         }
-        else
-        {
-            _outline.Stroke = ToothBrushes.Outline;
-            _outline.StrokeThickness = 1.5;
-            _outline.Effect = null;
-            PartNumber.Foreground = ToothBrushes.Number;
-            PartNumber.FontWeight = FontWeights.SemiBold;
-        }
-    }
 
-    private void RefreshFills()
-    {
-        foreach (var (surface, path) in _paths)
-        {
-            var selected = _selected.Contains(surface);
-            var hovered = _hovered == surface;
-
-            path.Fill = ResolveFill(surface, selected, hovered);
-            path.StrokeThickness = selected ? 1.15 : hovered ? 1.05 : 0.85;
-            path.Stroke = selected
-                ? ToothBrushes.SelectedStroke
-                : hovered
-                    ? ToothBrushes.HoverStroke
-                    : ToothBrushes.Seam;
-        }
-    }
-
-    private Brush ResolveFill(ToothSurfaceType surface, bool selected, bool hovered)
-    {
-        if (selected)
-            return hovered ? ToothBrushes.SelectedHover : ToothBrushes.Selected;
-        if (hovered)
-            return ToothBrushes.Hover;
-
-        var mark = _marks.LastOrDefault(m => m.Surface == surface)
-                   ?? _marks.LastOrDefault(m => m.Surface is null);
-        if (mark is not null)
-            return Overlay(mark.Brush);
-
-        return surface switch
-        {
-            ToothSurfaceType.Buccal => ToothBrushes.BuccalTint,
-            ToothSurfaceType.Lingual => ToothBrushes.LingualTint,
-            ToothSurfaceType.Occlusal => ToothBrushes.OcclusalTint,
-            _ => ToothBrushes.ProximalTint
-        };
-    }
-
-    private static Brush Overlay(Brush source)
-    {
-        if (source is SolidColorBrush solid)
-        {
-            var c = solid.Color;
-            var b = new SolidColorBrush(Color.FromArgb(150, c.R, c.G, c.B));
-            b.Freeze();
-            return b;
-        }
-        return source;
+        ApplyChrome();
     }
 
     private void OnToolTipOpening(object sender, ToolTipEventArgs e)
     {
         var kind = ToothFdi.Kind(ToothNumber);
-        var surface = _hovered;
-        var surfaceName = surface is null
-            ? "WholeTooth".T()
-            : SurfaceDisplayName(surface.Value, kind).T();
-        ToolTip = $"{ToothNumber}  ·  {surfaceName}";
+        var state = _current.ToothFdi == ToothNumber ? _current : ToothCurrentState.Healthy(ToothNumber);
+        ToolTip = $"{ToothNumber}  ·  {kind}  ·  {ToothCurrentStateDisplay.WholeToothValue(state.WholeTooth)}";
+    }
+
+    public static string SurfaceDisplayName(ToothSurfaceType surface, string fdi)
+    {
+        if (surface == ToothSurfaceType.Occlusal && ToothFdi.IsAnterior(fdi))
+            return "Incisal";
+        if (surface == ToothSurfaceType.Lingual && ToothFdi.IsUpper(fdi))
+            return "Palatal";
+        return surface.ToString();
     }
 
     public static string SurfaceDisplayName(ToothSurfaceType surface, ToothKind kind) =>

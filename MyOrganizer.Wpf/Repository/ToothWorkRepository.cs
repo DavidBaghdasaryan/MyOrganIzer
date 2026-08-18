@@ -13,6 +13,8 @@ public class ToothWorkRepository : IToothWorkRepository
         _db.ToothWorks
            .AsNoTracking()
            .Where(x => x.ClientId == clientId)
+           .OrderBy(x => x.CreatedAt)
+           .ThenBy(x => x.Id)
            .ToListAsync();
 
     public async Task AddAsync(int clientId, string toothFdi, string procedure, string tier, int price, string? surface = null)

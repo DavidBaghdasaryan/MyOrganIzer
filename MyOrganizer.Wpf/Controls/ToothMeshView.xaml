@@ -1,0 +1,87 @@
+<UserControl x:Class="MyOrganizer.Wpf.Controls.ToothMeshView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ClipToBounds="True"
+             Focusable="True"
+             SnapsToDevicePixels="False">
+    <Grid Background="#C8CED6">
+        <Viewbox Stretch="Fill">
+            <Viewport3D x:Name="View3D" Width="768" Height="768" IsHitTestVisible="False">
+                <Viewport3D.Camera>
+                    <OrthographicCamera x:Name="OrthoCam"
+                                       Width="1.8"
+                                       NearPlaneDistance="0.05"
+                                       FarPlaneDistance="200"
+                                       LookDirection="0,0,-1"
+                                       UpDirection="0,1,0"
+                                       Position="0,0,4"/>
+                </Viewport3D.Camera>
+                <ModelVisual3D>
+                    <ModelVisual3D.Content>
+                        <Model3DGroup>
+                            <AmbientLight x:Name="AmbLight" Color="#FF88786A"/>
+                            <DirectionalLight x:Name="KeyLight" Color="#FF948672" Direction="-0.45,0.35,-0.82"/>
+                            <DirectionalLight x:Name="FillLight" Color="#FF5C544C" Direction="0.92,0.12,-0.22"/>
+                            <DirectionalLight x:Name="RimLight" Color="#FF524A42" Direction="0.12,0.92,-0.18"/>
+                        </Model3DGroup>
+                    </ModelVisual3D.Content>
+                </ModelVisual3D>
+                <ModelVisual3D x:Name="ToothVisual">
+                    <ModelVisual3D.Content>
+                        <GeometryModel3D x:Name="ToothModel">
+                            <GeometryModel3D.Material>
+                                <MaterialGroup>
+                                    <DiffuseMaterial AmbientColor="#FFFFFF">
+                                        <DiffuseMaterial.Brush>
+                                            <SolidColorBrush Color="#EAE3D6"/>
+                                        </DiffuseMaterial.Brush>
+                                    </DiffuseMaterial>
+                                    <EmissiveMaterial>
+                                        <EmissiveMaterial.Brush>
+                                            <SolidColorBrush Color="#0AF2EBE0"/>
+                                        </EmissiveMaterial.Brush>
+                                    </EmissiveMaterial>
+                                    <SpecularMaterial SpecularPower="72">
+                                        <SpecularMaterial.Brush>
+                                            <SolidColorBrush Color="#14FFF6EE"/>
+                                        </SpecularMaterial.Brush>
+                                    </SpecularMaterial>
+                                </MaterialGroup>
+                            </GeometryModel3D.Material>
+                            <GeometryModel3D.BackMaterial>
+                                <DiffuseMaterial Brush="#C8B8A4"/>
+                            </GeometryModel3D.BackMaterial>
+                        </GeometryModel3D>
+                    </ModelVisual3D.Content>
+                </ModelVisual3D>
+            </Viewport3D>
+        </Viewbox>
+
+        <TextBlock x:Name="ModeCaption" Text="Occlusal view"
+                   HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Margin="10,8,0,0" Foreground="#D92F3A46" FontSize="11"
+                   IsHitTestVisible="False"/>
+
+        <TextBlock x:Name="LabelBuccal" Text="Buccal" HorizontalAlignment="Center" VerticalAlignment="Top"
+                   Margin="0,8,0,0" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
+        <TextBlock x:Name="LabelPalatal" Text="Palatal" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                   Margin="0,0,0,28" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
+        <TextBlock x:Name="LabelDistal" Text="Distal" HorizontalAlignment="Left" VerticalAlignment="Center"
+                   Margin="10,0,0,0" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
+        <TextBlock x:Name="LabelMesial" Text="Mesial" HorizontalAlignment="Right" VerticalAlignment="Center"
+                   Margin="0,0,10,0" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
+
+        <TextBlock x:Name="HintCaption"
+                   Text="Drag to inspect · scroll to zoom · Occlusal View resets"
+                   HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                   Margin="0,0,0,8" Foreground="#C22F3A46" FontSize="11"
+                   IsHitTestVisible="False"/>
+
+        <TextBlock x:Name="MissingOverlay"
+                   Text="Drop the Dundee maxillary first molar (OBJ / STL / ZIP) into Assets/Teeth/Source"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Margin="16" TextWrapping="Wrap" TextAlignment="Center"
+                   Foreground="#F02F3A46" FontSize="13" Visibility="Collapsed"
+                   IsHitTestVisible="False"/>
+    </Grid>
+</UserControl>

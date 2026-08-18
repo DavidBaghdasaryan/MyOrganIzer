@@ -1,4 +1,4 @@
-﻿<Application x:Class="MyOrganizer.Wpf.App"
+<Application x:Class="MyOrganizer.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MyOrganizer.Wpf.MVVM.ViewModels"
@@ -29,6 +29,18 @@
             <DataTemplate DataType="{x:Type vm:DentalChartViewModel}">
                 <dviews:DentalChartView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ToothSummaryContextViewModel}">
+                <dviews:ToothSummaryContextView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SurfaceProcedureContextViewModel}">
+                <dviews:SurfaceProcedureContextView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EndodonticProcedureContextViewModel}">
+                <dviews:EndodonticProcedureContextView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:WholeToothProcedureContextViewModel}">
+                <dviews:WholeToothProcedureContextView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
                 <views:PlaceholderView/>
             </DataTemplate>
@@ -37,6 +49,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TechniciansViewModel}">
                 <tviews:TechniciansView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ToothLabViewModel}">
+                <dviews:ToothLabView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:ApplyProcedureDialogViewModel}">
                 <dlgs:ApplyProcedureDialogView/>

@@ -2,12 +2,16 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using MyOrganizer.Wpf.Controls;
+using MyOrganizer.Wpf.Dental;
 using MyOrganizer.Wpf.MVVM.ViewModels;
 
 namespace MyOrganizer.Wpf.MVVM.Views.DentalChart;
 
 public partial class DentalChartView : UserControl
 {
+    private const double SideBySideWide = 1180;
+    private const double SideBySideMin = 980;
+
     private static readonly string[] UpperFdi =
         ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
 
@@ -31,13 +35,14 @@ public partial class DentalChartView : UserControl
     {
         if (!_built)
         {
-            BuildChart(ChartUpper, UpperFdi, upper: true);
-            BuildChart(ChartLower, LowerFdi, upper: false);
+            BuildChart(ChartUpper, UpperFdi);
+            BuildChart(ChartLower, LowerFdi);
             _built = true;
         }
 
         HookVm(DataContext as DentalChartViewModel);
-        ApplyMarks();
+        ApplyCurrentStates();
+        ArrangeInspector(ActualWidth);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) => UnhookVm();
@@ -46,7 +51,35 @@ public partial class DentalChartView : UserControl
     {
         HookVm(e.NewValue as DentalChartViewModel);
         if (_built)
-            ApplyMarks();
+            ApplyCurrentStates();
+    }
+
+    private void OnChartSizeChanged(object sender, SizeChangedEventArgs e) =>
+        ArrangeInspector(e.NewSize.Width);
+
+    private void ArrangeInspector(double width)
+    {
+        if (InspectorCol is null || InspectorRow is null || InspectorHost is null)
+            return;
+
+        if (width >= SideBySideMin)
+        {
+            InspectorCol.Width = new GridLength(width >= SideBySideWide ? 268 : 220);
+            InspectorRow.Height = new GridLength(0);
+            Grid.SetRow(InspectorHost, 1);
+            Grid.SetColumn(InspectorHost, 1);
+            InspectorHost.Margin = new Thickness(0);
+            InspectorHost.MinHeight = 0;
+        }
+        else
+        {
+            InspectorCol.Width = new GridLength(0);
+            InspectorRow.Height = GridLength.Auto;
+            Grid.SetRow(InspectorHost, 2);
+            Grid.SetColumn(InspectorHost, 0);
+            InspectorHost.Margin = new Thickness(0, 10, 0, 0);
+            InspectorHost.MinHeight = 168;
+        }
     }
 
     private void HookVm(DentalChartViewModel? vm)
@@ -69,34 +102,32 @@ public partial class DentalChartView : UserControl
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DentalChartViewModel.Marks) or nameof(DentalChartViewModel.IsBusy))
-            ApplyMarks();
+        if (e.PropertyName is nameof(DentalChartViewModel.CurrentStates)
+            or nameof(DentalChartViewModel.Marks)
+            or nameof(DentalChartViewModel.IsBusy))
+            ApplyCurrentStates();
     }
 
-    private void BuildChart(Grid host, IReadOnlyList<string> fdis, bool upper)
+    private void BuildChart(Grid host, IReadOnlyList<string> fdis)
     {
         host.Children.Clear();
         host.ColumnDefinitions.Clear();
 
         for (var i = 0; i < 8; i++)
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
-        for (var i = 0; i < 8; i++)
-            host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            host.ColumnDefinitions.Add(Star(fdis[i]));
+        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        for (var i = 8; i < fdis.Count; i++)
+            host.ColumnDefinitions.Add(Star(fdis[i]));
 
         for (var i = 0; i < fdis.Count; i++)
         {
-            var lift = ArchLift(i);
             var tooth = new ToothControl
             {
                 ToothNumber = fdis[i],
-                Margin = upper
-                    ? new Thickness(4, 2, 4, lift)
-                    : new Thickness(4, lift, 4, 2),
-                VerticalAlignment = VerticalAlignment.Stretch,
+                Margin = new Thickness(1, 2, 1, 2),
+                VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            tooth.SurfaceClicked += Tooth_SurfaceClicked;
             tooth.ToothClicked += Tooth_Clicked;
             tooth.ContextMenuOpening += Tooth_ContextMenu;
             tooth.ContextMenu = null;
@@ -106,38 +137,44 @@ public partial class DentalChartView : UserControl
         }
     }
 
-    private static double ArchLift(int index)
+    private static ColumnDefinition Star(string fdi) =>
+        new() { Width = new GridLength(ToothFdi.ColumnWeight(fdi), GridUnitType.Star) };
+
+    private void FocusTooth(ToothControl current)
     {
-        var fromEnd = Math.Min(index, 15 - index);
-        return fromEnd switch
+        _activeTooth = current;
+        foreach (var tooth in _teeth.Values)
         {
-            0 => 6,
-            1 => 4,
-            2 => 2,
-            _ => 0
-        };
+            if (ReferenceEquals(tooth, current))
+                continue;
+            tooth.ClearSurfaceSelection();
+            tooth.IsToothSelected = false;
+        }
     }
 
-    private void Tooth_SurfaceClicked(object? sender, ToothSurfaceEventArgs e)
+    private IReadOnlyList<ToothSurfaceType> InspectorSurfaces() =>
+        _vm?.InspectorSurfaces.ToList() ?? [];
+
+    private void SyncInspector(ToothControl tooth)
     {
-        if (sender is ToothControl tooth)
-            _activeTooth = tooth;
-        _vm?.UpdateSelection(e.ToothNumber, e.SelectedSurfaces, e.WholeTooth);
+        var surfaces = InspectorSurfaces();
+        _vm?.UpdateSelection(tooth.ToothNumber, surfaces, surfaces.Count == 0);
     }
 
     private void Tooth_Clicked(object? sender, ToothSurfaceEventArgs e)
     {
-        if (sender is ToothControl current && e.WholeTooth)
+        if (sender is not ToothControl current)
+            return;
+
+        FocusTooth(current);
+        if (!current.IsToothSelected)
         {
-            _activeTooth = current;
-            foreach (var tooth in _teeth.Values)
-            {
-                if (!ReferenceEquals(tooth, current))
-                    tooth.IsToothSelected = false;
-            }
+            _activeTooth = null;
+            _vm?.ClearSelectionStatus();
+            return;
         }
 
-        _vm?.UpdateSelection(e.ToothNumber, e.SelectedSurfaces, e.WholeTooth);
+        _vm?.UpdateSelection(e.ToothNumber, [], wholeTooth: true);
     }
 
     private void Tooth_ContextMenu(object sender, ContextMenuEventArgs e)
@@ -146,9 +183,9 @@ public partial class DentalChartView : UserControl
         if (sender is not ToothControl tooth)
             return;
 
-        _activeTooth = tooth;
-        var wholeTooth = !tooth.HasSurfaceSelection;
-        _vm?.UpdateSelection(tooth.ToothNumber, tooth.SelectedSurfaces.ToList(), wholeTooth);
+        tooth.IsToothSelected = true;
+        FocusTooth(tooth);
+        SyncInspector(tooth);
         _ = OpenApplyDialogAsync(tooth);
     }
 
@@ -164,24 +201,22 @@ public partial class DentalChartView : UserControl
         if (_vm is null)
             return;
 
-        var surfaces = tooth.SelectedSurfaces.ToList();
+        var surfaces = InspectorSurfaces();
         var applied = await _vm.OpenApplyDialogAsync(tooth.ToothNumber, surfaces, surfaces.Count == 0);
         if (!applied)
             return;
 
-        tooth.ClearSurfaceSelection();
-        tooth.IsToothSelected = false;
-        _vm.ClearSelectionStatus();
+        SyncInspector(tooth);
     }
 
     private async void ClearSurfaces_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm is null || _activeTooth is null || !_activeTooth.HasSurfaceSelection)
+        if (_vm is null || _activeTooth is null || !_vm.HasSurfaceSelection)
             return;
-        var names = _activeTooth.SelectedSurfaces.Select(s => s.ToString()).ToList();
+        var names = _vm.InspectorSurfaces.Select(s => s.ToString()).ToList();
         await _vm.ClearSurfacesAsync(_activeTooth.ToothNumber, names);
-        _activeTooth.ClearSurfaceSelection();
-        _vm.ClearSelectionStatus();
+        _activeTooth.IsToothSelected = true;
+        _vm.UpdateSelection(_activeTooth.ToothNumber, [], wholeTooth: true);
     }
 
     private async void ClearTooth_Click(object sender, RoutedEventArgs e)
@@ -189,22 +224,16 @@ public partial class DentalChartView : UserControl
         if (_vm is null || _activeTooth is null)
             return;
         await _vm.ClearToothAsync(_activeTooth.ToothNumber);
-        _activeTooth.ClearSurfaceSelection();
-        _activeTooth.IsToothSelected = false;
-        _vm.ClearSelectionStatus();
+        _activeTooth.IsToothSelected = true;
+        SyncInspector(_activeTooth);
     }
 
-    private void ApplyMarks()
+    private void ApplyCurrentStates()
     {
         if (_vm is null || !_built)
             return;
 
         foreach (var (fdi, tooth) in _teeth)
-        {
-            if (_vm.Marks.TryGetValue(fdi, out var marks))
-                tooth.SetMarks(marks);
-            else
-                tooth.SetMarks([]);
-        }
+            tooth.SetCurrentState(ToothCurrentStateCalculator.ForTooth(fdi, _vm.CurrentStates));
     }
 }

@@ -1,4 +1,4 @@
-﻿<Window x:Class="MyOrganizer.Wpf.MVVM.UI.EditClientWindow"
+<Window x:Class="MyOrganizer.Wpf.MVVM.UI.EditClientWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:dialogs="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Dialogs"

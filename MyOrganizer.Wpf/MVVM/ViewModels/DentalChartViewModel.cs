@@ -1,9 +1,11 @@
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.EntityFrameworkCore;
 using MyOrganizer.Wpf.Controls;
 using MyOrganizer.Wpf.Data;
+using MyOrganizer.Wpf.Dental;
 using MyOrganizer.Wpf.Entities;
 using MyOrganizer.Wpf.Extensions;
 using MyOrganizer.Wpf.MVVM.Infrastructure;
@@ -18,6 +20,7 @@ public sealed class DentalChartViewModel : ObservableObject
     private readonly AppDbContext _db;
     private readonly IDialogService _dialogs;
     private readonly Dictionary<string, int[]> _priceTable = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _procedureIdByName = new(StringComparer.Ordinal);
     private List<string> _procedures = [];
     private bool _isBusy;
     private string? _error;
@@ -25,6 +28,9 @@ public sealed class DentalChartViewModel : ObservableObject
     private string _selectedSurfaces = "";
     private bool _hasSelection;
     private string? _statusMessage;
+    private string _selectedVisualType = "";
+    private string? _selectedProcedureName;
+    private ProcedureContextViewModel _currentProcedureContext = new ToothSummaryContextViewModel();
     private DispatcherTimer? _statusTimer;
 
     public DentalChartViewModel(IToothWorkRepository repo, AppDbContext db, IDialogService dialogs)
@@ -33,6 +39,9 @@ public sealed class DentalChartViewModel : ObservableObject
         _db = db;
         _dialogs = dialogs;
         RetryCommand = new AsyncRelayCommand(() => InitializeAsync(ClientId));
+        LegendItems = ToothClinicalVisual.Legend
+            .Select(style => new ToothLegendItem(style.Fill, style.LocKey))
+            .ToList();
         ClearSelectionStatus();
     }
 
@@ -41,7 +50,23 @@ public sealed class DentalChartViewModel : ObservableObject
     public IReadOnlyDictionary<string, List<ToothMark>> Marks { get; private set; } =
         new Dictionary<string, List<ToothMark>>(StringComparer.Ordinal);
 
+    public IReadOnlyDictionary<string, ToothCurrentState> CurrentStates { get; private set; } =
+        new Dictionary<string, ToothCurrentState>(StringComparer.Ordinal);
+
+    public ObservableCollection<ToothConditionItem> Conditions { get; } = [];
+    public ObservableCollection<ToothCurrentStateLine> CurrentStateLines { get; } = [];
+    public IReadOnlyList<ToothLegendItem> LegendItems { get; }
+
     public ICommand RetryCommand { get; }
+
+    public string SelectedVisualType
+    {
+        get => _selectedVisualType;
+        private set => SetProperty(ref _selectedVisualType, value);
+    }
+
+    public bool HasConditions => Conditions.Count > 0;
+    public bool HasCurrentState => CurrentStateLines.Count > 0;
 
     public bool IsBusy
     {
@@ -81,6 +106,32 @@ public sealed class DentalChartViewModel : ObservableObject
 
     public bool HasSurfaceSelection { get; private set; }
 
+    public IReadOnlyList<ToothSurfaceType> InspectorSurfaces { get; private set; } = [];
+
+    public string? SelectedProcedureName
+    {
+        get => _selectedProcedureName;
+        set
+        {
+            if (!SetProperty(ref _selectedProcedureName, value))
+                return;
+            RebuildProcedureContext();
+        }
+    }
+
+    public ProcedureContextViewModel CurrentProcedureContext
+    {
+        get => _currentProcedureContext;
+        private set
+        {
+            if (!SetProperty(ref _currentProcedureContext, value))
+                return;
+            OnPropertyChanged(nameof(HasInlineApplyContext));
+        }
+    }
+
+    public bool HasInlineApplyContext => CurrentProcedureContext is ProcedureApplyContextViewModel;
+
     public string? StatusMessage
     {
         get => _statusMessage;
@@ -119,19 +170,23 @@ public sealed class DentalChartViewModel : ObservableObject
 
     public void UpdateSelection(string toothNumber, IReadOnlyList<ToothSurfaceType> surfaces, bool wholeTooth)
     {
+        var toothChanged = !string.Equals(SelectedTooth, toothNumber, StringComparison.Ordinal);
         HasSelection = true;
         HasSurfaceSelection = !wholeTooth && surfaces.Count > 0;
         OnPropertyChanged(nameof(HasSurfaceSelection));
         SelectedTooth = toothNumber;
-        if (wholeTooth || surfaces.Count == 0)
-        {
-            SelectedSurfaces = "WholeTooth".T();
-            return;
-        }
+        SelectedVisualType = ToothFdi.VisualLocKey(toothNumber).T();
+        InspectorSurfaces = wholeTooth || surfaces.Count == 0 ? [] : surfaces.ToList();
+        RebuildConditions(toothNumber);
+        SelectedSurfaces = InspectorSurfaces.Count == 0
+            ? "WholeTooth".T()
+            : string.Join("  ·  ",
+                InspectorSurfaces.Select(s => ToothControl.SurfaceDisplayName(s, toothNumber).T()));
 
-        var kind = ToothFdi.Kind(toothNumber);
-        SelectedSurfaces = string.Join("  ·  ",
-            surfaces.Select(s => ToothControl.SurfaceDisplayName(s, kind).T()));
+        if (toothChanged)
+            RebuildProcedureContext();
+        else if (CurrentProcedureContext is SurfaceProcedureContextViewModel surface)
+            surface.NotifySurfacesDisplay(SelectedSurfaces);
     }
 
     public void ClearSelectionStatus()
@@ -140,7 +195,16 @@ public sealed class DentalChartViewModel : ObservableObject
         HasSurfaceSelection = false;
         OnPropertyChanged(nameof(HasSurfaceSelection));
         SelectedTooth = "";
+        SelectedVisualType = "";
         SelectedSurfaces = "";
+        InspectorSurfaces = [];
+        _selectedProcedureName = null;
+        OnPropertyChanged(nameof(SelectedProcedureName));
+        CurrentProcedureContext = new ToothSummaryContextViewModel();
+        Conditions.Clear();
+        CurrentStateLines.Clear();
+        OnPropertyChanged(nameof(HasConditions));
+        OnPropertyChanged(nameof(HasCurrentState));
     }
 
     public async Task<bool> OpenApplyDialogAsync(
@@ -177,6 +241,66 @@ public sealed class DentalChartViewModel : ObservableObject
             StatusMessage = null;
         };
         _statusTimer.Start();
+    }
+
+    private void RebuildProcedureContext()
+    {
+        if (!HasSelection || string.IsNullOrEmpty(SelectedTooth))
+        {
+            CurrentProcedureContext = new ToothSummaryContextViewModel();
+            return;
+        }
+
+        var scope = ProcedureScopeMap.Resolve(SelectedProcedureName, _procedureIdByName);
+        InspectorSurfaces = [];
+        HasSurfaceSelection = false;
+        SelectedSurfaces = "WholeTooth".T();
+        OnPropertyChanged(nameof(HasSurfaceSelection));
+
+        var procedure = SelectedProcedureName ?? "";
+        var prices = PricesFor(procedure);
+        CurrentProcedureContext = scope switch
+        {
+            DentalProcedureScope.Surface => new SurfaceProcedureContextViewModel(
+                SelectedTooth,
+                procedure,
+                prices,
+                SelectedSurfaces,
+                OnContextSurfacesChanged,
+                tier => ApplyFromContextAsync(InspectorSurfaces, tier),
+                CancelProcedureSelection),
+            DentalProcedureScope.Endodontic => new EndodonticProcedureContextViewModel(
+                SelectedTooth,
+                procedure,
+                prices,
+                tier => ApplyFromContextAsync([], tier),
+                CancelProcedureSelection),
+            DentalProcedureScope.WholeTooth => new WholeToothProcedureContextViewModel(
+                SelectedTooth,
+                procedure,
+                prices,
+                tier => ApplyFromContextAsync([], tier),
+                CancelProcedureSelection),
+            _ => new ToothSummaryContextViewModel(
+                string.IsNullOrWhiteSpace(SelectedProcedureName) ? null : SelectedProcedureName)
+        };
+    }
+
+    private void OnContextSurfacesChanged(IReadOnlyList<ToothSurfaceType> surfaces, bool wholeTooth)
+    {
+        if (string.IsNullOrEmpty(SelectedTooth))
+            return;
+        UpdateSelection(SelectedTooth, surfaces, wholeTooth);
+    }
+
+    private void CancelProcedureSelection() => SelectedProcedureName = null;
+
+    private async Task ApplyFromContextAsync(IReadOnlyList<ToothSurfaceType> surfaces, PriceTierOption tier)
+    {
+        if (string.IsNullOrWhiteSpace(SelectedProcedureName) || string.IsNullOrEmpty(SelectedTooth))
+            return;
+        await ApplyProcedureAsync(SelectedTooth, SelectedProcedureName, tier.Code, tier.Price, surfaces);
+        ShowStatus("ProcedureApplied".T());
     }
 
     public async Task ApplyProcedureAsync(string toothNumber, string procedure, string tier, int price,
@@ -219,7 +343,9 @@ public sealed class DentalChartViewModel : ObservableObject
         if (ClientId <= 0)
         {
             Marks = new Dictionary<string, List<ToothMark>>(StringComparer.Ordinal);
+            CurrentStates = new Dictionary<string, ToothCurrentState>(StringComparer.Ordinal);
             OnPropertyChanged(nameof(Marks));
+            OnPropertyChanged(nameof(CurrentStates));
             return;
         }
 
@@ -229,27 +355,82 @@ public sealed class DentalChartViewModel : ObservableObject
             map[group.Key] = group.Select(ToMark).ToList();
 
         Marks = map;
+        CurrentStates = ToothCurrentStateCalculator.FromHistory(works, _procedureIdByName);
         OnPropertyChanged(nameof(Marks));
+        OnPropertyChanged(nameof(CurrentStates));
+        if (HasSelection && !string.IsNullOrEmpty(SelectedTooth))
+            RebuildConditions(SelectedTooth);
     }
 
-    private ToothMark ToMark(ToothWork work) => new()
+    private void RebuildConditions(string toothNumber)
     {
-        Surface = Enum.TryParse<ToothSurfaceType>(work.Surface, ignoreCase: true, out var surface) ? surface : null,
-        Procedure = work.ProcedureName,
-        Code = ProcShort.TryGetValue(work.ProcedureName, out var code)
-            ? code
-            : work.ProcedureName[..Math.Min(2, work.ProcedureName.Length)].ToUpperInvariant(),
-        Brush = ProcBrush.TryGetValue(work.ProcedureName, out var brush) ? brush : Brushes.SlateGray
-    };
+        Conditions.Clear();
+        if (Marks.TryGetValue(toothNumber, out var marks))
+        {
+            foreach (var mark in marks)
+            {
+                var style = ToothClinicalVisual.ForKind(mark.Kind);
+                var kind = style.Kind is ToothClinicalKind.Other or ToothClinicalKind.Healthy
+                    ? mark.Procedure
+                    : style.LocKey.T();
+                var where = mark.Surface is null
+                    ? "WholeTooth".T()
+                    : ToothControl.SurfaceDisplayName(mark.Surface.Value, toothNumber).T();
+                Conditions.Add(new ToothConditionItem(kind, where, mark.Procedure, mark.Brush));
+            }
+        }
+        OnPropertyChanged(nameof(HasConditions));
+        RebuildCurrentStateLines(toothNumber);
+    }
+
+    private void RebuildCurrentStateLines(string toothNumber)
+    {
+        CurrentStateLines.Clear();
+        var state = ToothCurrentStateCalculator.ForTooth(toothNumber, CurrentStates);
+        foreach (var surface in Enum.GetValues<ToothSurfaceType>())
+        {
+            CurrentStateLines.Add(new ToothCurrentStateLine(
+                ToothCurrentStateDisplay.SurfaceName(surface, toothNumber),
+                ToothCurrentStateDisplay.SurfaceValue(state.Surface(surface))));
+        }
+
+        CurrentStateLines.Add(new ToothCurrentStateLine(
+            "ConditionEndo".T(),
+            ToothCurrentStateDisplay.EndodonticValue(state.Endodontic)));
+        CurrentStateLines.Add(new ToothCurrentStateLine(
+            "WholeTooth".T(),
+            ToothCurrentStateDisplay.WholeToothValue(state.WholeTooth)));
+        OnPropertyChanged(nameof(HasCurrentState));
+    }
+
+    private ToothMark ToMark(ToothWork work)
+    {
+        var kind = ProcedureVisualMap.Resolve(work.ProcedureName, _procedureIdByName);
+        var style = ToothClinicalVisual.ForKind(kind);
+        return new ToothMark
+        {
+            Surface = Enum.TryParse<ToothSurfaceType>(work.Surface, ignoreCase: true, out var surface) ? surface : null,
+            Procedure = work.ProcedureName,
+            Kind = kind,
+            Code = ToothClinicalVisual.CodeFor(kind),
+            Brush = style.Fill
+        };
+    }
 
     private async Task LoadProceduresAsync()
     {
-        var names = await _db.Procedures
+        var rows = await _db.Procedures
             .AsNoTracking()
             .Where(p => p.IsActive)
             .OrderBy(p => p.Id)
-            .Select(p => p.Name)
+            .Select(p => new { p.Id, p.Name })
             .ToListAsync();
+
+        _procedureIdByName.Clear();
+        foreach (var row in rows)
+            _procedureIdByName[row.Name] = row.Id;
+
+        var names = rows.Select(r => r.Name).ToList();
         _procedures = names.Count > 0 ? names : [.. FallbackProcedures];
         OnPropertyChanged(nameof(Procedures));
     }
@@ -290,39 +471,46 @@ public sealed class DentalChartViewModel : ObservableObject
         "Work Shift / Appointment Slot",
         "Endodontic Treatment (Root Canal)"
     ];
+}
 
-    private static readonly Dictionary<string, string> ProcShort = new(StringComparer.Ordinal)
+public sealed class ToothConditionItem
+{
+    public ToothConditionItem(string kind, string location, string procedure, Brush marker)
     {
-        ["Removable Partial Denture (Metal Framework)"] = "BY",
-        ["Full Denture"] = "PR",
-        ["Implant with Zirconia Crown"] = "IZ",
-        ["Implant with Metal-Ceramic Crown"] = "IM",
-        ["Zirconia or E-max Crown"] = "ZR",
-        ["Metal-Ceramic Crown"] = "MK",
-        ["Composite or Inlay Restoration"] = "RS",
-        ["Filling (Composite / Amalgam)"] = "PL",
-        ["Work Shift / Appointment Slot"] = "SH",
-        ["Endodontic Treatment (Root Canal)"] = "EN"
-    };
-
-    private static readonly Dictionary<string, Brush> ProcBrush = new(StringComparer.Ordinal)
-    {
-        ["Removable Partial Denture (Metal Framework)"] = Brush(0x39, 0x8E, 0xB5),
-        ["Full Denture"] = Brush(0x6A, 0x1B, 0x9A),
-        ["Implant with Zirconia Crown"] = Brush(0x00, 0x8B, 0x8B),
-        ["Implant with Metal-Ceramic Crown"] = Brush(0x00, 0x64, 0x95),
-        ["Zirconia or E-max Crown"] = Brush(0x2E, 0x7D, 0x32),
-        ["Metal-Ceramic Crown"] = Brush(0xF9, 0xA8, 0x25),
-        ["Composite or Inlay Restoration"] = Brush(0xEF, 0x6C, 0x00),
-        ["Filling (Composite / Amalgam)"] = Brush(0xD8, 0x3F, 0x31),
-        ["Work Shift / Appointment Slot"] = Brush(0x45, 0x55, 0x57),
-        ["Endodontic Treatment (Root Canal)"] = Brush(0x15, 0x75, 0x9A),
-    };
-
-    private static SolidColorBrush Brush(byte r, byte g, byte b)
-    {
-        var brush = new SolidColorBrush(Color.FromRgb(r, g, b));
-        brush.Freeze();
-        return brush;
+        Kind = kind;
+        Location = location;
+        Procedure = procedure;
+        Marker = marker;
     }
+
+    public string Kind { get; }
+    public string Location { get; }
+    public string Procedure { get; }
+    public Brush Marker { get; }
+}
+
+public sealed class ToothCurrentStateLine
+{
+    public ToothCurrentStateLine(string label, string value)
+    {
+        Label = label;
+        Value = value;
+    }
+
+    public string Label { get; }
+    public string Value { get; }
+}
+
+public sealed class ToothLegendItem
+{
+    private readonly string _locKey;
+
+    public ToothLegendItem(Brush marker, string locKey)
+    {
+        Marker = marker;
+        _locKey = locKey;
+    }
+
+    public Brush Marker { get; }
+    public string Name => _locKey.T();
 }

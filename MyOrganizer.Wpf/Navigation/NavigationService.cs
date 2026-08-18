@@ -84,6 +84,7 @@ public sealed class NavigationService : INavigationService
         AppSection.Clients => _services.GetRequiredService<ClientsViewModel>(),
         AppSection.Procedures => _services.GetRequiredService<ProceduresViewModel>(),
         AppSection.Technicians => _services.GetRequiredService<TechniciansViewModel>(),
+        AppSection.ToothLab => _services.GetRequiredService<ToothLabViewModel>(),
         _ => new PlaceholderViewModel(section, _legacy)
     };
 

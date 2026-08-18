@@ -115,6 +115,11 @@
     <Resource Include="Assets\Teeth\premolar.png">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>
+    <Resource Include="Assets\ThirdParty\ZoliQua\16.svg" />
+    <Resource Include="Assets\ThirdParty\ZoliQua\16_occl.svg" />
+    <Resource Include="Assets\ThirdParty\ZoliQua\LICENSE" />
+    <Resource Include="Assets\ThirdParty\Wikimedia\Zahn_20230620_001.stl" />
+    <Resource Include="Assets\Teeth\Source\FDI16_High.obj" />
   </ItemGroup>
 
   <ItemGroup>

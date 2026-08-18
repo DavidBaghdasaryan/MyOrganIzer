@@ -1,0 +1,59 @@
+<UserControl x:Class="MyOrganizer.Wpf.Controls.ToothSurfaceSelector"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="168"
+             SnapsToDevicePixels="True"
+             UseLayoutRounding="True">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock x:Name="LabelBuccal"
+                   Grid.Column="1"
+                   HorizontalAlignment="Center"
+                   FontFamily="Segoe UI"
+                   FontWeight="SemiBold"
+                   FontSize="11"
+                   Foreground="#163A5F"
+                   Margin="0,0,0,2"/>
+
+        <TextBlock x:Name="LabelMesial"
+                   Grid.Row="1"
+                   VerticalAlignment="Center"
+                   FontFamily="Segoe UI"
+                   FontWeight="SemiBold"
+                   FontSize="11"
+                   Foreground="#163A5F"
+                   Margin="0,0,6,0"/>
+
+        <Viewbox Grid.Row="1" Grid.Column="1" Stretch="Uniform" MaxHeight="168">
+            <Canvas x:Name="PartCanvas" Width="100" Height="100"/>
+        </Viewbox>
+
+        <TextBlock x:Name="LabelDistal"
+                   Grid.Row="1" Grid.Column="2"
+                   VerticalAlignment="Center"
+                   FontFamily="Segoe UI"
+                   FontWeight="SemiBold"
+                   FontSize="11"
+                   Foreground="#163A5F"
+                   Margin="6,0,0,0"/>
+
+        <TextBlock x:Name="LabelLingual"
+                   Grid.Row="2" Grid.Column="1"
+                   HorizontalAlignment="Center"
+                   FontFamily="Segoe UI"
+                   FontWeight="SemiBold"
+                   FontSize="11"
+                   Foreground="#163A5F"
+                   Margin="0,2,0,0"/>
+    </Grid>
+</UserControl>

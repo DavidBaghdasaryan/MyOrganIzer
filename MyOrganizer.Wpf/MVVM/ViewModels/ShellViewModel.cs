@@ -38,6 +38,7 @@ public sealed class ShellViewModel : ObservableObject
             new NavItemViewModel(AppSection.Clients, "Clients", "\uE716"),
             new NavItemViewModel(AppSection.Procedures, "Procedures", "\uE8F1"),
             new NavItemViewModel(AppSection.Technicians, "Technicians", "\uE77B"),
+            new NavItemViewModel(AppSection.ToothLab, "ToothLab", "\uE9F9"),
             new NavItemViewModel(AppSection.Settings, "Settings", "\uE713")
         ];
 
@@ -194,6 +195,7 @@ public sealed class ShellViewModel : ObservableObject
         AppSection.Clients => "Clients",
         AppSection.Procedures => "Procedures",
         AppSection.Technicians => "Technicians",
+        AppSection.ToothLab => "ToothLab",
         AppSection.Settings => "Settings",
         _ => "Dashboard"
     };

@@ -89,6 +89,7 @@ public partial class App : Application
                 services.AddTransient<DentalChartViewModel>();
                 services.AddScoped<ProceduresViewModel>();
                 services.AddScoped<TechniciansViewModel>();
+                services.AddTransient<ToothLabViewModel>();
 
                 services.AddTransient<IReminderService, ReminderService>();
                 services.AddTransient<IToothWorkRepository, ToothWorkRepository>();

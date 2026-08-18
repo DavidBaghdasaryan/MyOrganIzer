@@ -3,40 +3,46 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
              UseLayoutRounding="True"
-             SnapsToDevicePixels="True">
+             SnapsToDevicePixels="True"
+             SizeChanged="OnChartSizeChanged">
     <Grid>
-        <Grid Visibility="{Binding HasError, Converter={StaticResource InverseBoolToVis}}">
+        <Grid x:Name="WorkspaceGrid" Visibility="{Binding HasError, Converter={StaticResource InverseBoolToVis}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition x:Name="InspectorRow" Height="0"/>
             </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="InspectorCol" Width="268"/>
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Text="{loc:Loc ToothChartHint}"
+            <TextBlock Grid.ColumnSpan="2"
+                       Text="{loc:Loc ToothChartHint}"
                        Style="{StaticResource Caption}"
                        Opacity="0.85"
-                       Margin="0,0,0,8"
+                       Margin="0,0,0,6"
                        TextWrapping="Wrap"/>
 
-            <Grid Grid.Row="1" Margin="0,0,0,8">
+            <Grid Grid.Row="1" Margin="0,0,10,0" VerticalAlignment="Top">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="{loc:Loc UpperArch}"
                            Style="{StaticResource Caption}"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource Brush.TextPrimary}"
-                           Margin="4,0,0,4"/>
+                           Margin="4,0,0,2"/>
                 <Border Grid.Row="1"
                         Background="{StaticResource Brush.Surface}"
                         BorderBrush="{StaticResource Brush.Border}"
                         BorderThickness="1"
-                        CornerRadius="12"
-                        Padding="14,8"
+                        CornerRadius="10"
+                        Padding="8,4"
                         ClipToBounds="False">
                     <Grid x:Name="ChartUpper" ClipToBounds="False"/>
                 </Border>
@@ -46,75 +52,179 @@
                            Style="{StaticResource Caption}"
                            FontWeight="SemiBold"
                            Foreground="{StaticResource Brush.TextPrimary}"
-                           Margin="4,10,0,4"/>
+                           Margin="4,8,0,2"/>
                 <Border Grid.Row="3"
                         Background="{StaticResource Brush.Surface}"
                         BorderBrush="{StaticResource Brush.Border}"
                         BorderThickness="1"
-                        CornerRadius="12"
-                        Padding="14,8"
+                        CornerRadius="10"
+                        Padding="8,4"
                         ClipToBounds="False">
                     <Grid x:Name="ChartLower" ClipToBounds="False"/>
                 </Border>
             </Grid>
 
-            <Border Grid.Row="2"
+            <Border x:Name="InspectorHost"
+                    Grid.Row="1"
+                    Grid.Column="1"
                     Background="{StaticResource Brush.SurfaceSecondary}"
                     BorderBrush="{StaticResource Brush.Border}"
                     BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="14,10">
+                    CornerRadius="12"
+                    Padding="14,12"
+                    MinWidth="200">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                    <TextBlock Text="{loc:Loc NoSurfaceSelected}"
-                               Style="{StaticResource Body}"
-                               VerticalAlignment="Center"
-                               Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVis}}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock Text="{loc:Loc NoSurfaceSelected}"
+                                       Style="{StaticResource Body}"
+                                       TextWrapping="Wrap"
+                                       Opacity="0.85"
+                                       Visibility="{Binding HasSelection, Converter={StaticResource InverseBoolToVis}}"/>
 
-                    <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}"
-                                VerticalAlignment="Center">
-                        <TextBlock Text="{loc:Loc SelectedTooth}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding SelectedTooth}"
-                                   FontSize="20"
-                                   FontWeight="SemiBold"
-                                   Foreground="{StaticResource Brush.TextPrimary}"
-                                   Margin="0,1,0,4"/>
-                        <TextBlock Text="{loc:Loc SelectedSurfaces}" Style="{StaticResource Caption}"/>
-                        <TextBlock Text="{Binding SelectedSurfaces}"
-                                   Style="{StaticResource Body}"
-                                   Margin="0,1,0,0"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="{loc:Loc ClearSelectedSurfaces}"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Height="28" Padding="10,2" FontSize="12"
-                                    Visibility="{Binding HasSurfaceSelection, Converter={StaticResource BoolToVis}}"
-                                    Click="ClearSurfaces_Click"/>
-                            <Button Content="{loc:Loc ClearTooth}"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Height="28" Padding="10,2" FontSize="12"
-                                    Margin="8,0,0,0"
-                                    Click="ClearTooth_Click"/>
+                            <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{loc:Loc SelectedTooth}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedTooth}"
+                                           FontSize="28"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource Brush.TextPrimary}"
+                                           Margin="0,0,0,2"/>
+                                <TextBlock Text="{Binding SelectedVisualType}"
+                                           Style="{StaticResource Body}"
+                                           Opacity="0.9"
+                                           Margin="0,0,0,10"/>
+
+                                <TextBlock Text="{loc:Loc Procedures}" Style="{StaticResource Caption}"/>
+                                <ComboBox Style="{StaticResource ModernComboBox}"
+                                          Margin="0,4,0,12"
+                                          ItemsSource="{Binding Procedures}"
+                                          SelectedItem="{Binding SelectedProcedureName}"
+                                          MaxDropDownHeight="220"/>
+
+                                <ContentControl Content="{Binding CurrentProcedureContext}"
+                                                Margin="0,0,0,12"/>
+
+                                <TextBlock Text="{loc:Loc CurrentToothState}" Style="{StaticResource Caption}"/>
+                                <ItemsControl ItemsSource="{Binding CurrentStateLines}"
+                                              Margin="0,6,0,12"
+                                              Visibility="{Binding HasCurrentState, Converter={StaticResource BoolToVis}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Label}"
+                                                           Style="{StaticResource Caption}"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding Value}"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{StaticResource Brush.TextPrimary}"
+                                                           Margin="8,0,0,0"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <TextBlock Text="{loc:Loc TreatmentHistory}" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{loc:Loc NoConditionsYet}"
+                                           Style="{StaticResource Body}"
+                                           Opacity="0.75"
+                                           Margin="0,4,0,0"
+                                           TextWrapping="Wrap"
+                                           Visibility="{Binding HasConditions, Converter={StaticResource InverseBoolToVis}}"/>
+
+                                <ItemsControl ItemsSource="{Binding Conditions}"
+                                              Margin="0,6,0,0"
+                                              Visibility="{Binding HasConditions, Converter={StaticResource BoolToVis}}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Ellipse Width="9" Height="9"
+                                                         Fill="{Binding Marker}"
+                                                         VerticalAlignment="Top"
+                                                         Margin="0,4,8,0"/>
+                                                <StackPanel Grid.Column="1">
+                                                    <TextBlock Text="{Binding Kind}"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{StaticResource Brush.TextPrimary}"
+                                                               TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding Location}"
+                                                               Style="{StaticResource Caption}"
+                                                               Margin="0,1,0,0"/>
+                                                    <TextBlock Text="{Binding Procedure}"
+                                                               Style="{StaticResource Caption}"
+                                                               Opacity="0.8"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Button Content="{loc:Loc ClearSelectedSurfaces}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Height="28" Padding="10,2" FontSize="12"
+                                            Visibility="{Binding HasSurfaceSelection, Converter={StaticResource BoolToVis}}"
+                                            Click="ClearSurfaces_Click"/>
+                                    <Button Content="{loc:Loc ClearTooth}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Height="28" Padding="10,2" FontSize="12"
+                                            Margin="8,0,0,0"
+                                            Click="ClearTooth_Click"/>
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding StatusMessage}"
+                                           Style="{StaticResource Caption}"
+                                           Foreground="{StaticResource Brush.Success}"
+                                           Margin="0,8,0,0"
+                                           Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
                         </StackPanel>
-                        <TextBlock Text="{Binding StatusMessage}"
-                                   Style="{StaticResource Caption}"
-                                   Foreground="{StaticResource Brush.Success}"
-                                   Margin="0,6,0,0"
-                                   Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
-                    </StackPanel>
+                    </ScrollViewer>
 
-                    <Button Grid.Column="1"
-                            Content="{loc:Loc ApplyProcedure}"
-                            Style="{StaticResource ModernButton}"
-                            Height="36"
-                            MinWidth="160"
-                            VerticalAlignment="Center"
-                            Margin="16,0,0,0"
-                            IsEnabled="{Binding HasSelection}"
-                            Click="ApplyProcedure_Click"/>
+                    <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                        <Button Content="{loc:Loc ApplyProcedure}"
+                                Style="{StaticResource ModernButton}"
+                                Height="36"
+                                HorizontalAlignment="Stretch"
+                                IsEnabled="{Binding HasSelection}"
+                                Visibility="{Binding HasInlineApplyContext, Converter={StaticResource InverseBoolToVis}}"
+                                Click="ApplyProcedure_Click"/>
+
+                        <Expander Header="{loc:Loc ChartLegend}"
+                                  Margin="0,10,0,0"
+                                  IsExpanded="False">
+                            <ItemsControl ItemsSource="{Binding LegendItems}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                            <Ellipse Width="8" Height="8"
+                                                     Fill="{Binding Marker}"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Name}"
+                                                       Style="{StaticResource Caption}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>

@@ -6,5 +6,6 @@ public enum AppSection
     Clients,
     Procedures,
     Technicians,
+    ToothLab,
     Settings
 }
