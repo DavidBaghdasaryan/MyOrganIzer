@@ -6,6 +6,6 @@
              UseLayoutRounding="True"
              ClipToBounds="False">
     <Viewbox Stretch="Uniform">
-        <Canvas x:Name="PartCanvas" Width="200" Height="280"/>
+        <Canvas x:Name="PartCanvas" Width="200" Height="200"/>
     </Viewbox>
 </UserControl>

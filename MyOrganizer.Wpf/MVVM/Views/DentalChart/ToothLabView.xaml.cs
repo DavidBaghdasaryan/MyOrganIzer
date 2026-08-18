@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using MyOrganizer.Wpf.Controls;
@@ -26,6 +27,31 @@ public partial class ToothLabView : UserControl
         MeshView.InteractionChanged += OnInteraction;
         BindViewModel(DataContext as ToothLabViewModel);
         ApplySurfaceDebug();
+        // #region agent log
+        if (DataContext is ToothLabViewModel vm)
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"registry-v1\",\"hypothesisId\":\"D\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"lab-loaded\",\"data\":{\"fdi\":\"" +
+                       vm.ToothNumber + "\",\"imported\":" + (vm.ShowInspector ? "true" : "false") +
+                       ",\"meshAsset\":\"" + MeshView.AssetName + "\"},\"timestamp\":" +
+                       DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+            catch { }
+            var paint = ContainsText(this, "2D surface paint");
+            var demo = ContainsText(this, "Demo mixed");
+            var procedure = ContainsText(this, "Procedure");
+            var fillingType = ContainsText(this, "Procedure type: Filling");
+            var a = "{\"sessionId\":\"ee2893\",\"runId\":\"paint-cleanup\",\"hypothesisId\":\"A\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"legacy-ui-absent\",\"data\":{\"paintTitle\":" +
+                    (paint ? "true" : "false") + ",\"demoMixed\":" + (demo ? "true" : "false") +
+                    ",\"interactiveTooth\":" + (FindName("OcclusalTooth") is not null ? "true" : "false") +
+                    ",\"procedureTitle\":" + (procedure ? "true" : "false") +
+                    ",\"fillingType\":" + (fillingType ? "true" : "false") +
+                    ",\"meshAsset\":\"" + MeshView.AssetName +
+                    "\",\"derivedFillingCount\":" + vm.FillingSurfaceNames.Count +
+                    "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", a); }
+            catch { }
+        }
+        // #endregion
     }
 
     private void BindViewModel(ToothLabViewModel? vm)
@@ -33,19 +59,78 @@ public partial class ToothLabView : UserControl
         if (ReferenceEquals(_vm, vm))
         {
             if (_vm is not null && MeshView is not null)
+            {
                 PushClinical(_vm);
+                PushSelection(_vm);
+            }
             return;
         }
         if (_vm is not null)
+        {
             _vm.ClinicalChanged -= OnClinicalChanged;
+            _vm.PendingSelectionChanged -= OnPendingSelectionChanged;
+            _vm.PropertyChanged -= OnVmPropertyChanged;
+        }
         _vm = vm;
         if (_vm is not null)
         {
             _vm.ClinicalChanged += OnClinicalChanged;
+            _vm.PendingSelectionChanged += OnPendingSelectionChanged;
+            _vm.PropertyChanged += OnVmPropertyChanged;
             if (MeshView is not null)
+            {
                 PushClinical(_vm);
+                PushSelection(_vm);
+            }
         }
     }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ToothLabViewModel.ToothNumber)
+            or nameof(ToothLabViewModel.ShowInspector)
+            or null)
+            Dispatcher.BeginInvoke(ApplyToothPresentation, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    private void ApplyToothPresentation()
+    {
+        if (_vm is null || MeshView is null)
+            return;
+        if (_vm.ShowInspector)
+            MeshView.LoadRegisteredAsset(_vm.ToothNumber);
+        LogInspectorState();
+        if (_vm.ShowClinicalTools)
+        {
+            PushClinical(_vm);
+            PushSelection(_vm);
+            ApplySurfaceDebug();
+        }
+        else
+        {
+            MeshView.SetFillingSurfaces([]);
+            MeshView.SetSelectedSurfaces([]);
+            MeshView.SetSurfaceDebug(false, "All");
+        }
+    }
+
+    // #region agent log
+    private void LogInspectorState()
+    {
+        if (_vm is null || MeshView is null)
+            return;
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"registry-v1\",\"hypothesisId\":\"C\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"inspector-visibility\",\"data\":{\"fdi\":\"" +
+                   _vm.ToothNumber + "\",\"showInspector\":" + (_vm.ShowInspector ? "true" : "false") +
+                   ",\"meshAsset\":\"" + MeshView.AssetName +
+                   "\",\"meshVisible\":" + (MeshView.IsVisible ? "true" : "false") +
+                   ",\"clinical\":" + (_vm.ShowClinicalTools ? "true" : "false") +
+                   ",\"inner\":\"" + _vm.InnerCameraLabel + "\"" +
+                   ",\"occlusalVisible\":" + (FindName("OcclusalTooth") is UIElement occlusal && occlusal.IsVisible ? "true" : "false") +
+                   "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
+    }
+    // #endregion
 
     private void OnClinicalChanged(object? sender, EventArgs e)
     {
@@ -53,13 +138,44 @@ public partial class ToothLabView : UserControl
             PushClinical(_vm);
     }
 
-    private void OnInteraction(object? sender, ToothLabHitEventArgs e)
+    private void OnPendingSelectionChanged(object? sender, EventArgs e)
     {
-        _vm?.SetInteraction(e.Hover, e.Selected);
+        if (_vm is not null)
+            PushSelection(_vm);
     }
 
-    private void PushClinical(ToothLabViewModel vm) =>
+    private void OnInteraction(object? sender, ToothLabHitEventArgs e)
+    {
+        _vm?.SetInteraction(e.Hover, e.SelectedSurfaces);
+    }
+
+    private void PushClinical(ToothLabViewModel vm)
+    {
         MeshView.SetFillingSurfaces(vm.FillingSurfaceNames);
+        // #region agent log
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"paint-cleanup\",\"hypothesisId\":\"B\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"filling-from-clinical\",\"data\":{\"fdi\":\"" +
+                   vm.ToothNumber + "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
+                   "\",\"pending\":\"" + string.Join(",", vm.PendingSurfaceNames) +
+                   "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
+        // #endregion
+    }
+
+    private void PushSelection(ToothLabViewModel vm) =>
+        MeshView.SetSelectedSurfaces(vm.PendingSurfaceNames);
+
+    private static bool ContainsText(DependencyObject root, string text)
+    {
+        if (root is TextBlock block && string.Equals(block.Text, text, StringComparison.Ordinal))
+            return true;
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is DependencyObject node && ContainsText(node, text))
+                return true;
+        }
+        return false;
+    }
 
     private void OnOcclusal(object sender, RoutedEventArgs e) => MeshView.ResetToOcclusal();
     private void OnBuccal(object sender, RoutedEventArgs e) => MeshView.ShowBuccal();

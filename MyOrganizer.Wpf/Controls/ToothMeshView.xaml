@@ -53,6 +53,30 @@
                                     <DiffuseMaterial Brush="#E8E4DE"/>
                                 </GeometryModel3D.BackMaterial>
                             </GeometryModel3D>
+                            <GeometryModel3D x:Name="CervicalModel">
+                                <GeometryModel3D.Material>
+                                    <MaterialGroup>
+                                        <DiffuseMaterial AmbientColor="#FFFCF6">
+                                            <DiffuseMaterial.Brush>
+                                                <SolidColorBrush Color="#EDE6D7"/>
+                                            </DiffuseMaterial.Brush>
+                                        </DiffuseMaterial>
+                                        <EmissiveMaterial>
+                                            <EmissiveMaterial.Brush>
+                                                <SolidColorBrush Color="#08EEE6D6"/>
+                                            </EmissiveMaterial.Brush>
+                                        </EmissiveMaterial>
+                                        <SpecularMaterial SpecularPower="64">
+                                            <SpecularMaterial.Brush>
+                                                <SolidColorBrush Color="#12F0E8D8"/>
+                                            </SpecularMaterial.Brush>
+                                        </SpecularMaterial>
+                                    </MaterialGroup>
+                                </GeometryModel3D.Material>
+                                <GeometryModel3D.BackMaterial>
+                                    <DiffuseMaterial Brush="#DED6C8"/>
+                                </GeometryModel3D.BackMaterial>
+                            </GeometryModel3D>
                             <GeometryModel3D x:Name="RootModel">
                                 <GeometryModel3D.Material>
                                     <MaterialGroup>
@@ -102,7 +126,7 @@
                    Margin="0,0,10,0" Foreground="#E62F3A46" FontSize="12" IsHitTestVisible="False"/>
 
         <TextBlock x:Name="HintCaption"
-                   Text="Hover a surface · click to select · drag to inspect"
+                   Text="Hover a surface · click to toggle · drag to inspect"
                    HorizontalAlignment="Center" VerticalAlignment="Bottom"
                    Margin="0,0,0,8" Foreground="#C22F3A46" FontSize="11"
                    IsHitTestVisible="False"/>

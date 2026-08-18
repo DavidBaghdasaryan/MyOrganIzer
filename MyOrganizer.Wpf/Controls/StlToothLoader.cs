@@ -29,6 +29,7 @@ internal sealed class StlMeshStats
     public string SplitSource = "";
     public int CrownTriangles;
     public int RootTriangles;
+    public int CervicalTriangles;
     public int PolypaintColors;
     public int OcclusalRootLeakFixed;
     public double CrownMeanZ;
@@ -39,12 +40,14 @@ internal sealed class ToothMeshParts
 {
     public MeshGeometry3D Crown { get; init; } = new();
     public MeshGeometry3D Root { get; init; } = new();
+    public MeshGeometry3D Cervical { get; init; } = new();
 }
 
 internal sealed class MeshLoadOptions
 {
     public bool MirrorX { get; init; }
     public bool OrientFdi16 { get; init; } = true;
+    public string OrientationProfile { get; init; } = "";
 }
 
 internal static class StlToothLoader
@@ -64,7 +67,9 @@ internal static class StlToothLoader
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
-        if (options.OrientFdi16)
+        if (options.OrientationProfile == "MandibularFirstMolar")
+            ToothMeshOrient.AlignFdi36(welded, stats);
+        else if (options.OrientFdi16)
             ToothMeshOrient.AlignFdi16(welded, stats);
         if (options.MirrorX && stats.RootClusters < 3)
         {
@@ -81,12 +86,18 @@ internal static class StlToothLoader
             ClassifyByCervix(welded, triMat);
             stats.SplitSource = "spatial-cej";
         }
+        else if (options.OrientationProfile == "MandibularFirstMolar" &&
+                 raw.TriWarm.Count == triMat.Count)
+        {
+            SoftenFdi36Cervix(triMat, raw.TriWarm, stats);
+        }
         stats.OcclusalRootLeakFixed = 0;
 
         var parts = SplitByMaterial(welded, triMat);
         stats.CrownTriangles = parts.Crown.TriangleIndices.Count / 3;
         stats.RootTriangles = parts.Root.TriangleIndices.Count / 3;
-        stats.TriangleCount = stats.CrownTriangles + stats.RootTriangles;
+        stats.CervicalTriangles = parts.Cervical.TriangleIndices.Count / 3;
+        stats.TriangleCount = stats.CrownTriangles + stats.RootTriangles + stats.CervicalTriangles;
         stats.CrownMeanZ = MeanZ(parts.Crown);
         stats.RootMeanZ = MeanZ(parts.Root);
         return parts;
@@ -97,6 +108,7 @@ internal static class StlToothLoader
         public List<Point3D> Positions = new();
         public List<int> Indices = new();
         public List<byte> TriMat = new();
+        public List<int> TriWarm = new();
         public string Header = "";
         public string Format = "";
         public int PolypaintColors;
@@ -286,16 +298,53 @@ internal static class StlToothLoader
                 raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[a]);
                 raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[b]);
                 raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[c]);
-                raw.TriMat.Add(painted ? ClassifyPaint(colors[a], colors[b], colors[c]) : (byte)255);
+                var warm = painted
+                    ? (colors[a].R - colors[a].B) + (colors[b].R - colors[b].B) + (colors[c].R - colors[c].B)
+                    : 0;
+                raw.TriWarm.Add(warm);
+                raw.TriMat.Add(painted ? (byte)(warm >= 90 ? 1 : 0) : (byte)255);
             }
         }
         return raw;
     }
 
-    private static byte ClassifyPaint((byte R, byte G, byte B) a, (byte R, byte G, byte B) b, (byte R, byte G, byte B) c)
+    private static void SoftenFdi36Cervix(List<byte> triMat, List<int> triWarm, StlMeshStats stats)
     {
-        var warm = (a.R - a.B) + (b.R - b.B) + (c.R - c.B);
-        return warm >= 90 ? (byte)1 : (byte)0;
+        const int lo = 80;
+        const int hi = 120;
+        var cervical = 0;
+        var fromCrown = 0;
+        var fromRoot = 0;
+        var b60 = 0;
+        var b80 = 0;
+        var b100 = 0;
+        var b120 = 0;
+        for (var t = 0; t < triMat.Count; t++)
+        {
+            var w = triWarm[t];
+            if (w is >= 60 and < 80) b60++;
+            else if (w is >= 80 and < 100) b80++;
+            else if (w is >= 100 and < 120) b100++;
+            else if (w is >= 120 and < 140) b120++;
+            if (w < lo || w >= hi) continue;
+            if (triMat[t] == 1) fromRoot++;
+            else fromCrown++;
+            triMat[t] = 2;
+            cervical++;
+        }
+        stats.SplitSource = "zbrush-mrgb-cervical";
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"cej-v1\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"fdi36-cervical\",\"data\":{" +
+                       "\"profile\":\"MandibularFirstMolar\",\"lo\":" + lo + ",\"hi\":" + hi +
+                       ",\"cervical\":" + cervical + ",\"fromCrown\":" + fromCrown + ",\"fromRoot\":" + fromRoot +
+                       ",\"b60\":" + b60 + ",\"b80\":" + b80 + ",\"b100\":" + b100 + ",\"b120\":" + b120 +
+                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { /* lab logging must not break rendering */ }
+        // #endregion
     }
 
     private static byte ParseHex(char hi, char lo)
@@ -491,12 +540,13 @@ internal static class StlToothLoader
     {
         var crownIdx = new List<int>();
         var rootIdx = new List<int>();
+        var cervicalIdx = new List<int>();
         var idx = src.TriangleIndices;
         for (var t = 0; t < triMat.Count; t++)
         {
             var i = t * 3;
             if (i + 2 >= idx.Count) break;
-            var dest = triMat[t] == 1 ? rootIdx : crownIdx;
+            var dest = triMat[t] == 1 ? rootIdx : triMat[t] == 2 ? cervicalIdx : crownIdx;
             dest.Add(idx[i]);
             dest.Add(idx[i + 1]);
             dest.Add(idx[i + 2]);
@@ -504,7 +554,8 @@ internal static class StlToothLoader
         return new ToothMeshParts
         {
             Crown = Extract(src, crownIdx),
-            Root = Extract(src, rootIdx)
+            Root = Extract(src, rootIdx),
+            Cervical = Extract(src, cervicalIdx)
         };
     }
 

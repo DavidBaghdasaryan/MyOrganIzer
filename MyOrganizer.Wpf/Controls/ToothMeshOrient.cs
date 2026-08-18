@@ -72,6 +72,91 @@ internal static class ToothMeshOrient
         stats.Db = Fmt(dbAfter);
     }
 
+    /// <summary>
+    /// Canonical FDI 36 axes after crown-up:
+    /// +Z occlusal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Uses two mandibular roots (larger = mesial) and taller occlusal cusps as lingual.
+    /// Do not call AlignFdi16 for this mesh.
+    /// </summary>
+    public static void AlignFdi36(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count;
+        var md = new Vector3D(1, 0, 0);
+        if (clusters.Count >= 2)
+        {
+            var cents = clusters.Select(Centroid).ToArray();
+            var mesialI = Area(clusters[0]) >= Area(clusters[1]) ? 0 : 1;
+            var distalI = mesialI == 0 ? 1 : 0;
+            stats.Mb = Fmt(cents[mesialI]);
+            stats.Db = Fmt(cents[distalI]);
+            md = new Vector3D(cents[mesialI].X - cents[distalI].X, cents[mesialI].Y - cents[distalI].Y, 0);
+        }
+        else
+        {
+            var dx = max.X - min.X;
+            var dy = max.Y - min.Y;
+            md = dx >= dy ? new Vector3D(1, 0, 0) : new Vector3D(0, 1, 0);
+        }
+
+        if (md.LengthSquared < 1e-12)
+            return;
+        md.Normalize();
+        var yaw = Math.Atan2(md.Y, md.X);
+        RotateZ(pts, -yaw);
+        stats.YawDeg = -yaw * 180.0 / Math.PI;
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var zCut = max.Z - 0.12 * zSpan;
+        double sumPos = 0, sumNeg = 0;
+        var nPos = 0;
+        var nNeg = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut) continue;
+            if (p.Y >= 0)
+            {
+                sumPos += p.Z;
+                nPos++;
+            }
+            else
+            {
+                sumNeg += p.Z;
+                nNeg++;
+            }
+        }
+        var meanPos = nPos > 0 ? sumPos / nPos : 0;
+        var meanNeg = nNeg > 0 ? sumNeg / nNeg : 0;
+        stats.Palatal = meanNeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                        "/" + meanPos.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        if (meanPos > meanNeg)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+    }
+
     private static int PalatalIndex(Point3D[] c)
     {
         var best = 0;
@@ -209,6 +294,17 @@ internal static class ToothMeshOrient
         {
             var p = pts[i];
             pts[i] = new Point3D(-p.X, p.Y, p.Z);
+        }
+        for (var i = 0; i + 2 < idx.Count; i += 3)
+            (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);
+    }
+
+    private static void MirrorYKeepWinding(Point3DCollection pts, Int32Collection idx)
+    {
+        for (var i = 0; i < pts.Count; i++)
+        {
+            var p = pts[i];
+            pts[i] = new Point3D(p.X, -p.Y, p.Z);
         }
         for (var i = 0; i + 2 < idx.Count; i += 3)
             (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);

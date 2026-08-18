@@ -25,6 +25,8 @@ public partial class ToothMeshView : UserControl
     private const double Deg = Math.PI / 180.0;
     private const string KnownPackUri =
         "pack://application:,,,/MyOrganizer.Wpf;component/Assets/Teeth/Source/FDI16_High.obj";
+    private const string PackPrefix =
+        "pack://application:,,,/MyOrganizer.Wpf;component/Assets/Teeth/Source/";
 
     private readonly PerspectiveCamera _orbitCam = new()
     {
@@ -45,7 +47,7 @@ public partial class ToothMeshView : UserControl
     private const double OverlayNormalEps = 0.0009;
     private const double DragSlopPx = 5;
     private ClinicalSurface? _hoverSurface;
-    private ClinicalSurface? _selectedSurface;
+    private readonly HashSet<ClinicalSurface> _selectedSurfaces = [];
     private bool _pressing;
     private bool _orbitMoved;
     private Point _downPos;
@@ -60,11 +62,15 @@ public partial class ToothMeshView : UserControl
     private double _theta;
     private double _phi;
     private double _radius = 6;
+    private bool _interactionEnabled = true;
+    private string _loadedFdi = "16";
+    private string _orientationProfile = "ApprovedFdi16";
 
     public ToothMeshView()
     {
         InitializeComponent();
         Loaded += (_, _) => LoadMesh();
+        IsVisibleChanged += OnVisibleChanged;
         PreviewMouseLeftButtonDown += OnDragStart;
         PreviewMouseLeftButtonUp += OnDragEnd;
         PreviewMouseMove += OnDragMove;
@@ -85,21 +91,82 @@ public partial class ToothMeshView : UserControl
             view.LoadMesh();
     }
 
+    public void LoadRegisteredAsset(string fdi)
+    {
+        if (NormalizeAssetName(AssetName) == NormalizeAssetName(fdi))
+        {
+            if (IsLoaded)
+                LoadMesh();
+            return;
+        }
+        AssetName = fdi;
+    }
+
+    private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible && IsLoaded && CrownModel.Geometry is not null)
+            FrameOcclusal();
+    }
+
     private void LoadMesh()
     {
         try
         {
             MissingOverlay.Visibility = Visibility.Collapsed;
-            var path = FindSourceFile();
-            Stream? stream = path is not null ? File.OpenRead(path) : TryOpenPack(KnownPackUri, out _);
+            var requested = NormalizeAssetName(AssetName);
+            if (!ToothAssetRegistry.TryGet(requested, out var asset) || !asset.RuntimeImported)
+            {
+                // #region agent log
+                AgentLog("G", "mesh-skip",
+                    "{\"requested\":\"" + requested +
+                    "\",\"imported\":false,\"reason\":\"not-runtime-imported\"}");
+                // #endregion
+                return;
+            }
+            if (_loadedFdi == asset.FdiNumber && CrownModel.Geometry is not null &&
+                string.Equals(_orientationProfile, asset.OrientationProfile, StringComparison.Ordinal))
+            {
+                ToothLabAppearance.Apply(asset.FdiNumber, CrownModel, RootModel, CervicalModel);
+                FrameOcclusal();
+                // #region agent log
+                AgentLog("H", "appearance", AppearanceLog(asset.FdiNumber, reused: true));
+                AgentLog("I", "cervical", CervicalLog(asset.FdiNumber));
+                AgentLog("G", "mesh-reuse",
+                    "{\"fdi\":\"" + asset.FdiNumber + "\",\"file\":\"" + Esc(asset.RuntimeMesh ?? "") + "\"}");
+                // #endregion
+                return;
+            }
+
+            _loadedFdi = asset.FdiNumber;
+            _orientationProfile = asset.OrientationProfile;
+            _interactionEnabled = asset.SurfaceMapAvailable;
+            LabelPalatal.Text = asset.InnerSurfaceName;
+            HintCaption.Text = asset.SurfaceMapAvailable
+                ? "Hover a surface · click to toggle · drag to inspect"
+                : "Surface map: Not created · Clinical interaction: Not available · drag to inspect";
+            _fillingSurfaces.Clear();
+            _selectedSurfaces.Clear();
+            _hoverSurface = null;
+            _surfaceMap = null;
+
+            var fileName = string.IsNullOrWhiteSpace(asset.RuntimeMesh) ? "FDI16_High.obj" : asset.RuntimeMesh;
+            var path = FindSourceFile(fileName);
+            var pack = PackPrefix + fileName;
+            Stream? stream = path is not null ? File.OpenRead(path) : TryOpenPack(pack, out _);
             if (stream is not null && string.IsNullOrEmpty(path))
-                path = KnownPackUri;
+                path = pack;
+            if (stream is null && fileName == "FDI16_High.obj")
+            {
+                stream = TryOpenPack(KnownPackUri, out _);
+                if (stream is not null)
+                    path = KnownPackUri;
+            }
 
             if (stream is null)
             {
                 _stats = new StlMeshStats { LoadFailed = true, Error = "source-missing" };
                 MissingOverlay.Text =
-                    "Drop the Dundee maxillary first molar (OBJ / STL / ZIP) into Assets/Teeth/Source";
+                    "Drop the Dundee source OBJ into Assets/Teeth/Source (" + fileName + ")";
                 MissingOverlay.Visibility = Visibility.Visible;
                 AgentLog("A", "stl-load-failed", ToJson());
                 return;
@@ -109,18 +176,46 @@ public partial class ToothMeshView : UserControl
             {
                 var parts = StlToothLoader.LoadAlignedParts(stream, out _stats, new MeshLoadOptions
                 {
-                    MirrorX = true,
-                    OrientFdi16 = true
+                    MirrorX = asset.MirrorX,
+                    OrientFdi16 = asset.OrientationProfile == "ApprovedFdi16",
+                    OrientationProfile = asset.OrientationProfile
                 });
                 _stats.SourcePath = path ?? "";
                 CrownModel.Geometry = parts.Crown;
                 RootModel.Geometry = parts.Root;
+                CervicalModel.Geometry = parts.Cervical.TriangleIndices.Count == 0 ? null : parts.Cervical;
+                ToothLabAppearance.Apply(asset.FdiNumber, CrownModel, RootModel, CervicalModel);
                 BuildTriangleLookup(parts.Crown);
-                RebuildSurfaceOverlays(parts.Crown);
-                ApplyClinicalOverlays();
-                ApplyInteractionOverlays();
+                if (asset.SurfaceMapAvailable)
+                    RebuildSurfaceOverlays(parts.Crown);
+                else
+                {
+                    _overlayGroup.Children.Clear();
+                    SurfaceOverlayVisual.Content = null;
+                    ApplyClinicalOverlays();
+                    ApplyInteractionOverlays();
+                    AgentLog("B", "map-missing", "{\"source\":\"not-configured\",\"fdi\":\"" + asset.FdiNumber + "\"}");
+                }
                 FrameOcclusal();
                 AgentLog("A", "mesh-loaded", ToJson());
+                // #region agent log
+                AgentLog("F", "asset-loaded",
+                    "{\"fdi\":\"" + asset.FdiNumber +
+                    "\",\"file\":\"" + Esc(fileName) +
+                    "\",\"path\":\"" + Esc(path ?? "") +
+                    "\",\"mirrorX\":" + (asset.MirrorX ? "true" : "false") +
+                    ",\"profile\":\"" + Esc(asset.OrientationProfile) +
+                    "\",\"map\":" + (asset.SurfaceMapAvailable ? "true" : "false") +
+                    ",\"interaction\":" + (_interactionEnabled ? "true" : "false") +
+                    ",\"inner\":\"" + Esc(asset.InnerSurfaceName) +
+                    "\",\"polypaint\":" + _stats.PolypaintColors +
+                    ",\"split\":\"" + Esc(_stats.SplitSource) +
+                    "\",\"rootClusters\":" + _stats.RootClusters +
+                    ",\"vertices\":" + _stats.VertexCount +
+                    ",\"yawDeg\":" + _stats.YawDeg.ToString("0.###", CultureInfo.InvariantCulture) + "}");
+                AgentLog("H", "appearance", AppearanceLog(asset.FdiNumber, reused: false));
+                AgentLog("I", "cervical", CervicalLog(asset.FdiNumber));
+                // #endregion
             }
         }
         catch (Exception ex)
@@ -132,25 +227,22 @@ public partial class ToothMeshView : UserControl
         }
     }
 
-    private static string? FindSourceFile()
+    private static string NormalizeAssetName(string? name)
+    {
+        var t = (name ?? "").Trim();
+        if (t.StartsWith("FDI", StringComparison.OrdinalIgnoreCase))
+            t = t[3..];
+        return string.IsNullOrWhiteSpace(t) ? ToothAssetRegistry.ApprovedFdi : t;
+    }
+
+    private static string? FindSourceFile(string fileName)
     {
         foreach (var dir in CandidateDirs())
         {
             if (!Directory.Exists(dir)) continue;
-            var preferred = Path.Combine(dir, "FDI16_High.obj");
+            var preferred = Path.Combine(dir, fileName);
             if (File.Exists(preferred))
                 return preferred;
-            var files = Directory.GetFiles(dir)
-                .Where(f =>
-                {
-                    var ext = Path.GetExtension(f);
-                    return ext.Equals(".obj", StringComparison.OrdinalIgnoreCase)
-                        || ext.Equals(".stl", StringComparison.OrdinalIgnoreCase);
-                })
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .ToList();
-            if (files.Count > 0)
-                return files[0];
         }
         return null;
     }
@@ -188,7 +280,7 @@ public partial class ToothMeshView : UserControl
 
     public void ShowBuccal() => FrameSide("buccal", new Vector3D(0, 1, 0.16), new Vector3D(0, 0, 1));
 
-    public void ShowPalatal() => FrameSide("palatal", new Vector3D(0, -1, 0.16), new Vector3D(0, 0, 1));
+    public void ShowPalatal() => FrameSide(LabelPalatal.Text.Equals("Lingual", StringComparison.OrdinalIgnoreCase) ? "lingual" : "palatal", new Vector3D(0, -1, 0.16), new Vector3D(0, 0, 1));
 
     public void ShowMesial() => FrameSide("mesial", new Vector3D(1, 0, 0.16), new Vector3D(0, 0, 1));
 
@@ -219,6 +311,17 @@ public partial class ToothMeshView : UserControl
             "{\"count\":" + _fillingSurfaces.Count +
             ",\"names\":\"" + Esc(string.Join(",", _fillingSurfaces)) + "\"}");
         // #endregion
+    }
+
+    public void SetSelectedSurfaces(IEnumerable<string> names)
+    {
+        _selectedSurfaces.Clear();
+        foreach (var name in names)
+        {
+            if (Enum.TryParse<ClinicalSurface>(name, true, out var surface))
+                _selectedSurfaces.Add(surface);
+        }
+        ApplyInteractionOverlays();
     }
 
     private void RebuildSurfaceOverlays(MeshGeometry3D crown)
@@ -394,7 +497,7 @@ public partial class ToothMeshView : UserControl
         OrthoCam.Position = new Point3D(from.X * _radius, from.Y * _radius, from.Z * _radius);
         OrthoCam.LookDirection = new Vector3D(-from.X, -from.Y, -from.Z);
         OrthoCam.UpDirection = up;
-        var across = name is "buccal" or "palatal"
+        var across = name is "buccal" or "palatal" or "lingual"
             ? Math.Max(_stats.Dx, _stats.Dz)
             : Math.Max(_stats.Dy, _stats.Dz);
         OrthoCam.Width = Math.Max(0.8, across * 1.36);
@@ -485,7 +588,7 @@ public partial class ToothMeshView : UserControl
         {
             "occlusal" => "Occlusal view",
             "buccal" => "Buccal view",
-            "palatal" => "Palatal view",
+            "palatal" or "lingual" => LabelPalatal.Text + " view",
             "mesial" => "Mesial view",
             "distal" => "Distal view",
             _ => "Free inspection"
@@ -505,7 +608,7 @@ public partial class ToothMeshView : UserControl
         var tooth = _viewMode switch
         {
             "occlusal" => Math.Max(_stats.Dx, _stats.Dy),
-            "buccal" or "palatal" => Math.Max(_stats.Dx, _stats.Dz),
+            "buccal" or "palatal" or "lingual" => Math.Max(_stats.Dx, _stats.Dz),
             "mesial" or "distal" => Math.Max(_stats.Dy, _stats.Dz),
             _ => 2 * BoundingRadius()
         };
@@ -594,6 +697,11 @@ public partial class ToothMeshView : UserControl
 
     private void UpdateHover(Point viewportPoint)
     {
+        if (!_interactionEnabled)
+        {
+            Cursor = Cursors.Arrow;
+            return;
+        }
         var hit = HitCrownSurface(viewportPoint, out var tri);
         Cursor = hit is null ? Cursors.Arrow : Cursors.Hand;
         if (hit == _hoverSurface)
@@ -608,7 +716,7 @@ public partial class ToothMeshView : UserControl
         // #region agent log
         AgentLog("H", "hover",
             "{\"hover\":\"" + (hit?.ToString() ?? "None") +
-            "\",\"selected\":\"" + (_selectedSurface?.ToString() ?? "None") +
+            "\",\"selected\":\"" + Esc(SelectedJoin()) +
             "\",\"tri\":" + tri +
             ",\"viewMode\":\"" + Esc(_viewMode) + "\"}");
         // #endregion
@@ -616,16 +724,19 @@ public partial class ToothMeshView : UserControl
 
     private void TrySelectAt(Point viewportPoint)
     {
-        var hit = HitCrownSurface(viewportPoint, out var tri);
-        if (hit is null)
+        if (!_interactionEnabled)
             return;
-        _selectedSurface = _selectedSurface == hit ? null : hit;
+        var hit = HitCrownSurface(viewportPoint, out var tri);
+        if (hit is not ClinicalSurface surface)
+            return;
+        if (!_selectedSurfaces.Add(surface))
+            _selectedSurfaces.Remove(surface);
         ApplyInteractionOverlays();
         RaiseInteraction(tri);
         // #region agent log
         AgentLog("H", "select",
             "{\"hover\":\"" + (_hoverSurface?.ToString() ?? "None") +
-            "\",\"selected\":\"" + (_selectedSurface?.ToString() ?? "None") +
+            "\",\"selected\":\"" + Esc(SelectedJoin()) +
             "\",\"tri\":" + tri + "}");
         // #endregion
     }
@@ -709,11 +820,27 @@ public partial class ToothMeshView : UserControl
         _selectedMaterial ??= InteractionMaterial(Color.FromArgb(0x4C, 0x3A, 0x8C, 0xD2), 0x1C);
         _hoverOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x18, 0x8A, 0xC4, 0xE8), 0x0C);
         _selectedOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x2A, 0x5A, 0x9A, 0xD4), 0x14);
-        var selectedMat = _selectedSurface is ClinicalSurface sel && _fillingSurfaces.Contains(sel)
-            ? _selectedOnFillingMaterial
-            : _selectedMaterial;
-        SelectedOverlayVisual.Content = OverlayFor(_selectedSurface, selectedMat!);
-        var hover = _hoverSurface is ClinicalSurface h && h != _selectedSurface ? _hoverSurface : null;
+        if (_selectedSurfaces.Count == 0)
+        {
+            SelectedOverlayVisual.Content = null;
+        }
+        else
+        {
+            var group = new Model3DGroup();
+            foreach (var surface in _selectedSurfaces)
+            {
+                var mat = _fillingSurfaces.Contains(surface)
+                    ? _selectedOnFillingMaterial
+                    : _selectedMaterial;
+                var model = OverlayFor(surface, mat!);
+                if (model is not null)
+                    group.Children.Add(model);
+            }
+            SelectedOverlayVisual.Content = group.Children.Count == 0 ? null : group;
+        }
+        var hover = _hoverSurface is ClinicalSurface h && !_selectedSurfaces.Contains(h)
+            ? _hoverSurface
+            : null;
         var hoverMat = hover is ClinicalSurface hs && _fillingSurfaces.Contains(hs)
             ? _hoverOnFillingMaterial
             : _hoverMaterial;
@@ -736,13 +863,29 @@ public partial class ToothMeshView : UserControl
 
     private void RaiseInteraction(int triangle)
     {
+        var selected = SelectedNames();
         InteractionChanged?.Invoke(this, new ToothLabHitEventArgs
         {
             Hover = _hoverSurface?.ToString(),
-            Selected = _selectedSurface?.ToString(),
+            Selected = selected.Count == 0 ? null : string.Join(",", selected),
+            SelectedSurfaces = selected,
             Triangle = triangle
         });
     }
+
+    private IReadOnlyList<string> SelectedNames()
+    {
+        var names = new List<string>();
+        foreach (var surface in Enum.GetValues<ClinicalSurface>())
+        {
+            if (_selectedSurfaces.Contains(surface))
+                names.Add(surface.ToString());
+        }
+        return names;
+    }
+
+    private string SelectedJoin() =>
+        _selectedSurfaces.Count == 0 ? "None" : string.Join(",", SelectedNames());
 
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
@@ -766,6 +909,82 @@ public partial class ToothMeshView : UserControl
         AgentLog(_viewMode == "occlusal" ? "A" : "B", message, ToJson());
     }
 
+    private string AppearanceLog(string fdi, bool reused)
+    {
+        var crown = DiffuseHex(CrownModel.Material);
+        var root = DiffuseHex(RootModel.Material);
+        return "{\"fdi\":\"" + Esc(fdi) +
+               "\",\"reused\":" + (reused ? "true" : "false") +
+               ",\"crownDiff\":\"" + crown +
+               "\",\"rootDiff\":\"" + root +
+               "\",\"intendedCrown\":\"" + ToothLabAppearance.CrownDiffuseHex(fdi) +
+               "\",\"intendedRoot\":\"" + ToothLabAppearance.RootDiffuseHex(fdi) +
+               "\",\"contrastRgb\":" + ContrastRgb(crown, root) +
+               ",\"crownTris\":" + _stats.CrownTriangles +
+               ",\"rootTris\":" + _stats.RootTriangles +
+               ",\"cervicalTris\":" + _stats.CervicalTriangles +
+               ",\"cervicalDiff\":\"" + DiffuseHex(CervicalModel.Material) +
+               "\",\"split\":\"" + Esc(_stats.SplitSource) +
+               "\",\"map\":" + (_surfaceMap is null ? "false" : "true") +
+               ",\"interaction\":" + (_interactionEnabled ? "true" : "false") +
+               ",\"amb\":\"" + LightHex(AmbLight) +
+               "\",\"key\":\"" + LightHex(KeyLight) +
+               "\",\"fill\":\"" + LightHex(FillLight) +
+               "\",\"rim\":\"" + LightHex(RimLight) + "\"}";
+    }
+
+    private string CervicalLog(string fdi)
+    {
+        var cervGeom = CervicalModel.Geometry as MeshGeometry3D;
+        var cervTris = cervGeom?.TriangleIndices.Count / 3 ?? 0;
+        return "{\"fdi\":\"" + Esc(fdi) +
+               "\",\"split\":\"" + Esc(_stats.SplitSource) +
+               "\",\"cervicalTris\":" + _stats.CervicalTriangles +
+               ",\"cervicalGeomTris\":" + cervTris +
+               ",\"crownTris\":" + _stats.CrownTriangles +
+               ",\"rootTris\":" + _stats.RootTriangles +
+               ",\"crownDiff\":\"" + DiffuseHex(CrownModel.Material) +
+               "\",\"cervicalDiff\":\"" + DiffuseHex(CervicalModel.Material) +
+               "\",\"rootDiff\":\"" + DiffuseHex(RootModel.Material) +
+               "\",\"map\":" + (_surfaceMap is null ? "false" : "true") +
+               ",\"interaction\":" + (_interactionEnabled ? "true" : "false") + "}";
+    }
+
+    private static string DiffuseHex(Material? mat)
+    {
+        if (mat is MaterialGroup group)
+        {
+            foreach (var child in group.Children)
+            {
+                if (child is DiffuseMaterial d && d.Brush is SolidColorBrush b)
+                    return "#" + b.Color.R.ToString("X2") + b.Color.G.ToString("X2") + b.Color.B.ToString("X2");
+            }
+        }
+        if (mat is DiffuseMaterial dm && dm.Brush is SolidColorBrush br)
+            return "#" + br.Color.R.ToString("X2") + br.Color.G.ToString("X2") + br.Color.B.ToString("X2");
+        return "?";
+    }
+
+    private static int ContrastRgb(string a, string b)
+    {
+        if (!TryRgb(a, out var ar, out var ag, out var ab) || !TryRgb(b, out var br, out var bg, out var bb))
+            return -1;
+        return Math.Abs(ar - br) + Math.Abs(ag - bg) + Math.Abs(ab - bb);
+    }
+
+    private static bool TryRgb(string hex, out int r, out int g, out int b)
+    {
+        r = g = b = 0;
+        if (hex.Length != 7 || hex[0] != '#') return false;
+        return int.TryParse(hex.AsSpan(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out r)
+            && int.TryParse(hex.AsSpan(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out g)
+            && int.TryParse(hex.AsSpan(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out b);
+    }
+
+    private static string LightHex(Light light) =>
+        "#" + light.Color.A.ToString("X2") + light.Color.R.ToString("X2") +
+        light.Color.G.ToString("X2") + light.Color.B.ToString("X2");
+
     private static void AgentLog(string hypothesisId, string message, string dataJson)
     {
         var line = "{\"sessionId\":\"ee2893\",\"runId\":\"interact-v1\",\"hypothesisId\":\"" + hypothesisId +
@@ -786,6 +1005,10 @@ public partial class ToothMeshView : UserControl
                "\"header\":\"" + Esc(s.Header) + "\"," +
                "\"format\":\"" + Esc(s.Format) + "\"," +
                "\"sourcePath\":\"" + Esc(s.SourcePath) + "\"," +
+               "\"fdi\":\"" + Esc(_loadedFdi) + "\"," +
+               "\"profile\":\"" + Esc(_orientationProfile) + "\"," +
+               "\"interaction\":" + (_interactionEnabled ? "true" : "false") + "," +
+               "\"mapLoaded\":" + (_surfaceMap is null ? "false" : "true") + "," +
                "\"triangles\":" + s.TriangleCount + "," +
                "\"vertices\":" + s.VertexCount + "," +
                "\"dx\":" + F(s.Dx) + ",\"dy\":" + F(s.Dy) + ",\"dz\":" + F(s.Dz) + "," +
@@ -952,5 +1175,6 @@ public sealed class ToothLabHitEventArgs : EventArgs
 {
     public string? Hover { get; init; }
     public string? Selected { get; init; }
+    public IReadOnlyList<string> SelectedSurfaces { get; init; } = [];
     public int Triangle { get; init; }
 }

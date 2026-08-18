@@ -120,6 +120,7 @@
     <Resource Include="Assets\ThirdParty\ZoliQua\LICENSE" />
     <Resource Include="Assets\ThirdParty\Wikimedia\Zahn_20230620_001.stl" />
     <Resource Include="Assets\Teeth\Source\FDI16_High.obj" />
+    <Resource Include="Assets\Teeth\Source\FDI36_High.obj" />
     <Resource Include="Assets\Teeth\FDI16SurfaceMap.json" />
   </ItemGroup>
 

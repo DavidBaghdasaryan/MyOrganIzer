@@ -80,30 +80,23 @@ public partial class InteractiveTooth : UserControl
         _hovers.Clear();
         _hits.Clear();
 
-        var geo = FacialMolar16Geometry.Get();
+        var geo = OcclusalMolar16Geometry.Get();
         var flip = CreateFlip();
 
-        Decor(geo.PalatalRoot, RootFill, RootStroke, 0.7, flip, hit: false);
-        Decor(geo.Trunk, RootFill, RootStroke, 0.7, flip, hit: false);
-        Decor(geo.MesialRoot, RootFill, RootStroke, 0.7, flip, hit: false);
-        Decor(geo.DistalRoot, RootFill, RootStroke, 0.7, flip, hit: false);
-
-        var enamel = Decor(geo.Crown, EnamelFill, OutlineStroke, 1.05, flip, hit: false);
+        var enamel = Decor(geo.Outline, EnamelFill, OutlineStroke, 0.5, flip, hit: false);
         enamel.StrokeLineJoin = PenLineJoin.Round;
 
         AddSurface(ToothSurfaceType.Buccal, geo.Buccal, flip);
+        AddSurface(ToothSurfaceType.Lingual, geo.Lingual, flip);
         AddSurface(ToothSurfaceType.Mesial, geo.Mesial, flip);
         AddSurface(ToothSurfaceType.Distal, geo.Distal, flip);
-        AddSurface(ToothSurfaceType.Lingual, geo.Lingual, flip);
         AddSurface(ToothSurfaceType.Occlusal, geo.Occlusal, flip);
 
         Decor(geo.Highlight, HighlightFill, Brushes.Transparent, 0, flip, hit: false);
-        var fissure = Decor(geo.Fissure, Brushes.Transparent, FissureStroke, 1.2, flip, hit: false);
+        var fissure = Decor(geo.Fissure, Brushes.Transparent, FissureStroke, 1.15, flip, hit: false);
         fissure.StrokeStartLineCap = PenLineCap.Round;
         fissure.StrokeEndLineCap = PenLineCap.Round;
-        var cervix = Decor(geo.Cervix, Brushes.Transparent, CervixStroke, 1.1, flip, hit: false);
-        cervix.StrokeStartLineCap = PenLineCap.Round;
-        cervix.StrokeEndLineCap = PenLineCap.Round;
+        fissure.StrokeLineJoin = PenLineJoin.Round;
 
         ApplyFills();
         ApplySelectionVisuals();
@@ -145,7 +138,7 @@ public partial class InteractiveTooth : UserControl
 
     private Transform CreateFlip()
     {
-        var scale = new ScaleTransform(ToothFdi.MesialOnLeft(ToothNumber) ? 1 : -1, 1, 100, 140);
+        var scale = new ScaleTransform(ToothFdi.MesialOnLeft(ToothNumber) ? 1 : -1, 1, 100, 100);
         scale.Freeze();
         return scale;
     }
@@ -156,18 +149,12 @@ public partial class InteractiveTooth : UserControl
         {
             ToothSurfaceVisual? visual = null;
             SurfaceStates?.TryGetValue(surface, out visual);
-            var fill = ToothSurfaceAppearance.FillFor(visual);
-            path.Fill = fill;
+            path.Fill = ToothSurfaceAppearance.FillFor(visual);
             path.Stroke = ToothSurfaceAppearance.IsHealthy(visual?.ProcedureKey) && visual?.Color is null
                 ? Brushes.Transparent
                 : SeamStroke;
-            path.StrokeThickness = path.Stroke == Brushes.Transparent ? 0 : 0.7;
+            path.StrokeThickness = path.Stroke == Brushes.Transparent ? 0 : 0.5;
         }
-
-        // #region agent log
-        AgentLogFills();
-        // #endregion
-
         ApplySelectionVisuals();
     }
 
@@ -255,12 +242,9 @@ public partial class InteractiveTooth : UserControl
     }
 
     private static readonly Brush EnamelFill = CreateEnamel();
-    private static readonly Brush RootFill = CreateRoot();
     private static readonly Brush OutlineStroke = FreezeRgb(0xD4, 0xC0, 0xA0);
-    private static readonly Brush RootStroke = FreezeRgb(0xC2, 0xA0, 0x78);
     private static readonly Brush SeamStroke = FreezeArgb(0x55, 0xB8, 0xA4, 0x88);
     private static readonly Brush FissureStroke = FreezeArgb(0x9A, 0xA8, 0x88, 0x68);
-    private static readonly Brush CervixStroke = FreezeArgb(0x66, 0xC4, 0xB0, 0x90);
     private static readonly Brush HighlightFill = FreezeArgb(0x48, 0xFF, 0xFF, 0xFF);
     private static readonly Brush HoverWash = FreezeArgb(0x5A, 0xFF, 0xFF, 0xFF);
     private static readonly Brush SelectedWash = FreezeArgb(0x3A, 0x37, 0x82, 0xF6);
@@ -270,31 +254,15 @@ public partial class InteractiveTooth : UserControl
     {
         var brush = new RadialGradientBrush
         {
-            GradientOrigin = new Point(0.34, 0.78),
-            Center = new Point(0.46, 0.58),
-            RadiusX = 0.78,
-            RadiusY = 0.9
+            GradientOrigin = new Point(0.38, 0.32),
+            Center = new Point(0.48, 0.46),
+            RadiusX = 0.72,
+            RadiusY = 0.78
         };
         brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xFF, 0xFC, 0xF6), 0));
         brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xF6, 0xEE, 0xDC), 0.42));
         brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xE8, 0xD6, 0xB6), 0.78));
         brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xD0, 0xB6, 0x92), 1));
-        brush.Freeze();
-        return brush;
-    }
-
-    private static Brush CreateRoot()
-    {
-        var brush = new LinearGradientBrush
-        {
-            StartPoint = new Point(0, 0.5),
-            EndPoint = new Point(1, 0.5)
-        };
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xB4, 0x90, 0x64), 0));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xEC, 0xD4, 0xB0), 0.36));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xF6, 0xE8, 0xCC), 0.5));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xE2, 0xC6, 0x9C), 0.7));
-        brush.GradientStops.Add(new GradientStop(Color.FromRgb(0xA8, 0x86, 0x5C), 1));
         brush.Freeze();
         return brush;
     }
@@ -312,22 +280,4 @@ public partial class InteractiveTooth : UserControl
         brush.Freeze();
         return brush;
     }
-
-    // #region agent log
-    private void AgentLogFills()
-    {
-        var parts = _fills.Select(kv =>
-        {
-            ToothSurfaceVisual? visual = null;
-            SurfaceStates?.TryGetValue(kv.Key, out visual);
-            var fill = kv.Value.Fill;
-            var alpha = fill is SolidColorBrush solid ? solid.Color.A : (byte)(fill == Brushes.Transparent ? 0 : 255);
-            return "\"" + kv.Key + "\":{\"key\":\"" + (visual?.ProcedureKey ?? "null") + "\",\"alpha\":" + alpha + "}";
-        });
-        var json = "{\"tooth\":\"" + ToothNumber + "\",\"view\":\"buccal\",\"surfaces\":{" + string.Join(",", parts) + "}}";
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"refit\",\"hypothesisId\":\"R1\",\"location\":\"InteractiveTooth.xaml.cs:ApplyFills\",\"message\":\"surface fill alphas\",\"data\":" + json + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* debug ingest must not affect the tooth */ }
-    }
-    // #endregion
 }
