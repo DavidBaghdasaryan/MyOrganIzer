@@ -87,13 +87,14 @@ public partial class ToothMeshView : UserControl
 
             using (stream)
             {
-                var mesh = StlToothLoader.LoadAligned(stream, out _stats, new MeshLoadOptions
+                var parts = StlToothLoader.LoadAlignedParts(stream, out _stats, new MeshLoadOptions
                 {
                     MirrorX = true,
                     OrientFdi16 = true
                 });
                 _stats.SourcePath = path ?? "";
-                ToothModel.Geometry = mesh;
+                CrownModel.Geometry = parts.Crown;
+                RootModel.Geometry = parts.Root;
                 FrameOcclusal();
                 AgentLog("A", "mesh-loaded", ToJson());
             }
@@ -182,7 +183,7 @@ public partial class ToothMeshView : UserControl
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
         LogFraming("frame-occlusal");
-        CaptureOcclusalPreview();
+        CaptureViewPreview("occlusal");
     }
 
     private void FrameSide(string name, Vector3D from, Vector3D up)
@@ -201,6 +202,7 @@ public partial class ToothMeshView : UserControl
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
         LogFraming("frame-" + name);
+        CaptureViewPreview(name);
     }
 
     private void ApplyOrbitCamera()
@@ -238,9 +240,9 @@ public partial class ToothMeshView : UserControl
         Vector3D rim;
         if (_viewMode == "occlusal")
         {
-            key = look * 0.58 - 0.50 * right + 0.40 * up;
-            fill = look * 0.22 + 0.92 * right + 0.12 * up;
-            rim = look * 0.18 + 0.12 * right + 0.92 * up;
+            key = look * 0.42 - 0.58 * right + 0.48 * up;
+            fill = look * 0.16 + 0.94 * right + 0.10 * up;
+            rim = look * 0.14 + 0.10 * right + 0.94 * up;
         }
         else
         {
@@ -372,7 +374,7 @@ public partial class ToothMeshView : UserControl
 
     private static void AgentLog(string hypothesisId, string message, string dataJson)
     {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"occlusal-pass\",\"hypothesisId\":\"" + hypothesisId +
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"enamel-balance\",\"hypothesisId\":\"" + hypothesisId +
                    "\",\"location\":\"ToothMeshView.xaml.cs\",\"message\":\"" + message +
                    "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
         try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
@@ -411,6 +413,12 @@ public partial class ToothMeshView : UserControl
                "\"phiDeg\":" + F(_phi / Deg) + "," +
                "\"radius\":" + F(_radius) + "," +
                "\"camX\":" + F(p.X) + ",\"camY\":" + F(p.Y) + ",\"camZ\":" + F(p.Z) + "," +
+               "\"splitSource\":\"" + Esc(s.SplitSource) + "\"," +
+               "\"polypaint\":" + s.PolypaintColors + "," +
+               "\"crownTris\":" + s.CrownTriangles + "," +
+               "\"rootTris\":" + s.RootTriangles + "," +
+               "\"occlusalLeakFixed\":" + s.OcclusalRootLeakFixed + "," +
+               "\"crownMeanZ\":" + F(s.CrownMeanZ) + ",\"rootMeanZ\":" + F(s.RootMeanZ) + "," +
                "\"fillRatio\":" + F(FillRatio()) + "," +
                "\"keyDx\":" + F(KeyLight.Direction.X) + ",\"keyDy\":" + F(KeyLight.Direction.Y) + ",\"keyDz\":" + F(KeyLight.Direction.Z) + "," +
                "\"lightsFollow\":true," +
@@ -448,7 +456,7 @@ public partial class ToothMeshView : UserControl
         var em = Colors.Transparent;
         var spec = Colors.Transparent;
         var specPow = 0.0;
-        if (ToothModel.Material is MaterialGroup group)
+        if (CrownModel.Material is MaterialGroup group)
         {
             foreach (var m in group.Children)
             {
@@ -503,7 +511,7 @@ public partial class ToothMeshView : UserControl
 
     private int _previewTries;
 
-    private void CaptureOcclusalPreview()
+    private void CaptureViewPreview(string mode)
     {
         Dispatcher.BeginInvoke(() =>
         {
@@ -512,7 +520,7 @@ public partial class ToothMeshView : UserControl
                 UpdateLayout();
                 if (ActualWidth < 120 && _previewTries++ < 8)
                 {
-                    CaptureOcclusalPreview();
+                    CaptureViewPreview(mode);
                     return;
                 }
                 var w = Math.Max(1, (int)Math.Round(Math.Max(ActualWidth, 1)));
@@ -521,10 +529,10 @@ public partial class ToothMeshView : UserControl
                 rtb.Render(this);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(rtb));
-                var path = @"c:\Users\david\source\repos\MyOrganIzer\occlusal-preview.png";
+                var path = @"c:\Users\david\source\repos\MyOrganIzer\" + mode + "-preview.png";
                 using (var fs = File.Create(path))
                     encoder.Save(fs);
-                AgentLog("D", "occlusal-preview", "{\"w\":" + w + ",\"h\":" + h + ",\"bytes\":" + new FileInfo(path).Length + "}");
+                AgentLog("D", "view-preview", "{\"mode\":\"" + Esc(mode) + "\",\"w\":" + w + ",\"h\":" + h + ",\"bytes\":" + new FileInfo(path).Length + "}");
             }
             catch (Exception ex)
             {

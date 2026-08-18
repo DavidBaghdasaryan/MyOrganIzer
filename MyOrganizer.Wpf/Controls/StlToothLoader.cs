@@ -26,6 +26,19 @@ internal sealed class StlMeshStats
     public string Palatal = "";
     public string Mb = "";
     public string Db = "";
+    public string SplitSource = "";
+    public int CrownTriangles;
+    public int RootTriangles;
+    public int PolypaintColors;
+    public int OcclusalRootLeakFixed;
+    public double CrownMeanZ;
+    public double RootMeanZ;
+}
+
+internal sealed class ToothMeshParts
+{
+    public MeshGeometry3D Crown { get; init; } = new();
+    public MeshGeometry3D Root { get; init; } = new();
 }
 
 internal sealed class MeshLoadOptions
@@ -36,16 +49,18 @@ internal sealed class MeshLoadOptions
 
 internal static class StlToothLoader
 {
-    public static MeshGeometry3D LoadAligned(Stream stream, out StlMeshStats stats, MeshLoadOptions? options = null)
+    public static ToothMeshParts LoadAlignedParts(Stream stream, out StlMeshStats stats, MeshLoadOptions? options = null)
     {
         options ??= new MeshLoadOptions();
         stats = new StlMeshStats();
-        var (positions, triangles, header, format) = Read(stream);
-        stats.Header = header.Trim('\0', ' ', '\t');
-        stats.Format = format;
-        stats.TriangleCount = triangles.Count / 3;
+        var raw = Read(stream);
+        stats.Header = raw.Header.Trim('\0', ' ', '\t');
+        stats.Format = raw.Format;
+        stats.PolypaintColors = raw.PolypaintColors;
+        stats.SplitSource = raw.SplitSource;
+        stats.TriangleCount = raw.Indices.Count / 3;
 
-        var welded = Weld(positions, triangles);
+        var welded = Weld(raw.Positions, raw.Indices);
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
@@ -57,12 +72,38 @@ internal static class StlToothLoader
             stats.Mirrored = true;
         }
         UniformScale(welded, stats, 2.2);
-        ComputeNormals(welded);
-        welded.Freeze();
-        return welded;
+
+        var triMat = raw.TriMat;
+        if (triMat.Count != stats.TriangleCount)
+            triMat = Enumerable.Repeat((byte)255, stats.TriangleCount).ToList();
+        if (stats.SplitSource != "zbrush-mrgb")
+        {
+            ClassifyByCervix(welded, triMat);
+            stats.SplitSource = "spatial-cej";
+        }
+        stats.OcclusalRootLeakFixed = 0;
+
+        var parts = SplitByMaterial(welded, triMat);
+        stats.CrownTriangles = parts.Crown.TriangleIndices.Count / 3;
+        stats.RootTriangles = parts.Root.TriangleIndices.Count / 3;
+        stats.TriangleCount = stats.CrownTriangles + stats.RootTriangles;
+        stats.CrownMeanZ = MeanZ(parts.Crown);
+        stats.RootMeanZ = MeanZ(parts.Root);
+        return parts;
     }
 
-    private static (List<Point3D> Positions, List<int> Indices, string Header, string Format) Read(Stream stream)
+    private sealed class RawMesh
+    {
+        public List<Point3D> Positions = new();
+        public List<int> Indices = new();
+        public List<byte> TriMat = new();
+        public string Header = "";
+        public string Format = "";
+        public int PolypaintColors;
+        public string SplitSource = "none";
+    }
+
+    private static RawMesh Read(Stream stream)
     {
         if (!stream.CanSeek)
         {
@@ -80,10 +121,7 @@ internal static class StlToothLoader
         if (n >= 2 && headerBytes[0] == 0x50 && headerBytes[1] == 0x4B)
             return ReadZip(stream);
         if (LooksObj(header))
-        {
-            var obj = ReadObj(stream);
-            return (obj.Item1, obj.Item2, obj.Item3, "obj");
-        }
+            return ReadObj(stream);
 
         using var reader = new BinaryReader(stream);
         var stlHeader = reader.ReadBytes(80);
@@ -92,24 +130,23 @@ internal static class StlToothLoader
             !LooksBinary(stream.Length, stlHeader))
         {
             stream.Position = 0;
-            var ascii = ReadAscii(stream);
-            return (ascii.Item1, ascii.Item2, ascii.Item3, "stl-ascii");
+            return ReadAscii(stream);
         }
 
         var count = reader.ReadUInt32();
-        var positions = new List<Point3D>((int)count * 3);
-        var indices = new List<int>((int)count * 3);
+        var raw = new RawMesh { Header = stlHeaderText, Format = "stl-binary", SplitSource = "spatial-cej" };
         for (var i = 0; i < count; i++)
         {
             reader.ReadSingle(); reader.ReadSingle(); reader.ReadSingle();
             for (var v = 0; v < 3; v++)
             {
-                indices.Add(positions.Count);
-                positions.Add(new Point3D(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()));
+                raw.Indices.Add(raw.Positions.Count);
+                raw.Positions.Add(new Point3D(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle()));
             }
             reader.ReadUInt16();
+            raw.TriMat.Add(255);
         }
-        return (positions, indices, stlHeaderText, "stl-binary");
+        return raw;
     }
 
     private static bool LooksBinary(long length, byte[] header)
@@ -120,12 +157,11 @@ internal static class StlToothLoader
         return (length - 84) % 50 == 0;
     }
 
-    private static (List<Point3D>, List<int>, string) ReadAscii(Stream stream)
+    private static RawMesh ReadAscii(Stream stream)
     {
         using var text = new StreamReader(stream);
         var body = text.ReadToEnd();
-        var positions = new List<Point3D>();
-        var indices = new List<int>();
+        var raw = new RawMesh { Header = "solid ascii", Format = "stl-ascii", SplitSource = "spatial-cej" };
         foreach (var line in body.Split('\n'))
         {
             var t = line.Trim();
@@ -133,10 +169,12 @@ internal static class StlToothLoader
                 continue;
             var parts = t.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 4) continue;
-            indices.Add(positions.Count);
-            positions.Add(new Point3D(Num(parts[1]), Num(parts[2]), Num(parts[3])));
+            raw.Indices.Add(raw.Positions.Count);
+            raw.Positions.Add(new Point3D(Num(parts[1]), Num(parts[2]), Num(parts[3])));
+            if (raw.Indices.Count % 3 == 0)
+                raw.TriMat.Add(255);
         }
-        return (positions, indices, "solid ascii");
+        return raw;
     }
 
     private static bool LooksObj(string header)
@@ -151,7 +189,7 @@ internal static class StlToothLoader
                t.StartsWith("mtllib", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static (List<Point3D>, List<int>, string, string) ReadZip(Stream stream)
+    private static RawMesh ReadZip(Stream stream)
     {
         using var zip = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
         var entry = zip.Entries.FirstOrDefault(e => e.FullName.EndsWith(".obj", StringComparison.OrdinalIgnoreCase))
@@ -175,18 +213,33 @@ internal static class StlToothLoader
         inner.CopyTo(ms);
         ms.Position = 0;
         var result = Read(ms);
-        return (result.Item1, result.Item2, entry.FullName, result.Item4 + "+zip");
+        result.Header = entry.FullName;
+        result.Format += "+zip";
+        return result;
     }
 
-    private static (List<Point3D>, List<int>, string) ReadObj(Stream stream)
+    private static RawMesh ReadObj(Stream stream)
     {
         using var text = new StreamReader(stream);
         var verts = new List<Point3D>();
-        var positions = new List<Point3D>();
-        var indices = new List<int>();
+        var colors = new List<(byte R, byte G, byte B)>();
+        var faces = new List<int[]>();
         string? line;
         while ((line = text.ReadLine()) is not null)
         {
+            if (line.StartsWith("#MRGB", StringComparison.Ordinal))
+            {
+                var hex = line.Length > 6 ? line[6..].Trim() : "";
+                for (var i = 0; i + 8 <= hex.Length; i += 8)
+                {
+                    var tok = hex.AsSpan(i, 8);
+                    colors.Add((
+                        ParseHex(tok[2], tok[3]),
+                        ParseHex(tok[4], tok[5]),
+                        ParseHex(tok[6], tok[7])));
+                }
+                continue;
+            }
             if (line.Length < 2) continue;
             if (line[0] == 'v' && (line[1] == ' ' || line[1] == '\t'))
             {
@@ -210,6 +263,19 @@ internal static class StlToothLoader
                 if (vi < 0) vi = verts.Count + vi + 1;
                 corners[i - 1] = vi - 1;
             }
+            faces.Add(corners);
+        }
+
+        var painted = colors.Count == verts.Count && verts.Count > 0;
+        var raw = new RawMesh
+        {
+            Header = "obj " + verts.Count + " verts",
+            Format = "obj",
+            PolypaintColors = colors.Count,
+            SplitSource = painted ? "zbrush-mrgb" : "spatial-cej"
+        };
+        foreach (var corners in faces)
+        {
             for (var i = 1; i + 1 < corners.Length; i++)
             {
                 var a = corners[0];
@@ -217,12 +283,28 @@ internal static class StlToothLoader
                 var c = corners[i + 1];
                 if (a < 0 || b < 0 || c < 0 || a >= verts.Count || b >= verts.Count || c >= verts.Count)
                     continue;
-                indices.Add(positions.Count); positions.Add(verts[a]);
-                indices.Add(positions.Count); positions.Add(verts[b]);
-                indices.Add(positions.Count); positions.Add(verts[c]);
+                raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[a]);
+                raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[b]);
+                raw.Indices.Add(raw.Positions.Count); raw.Positions.Add(verts[c]);
+                raw.TriMat.Add(painted ? ClassifyPaint(colors[a], colors[b], colors[c]) : (byte)255);
             }
         }
-        return (positions, indices, "obj " + verts.Count + " verts");
+        return raw;
+    }
+
+    private static byte ClassifyPaint((byte R, byte G, byte B) a, (byte R, byte G, byte B) b, (byte R, byte G, byte B) c)
+    {
+        var warm = (a.R - a.B) + (b.R - b.B) + (c.R - c.B);
+        return warm >= 90 ? (byte)1 : (byte)0;
+    }
+
+    private static byte ParseHex(char hi, char lo)
+    {
+        static int N(char ch) =>
+            ch is >= '0' and <= '9' ? ch - '0' :
+            ch is >= 'a' and <= 'f' ? ch - 'a' + 10 :
+            ch is >= 'A' and <= 'F' ? ch - 'A' + 10 : 0;
+        return (byte)((N(hi) << 4) | N(lo));
     }
 
     private static void MirrorX(MeshGeometry3D mesh)
@@ -389,6 +471,74 @@ internal static class StlToothLoader
             c++;
         }
         return c == 0 ? 0 : sum / c;
+    }
+
+    private static void ClassifyByCervix(MeshGeometry3D mesh, List<byte> triMat)
+    {
+        Bounds(mesh.Positions, out var min, out var max, out _);
+        var cut = min.Z + 0.62 * Math.Max(1e-9, max.Z - min.Z);
+        var idx = mesh.TriangleIndices;
+        for (var t = 0; t < triMat.Count; t++)
+        {
+            var i = t * 3;
+            if (i + 2 >= idx.Count) break;
+            var z = (mesh.Positions[idx[i]].Z + mesh.Positions[idx[i + 1]].Z + mesh.Positions[idx[i + 2]].Z) / 3.0;
+            triMat[t] = z >= cut ? (byte)0 : (byte)1;
+        }
+    }
+
+    private static ToothMeshParts SplitByMaterial(MeshGeometry3D src, List<byte> triMat)
+    {
+        var crownIdx = new List<int>();
+        var rootIdx = new List<int>();
+        var idx = src.TriangleIndices;
+        for (var t = 0; t < triMat.Count; t++)
+        {
+            var i = t * 3;
+            if (i + 2 >= idx.Count) break;
+            var dest = triMat[t] == 1 ? rootIdx : crownIdx;
+            dest.Add(idx[i]);
+            dest.Add(idx[i + 1]);
+            dest.Add(idx[i + 2]);
+        }
+        return new ToothMeshParts
+        {
+            Crown = Extract(src, crownIdx),
+            Root = Extract(src, rootIdx)
+        };
+    }
+
+    private static MeshGeometry3D Extract(MeshGeometry3D src, List<int> triIndices)
+    {
+        var mesh = new MeshGeometry3D();
+        if (triIndices.Count == 0)
+        {
+            mesh.Freeze();
+            return mesh;
+        }
+        var map = new Dictionary<int, int>();
+        foreach (var old in triIndices)
+        {
+            if (!map.TryGetValue(old, out var neu))
+            {
+                neu = mesh.Positions.Count;
+                map[old] = neu;
+                mesh.Positions.Add(src.Positions[old]);
+            }
+            mesh.TriangleIndices.Add(neu);
+        }
+        ComputeNormals(mesh);
+        mesh.Freeze();
+        return mesh;
+    }
+
+    private static double MeanZ(MeshGeometry3D mesh)
+    {
+        if (mesh.Positions.Count == 0) return 0;
+        var s = 0d;
+        foreach (var p in mesh.Positions)
+            s += p.Z;
+        return s / mesh.Positions.Count;
     }
 
     private static void ComputeNormals(MeshGeometry3D mesh)

@@ -25,7 +25,15 @@ Project modifications:
 - Yaw so palatal is −Y and mesial is +X in Tooth Lab occlusal view.
 - Uniform scale to fit the existing camera (proportions preserved).
 - Vertex normals recalculated.
-- Dundee texture maps are not used; Tooth Lab applies an enamel material.
+- Dundee texture maps are not used at runtime.
+- ZBrush polypaint in the OBJ (`#MRGB`, 28506 vertex colors) is the original
+  crown/root separation. Sketchfab zip has no `.mtl` (only a `mtllib UL6sketch_1.mtl`
+  reference and a single `usemtl defaultMat` / `g ZBrushPolyMesh3D`).
+- Runtime mapping:
+    Crown  <- polypaint ivory / low-chroma enamel vertices (`GeometryModel3D` enamel)
+    Root   <- polypaint warm tan / cementum vertices (`GeometryModel3D` dentin)
+- Faces are classified by majority vertex paint, then the existing FDI 16
+  transform is applied to both parts together so they share vertex space.
 - No anatomical sculpting or five-surface masking.
 
 Alternative considered:

@@ -19,39 +19,65 @@
                 <ModelVisual3D>
                     <ModelVisual3D.Content>
                         <Model3DGroup>
-                            <AmbientLight x:Name="AmbLight" Color="#FF88786A"/>
-                            <DirectionalLight x:Name="KeyLight" Color="#FF948672" Direction="-0.45,0.35,-0.82"/>
-                            <DirectionalLight x:Name="FillLight" Color="#FF5C544C" Direction="0.92,0.12,-0.22"/>
-                            <DirectionalLight x:Name="RimLight" Color="#FF524A42" Direction="0.12,0.92,-0.18"/>
+                            <AmbientLight x:Name="AmbLight" Color="#FF5C5A58"/>
+                            <DirectionalLight x:Name="KeyLight" Color="#FF8A8680" Direction="-0.45,0.35,-0.82"/>
+                            <DirectionalLight x:Name="FillLight" Color="#FF4E4A46" Direction="0.92,0.12,-0.22"/>
+                            <DirectionalLight x:Name="RimLight" Color="#FF464440" Direction="0.12,0.92,-0.18"/>
                         </Model3DGroup>
                     </ModelVisual3D.Content>
                 </ModelVisual3D>
                 <ModelVisual3D x:Name="ToothVisual">
                     <ModelVisual3D.Content>
-                        <GeometryModel3D x:Name="ToothModel">
-                            <GeometryModel3D.Material>
-                                <MaterialGroup>
-                                    <DiffuseMaterial AmbientColor="#FFFFFF">
-                                        <DiffuseMaterial.Brush>
-                                            <SolidColorBrush Color="#EAE3D6"/>
-                                        </DiffuseMaterial.Brush>
-                                    </DiffuseMaterial>
-                                    <EmissiveMaterial>
-                                        <EmissiveMaterial.Brush>
-                                            <SolidColorBrush Color="#0AF2EBE0"/>
-                                        </EmissiveMaterial.Brush>
-                                    </EmissiveMaterial>
-                                    <SpecularMaterial SpecularPower="72">
-                                        <SpecularMaterial.Brush>
-                                            <SolidColorBrush Color="#14FFF6EE"/>
-                                        </SpecularMaterial.Brush>
-                                    </SpecularMaterial>
-                                </MaterialGroup>
-                            </GeometryModel3D.Material>
-                            <GeometryModel3D.BackMaterial>
-                                <DiffuseMaterial Brush="#C8B8A4"/>
-                            </GeometryModel3D.BackMaterial>
-                        </GeometryModel3D>
+                        <Model3DGroup>
+                            <GeometryModel3D x:Name="CrownModel">
+                                <GeometryModel3D.Material>
+                                    <MaterialGroup>
+                                        <DiffuseMaterial AmbientColor="#FFFFFF">
+                                            <DiffuseMaterial.Brush>
+                                                <SolidColorBrush Color="#F8F6F1"/>
+                                            </DiffuseMaterial.Brush>
+                                        </DiffuseMaterial>
+                                        <EmissiveMaterial>
+                                            <EmissiveMaterial.Brush>
+                                                <SolidColorBrush Color="#06F7F5F0"/>
+                                            </EmissiveMaterial.Brush>
+                                        </EmissiveMaterial>
+                                        <SpecularMaterial SpecularPower="88">
+                                            <SpecularMaterial.Brush>
+                                                <SolidColorBrush Color="#18FFF8F2"/>
+                                            </SpecularMaterial.Brush>
+                                        </SpecularMaterial>
+                                    </MaterialGroup>
+                                </GeometryModel3D.Material>
+                                <GeometryModel3D.BackMaterial>
+                                    <DiffuseMaterial Brush="#E8E4DE"/>
+                                </GeometryModel3D.BackMaterial>
+                            </GeometryModel3D>
+                            <GeometryModel3D x:Name="RootModel">
+                                <GeometryModel3D.Material>
+                                    <MaterialGroup>
+                                        <DiffuseMaterial AmbientColor="#FFFFFF">
+                                            <DiffuseMaterial.Brush>
+                                                <SolidColorBrush Color="#E2D4B2"/>
+                                            </DiffuseMaterial.Brush>
+                                        </DiffuseMaterial>
+                                        <EmissiveMaterial>
+                                            <EmissiveMaterial.Brush>
+                                                <SolidColorBrush Color="#08E8D8B8"/>
+                                            </EmissiveMaterial.Brush>
+                                        </EmissiveMaterial>
+                                        <SpecularMaterial SpecularPower="48">
+                                            <SpecularMaterial.Brush>
+                                                <SolidColorBrush Color="#10E8D4B0"/>
+                                            </SpecularMaterial.Brush>
+                                        </SpecularMaterial>
+                                    </MaterialGroup>
+                                </GeometryModel3D.Material>
+                                <GeometryModel3D.BackMaterial>
+                                    <DiffuseMaterial Brush="#D0C4A8"/>
+                                </GeometryModel3D.BackMaterial>
+                            </GeometryModel3D>
+                        </Model3DGroup>
                     </ModelVisual3D.Content>
                 </ModelVisual3D>
             </Viewport3D>
