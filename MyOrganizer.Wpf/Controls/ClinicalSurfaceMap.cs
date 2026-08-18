@@ -17,7 +17,8 @@ internal enum ClinicalSurface
 
 /// <summary>
 /// Derived surface map. The approved crown MeshGeometry3D remains the source of truth.
-/// Overrides are reserved for later manual triangle corrections; they are not edited in this iteration.
+/// Pipeline: automatic classification → topology cleanup → <see cref="Overrides"/> → final map.
+/// Counts always reflect SurfaceOf (automatic label plus any override).
 /// </summary>
 internal sealed class ClinicalSurfaceMap
 {
@@ -39,5 +40,19 @@ internal sealed class ClinicalSurfaceMap
                 list.Add(i);
         }
         return list;
+    }
+
+    /// <summary>
+    /// Triangle-index groups for a future deterministic FDI16SurfaceMap asset.
+    /// </summary>
+    public Dictionary<ClinicalSurface, int[]> ToIndexAsset()
+    {
+        var map = new Dictionary<ClinicalSurface, int[]>();
+        for (var s = 0; s < 5; s++)
+        {
+            var surface = (ClinicalSurface)s;
+            map[surface] = Triangles(surface).ToArray();
+        }
+        return map;
     }
 }

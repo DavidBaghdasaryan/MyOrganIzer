@@ -195,11 +195,11 @@ public partial class ToothMeshView : UserControl
             _surfaceMap = CrownSurfaceClassifier.Classify(crown);
             var colors = new[]
             {
-                Color.FromArgb(0x9A, 0xE8, 0x5D, 0x4C),
-                Color.FromArgb(0x9A, 0x3D, 0x7C, 0xFF),
-                Color.FromArgb(0x9A, 0x2E, 0xBB, 0x6B),
-                Color.FromArgb(0x9A, 0xF4, 0xD0, 0x3F),
-                Color.FromArgb(0x9A, 0x9B, 0x59, 0xB6)
+                Color.FromArgb(0x7A, 0xE8, 0x5D, 0x4C),
+                Color.FromArgb(0x7A, 0x3D, 0x7C, 0xFF),
+                Color.FromArgb(0x7A, 0x2E, 0xBB, 0x6B),
+                Color.FromArgb(0x7A, 0xF4, 0xD0, 0x3F),
+                Color.FromArgb(0x7A, 0x9B, 0x59, 0xB6)
             };
             var overlayVerts = 0;
             for (var s = 0; s < 5; s++)

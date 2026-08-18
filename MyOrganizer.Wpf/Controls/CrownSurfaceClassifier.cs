@@ -12,6 +12,9 @@ namespace MyOrganizer.Wpf.Controls;
 /// </summary>
 internal static class CrownSurfaceClassifier
 {
+    private const int EnvelopeBins = 72;
+    private const int IslandSize = 28;
+
     public static ClinicalSurfaceMap Classify(MeshGeometry3D crown)
     {
         var idx = crown.TriangleIndices;
@@ -56,9 +59,9 @@ internal static class CrownSurfaceClassifier
 
         var center = new Point3D(sx / nTri, sy / nTri, sz / nTri);
         var occlusalDir = DetectOcclusalDirection(centroids, normals, min.Z, max.Z);
+        var along = new double[nTri];
         var minAlong = double.PositiveInfinity;
         var maxAlong = double.NegativeInfinity;
-        var along = new double[nTri];
         for (var t = 0; t < nTri; t++)
         {
             var v = centroids[t] - center;
@@ -67,39 +70,109 @@ internal static class CrownSurfaceClassifier
             maxAlong = Math.Max(maxAlong, along[t]);
         }
         var alongSpan = Math.Max(1e-9, maxAlong - minAlong);
-
+        var z01 = new double[nTri];
+        var facing = new double[nTri];
         for (var t = 0; t < nTri; t++)
         {
-            var z01 = (along[t] - minAlong) / alongSpan;
-            var facing = Math.Max(0, Vector3D.DotProduct(normals[t], occlusalDir));
-            var occlusal = (facing > 0.22 && z01 > 0.58)
-                           || (facing > 0.45 && z01 > 0.42)
-                           || (facing > 0.72 && z01 > 0.28);
-            labels[t] = occlusal ? ClinicalSurface.Occlusal : AxialSurface(centroids[t], normals[t], center);
+            z01[t] = (along[t] - minAlong) / alongSpan;
+            facing[t] = Vector3D.DotProduct(normals[t], occlusalDir);
         }
 
-        Smooth(labels, BuildNeighbors(idx, nTri), normals, occlusalDir);
+        var axialCenter = AxialCenter(centroids, z01);
+        var neighbors = BuildNeighbors(idx, nTri);
+        var envelope = BuildOcclusalEnvelope(centroids, z01, facing, out var tableOrigin, out var envMin, out var envMax, out var envMean);
+        var radius = new double[nTri];
+        var envR = new double[nTri];
+        for (var t = 0; t < nTri; t++)
+        {
+            var dx = centroids[t].X - tableOrigin.X;
+            var dy = centroids[t].Y - tableOrigin.Y;
+            radius[t] = Math.Sqrt(dx * dx + dy * dy);
+            envR[t] = EnvelopeRadius(envelope, dx, dy);
+        }
+
+        var occlusal = new bool[nTri];
+        var seedCount = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!IsOcclusalSeed(z01[t], facing[t], radius[t], envR[t]))
+                continue;
+            occlusal[t] = true;
+            seedCount++;
+        }
+        GrowOcclusal(occlusal, neighbors, z01, facing, radius, envR);
+        var occlusalGrown = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (occlusal[t])
+            {
+                labels[t] = ClinicalSurface.Occlusal;
+                occlusalGrown++;
+            }
+            else
+            {
+                labels[t] = AxialSurface(centroids[t], normals[t], axialCenter);
+            }
+        }
+
+        var islandsBefore = CountIslands(labels, neighbors, IslandSize);
+        var leftoverBefore = Leftover(labels, neighbors);
+        Cleanup(labels, neighbors, z01, facing);
+        ApplyManualOverrides(labels);
+        var islandsAfter = CountIslands(labels, neighbors, IslandSize);
+
         var counts = new int[5];
         foreach (var lab in labels)
             counts[(int)lab]++;
+        var largest = LargestComponents(labels, neighbors);
+        var leftoverAfter = Leftover(labels, neighbors);
+        var occZ = 0d;
+        var occLowFace = 0;
+        var occN = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            occZ += z01[t];
+            occN++;
+            if (facing[t] < 0.15) occLowFace++;
+        }
 
-        // #region agent log
-        AgentLog("B", "classified",
-            "{\"nTri\":" + nTri +
-            ",\"occlusalDir\":\"" + F(occlusalDir.X) + "," + F(occlusalDir.Y) + "," + F(occlusalDir.Z) + "\"" +
-            ",\"minAlong\":" + F(minAlong) + ",\"maxAlong\":" + F(maxAlong) +
-            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
-            ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
-            ",\"sum\":" + (counts[0] + counts[1] + counts[2] + counts[3] + counts[4]) + "}");
-        // #endregion
-
-        return new ClinicalSurfaceMap
+        var map = new ClinicalSurfaceMap
         {
             SourceCrown = crown,
             TriangleSurface = labels,
             OcclusalDirection = occlusalDir,
             Counts = counts
         };
+        foreach (var kv in Fdi16ManualOverrides.Triangles)
+        {
+            if ((uint)kv.Key < (uint)nTri)
+                map.Overrides[kv.Key] = kv.Value;
+        }
+
+        // #region agent log
+        AgentLog("B", "classified",
+            "{\"nTri\":" + nTri +
+            ",\"occlusalDir\":\"" + F(occlusalDir.X) + "," + F(occlusalDir.Y) + "," + F(occlusalDir.Z) + "\"" +
+            ",\"minAlong\":" + F(minAlong) + ",\"maxAlong\":" + F(maxAlong) +
+            ",\"seed\":" + seedCount + ",\"occlusalGrown\":" + occlusalGrown +
+            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
+            ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
+            ",\"sum\":" + (counts[0] + counts[1] + counts[2] + counts[3] + counts[4]) +
+            ",\"overrides\":" + Fdi16ManualOverrides.Triangles.Count + "}");
+        AgentLog("G", "cleanup",
+            "{\"islandsBefore\":" + islandsBefore + ",\"islandsAfter\":" + islandsAfter +
+            ",\"largestO\":" + largest[0] + ",\"largestB\":" + largest[1] +
+            ",\"largestP\":" + largest[2] + ",\"largestM\":" + largest[3] + ",\"largestD\":" + largest[4] +
+            ",\"leftB0\":" + leftoverBefore[1] + ",\"leftD0\":" + leftoverBefore[4] +
+            ",\"leftO\":" + leftoverAfter[0] + ",\"leftB\":" + leftoverAfter[1] +
+            ",\"leftP\":" + leftoverAfter[2] + ",\"leftM\":" + leftoverAfter[3] + ",\"leftD\":" + leftoverAfter[4] +
+            ",\"occMeanZ\":" + F(occN == 0 ? 0 : occZ / occN) + ",\"occLowFace\":" + occLowFace +
+            ",\"envMin\":" + F(envMin) + ",\"envMax\":" + F(envMax) + ",\"envMean\":" + F(envMean) +
+            ",\"envAsym\":" + F(envMax - envMin) + "}");
+        // #endregion
+
+        return map;
     }
 
     public static MeshGeometry3D OverlayMesh(MeshGeometry3D crown, IEnumerable<int> triangles, double normalEps)
@@ -147,11 +220,194 @@ internal static class CrownSurfaceClassifier
         if (occlusal.LengthSquared < 1e-12)
             occlusal = new Vector3D(0, 0, 1);
         occlusal.Normalize();
-        if (Math.Abs(occlusal.Z) < 0.35)
-            occlusal = new Vector3D(0, 0, Math.Sign(occlusal.Z) == 0 ? 1 : Math.Sign(occlusal.Z));
-        else
-            occlusal = new Vector3D(0, 0, occlusal.Z >= 0 ? 1 : -1);
+        occlusal = new Vector3D(0, 0, occlusal.Z >= 0 ? 1 : -1);
         return occlusal;
+    }
+
+    private static Point3D AxialCenter(Point3D[] centroids, double[] z01)
+    {
+        var sx = 0d;
+        var sy = 0d;
+        var n = 0;
+        for (var t = 0; t < centroids.Length; t++)
+        {
+            if (z01[t] < 0.18 || z01[t] > 0.62) continue;
+            sx += centroids[t].X;
+            sy += centroids[t].Y;
+            n++;
+        }
+        if (n == 0)
+        {
+            sx = 0;
+            sy = 0;
+            foreach (var p in centroids)
+            {
+                sx += p.X;
+                sy += p.Y;
+            }
+            n = centroids.Length;
+        }
+        return new Point3D(sx / n, sy / n, 0);
+    }
+
+    private static bool IsOcclusalSeed(double z, double face, double r, double env)
+    {
+        var inside = r <= env * 1.02;
+        var near = r <= env * 1.08;
+        if (inside && z > 0.50) return true;
+        if (inside && z > 0.44 && face > 0.10) return true;
+        if (near && z > 0.58 && face > 0.30) return true;
+        if (z > 0.70 && face > 0.40) return true;
+        if (z > 0.56 && face > 0.68) return true;
+        return false;
+    }
+
+    private static void GrowOcclusal(bool[] occlusal, List<int>[] neighbors, double[] z01, double[] facing, double[] radius, double[] envR)
+    {
+        var q = new Queue<int>();
+        for (var t = 0; t < occlusal.Length; t++)
+        {
+            if (occlusal[t])
+                q.Enqueue(t);
+        }
+        while (q.Count > 0)
+        {
+            var t = q.Dequeue();
+            foreach (var nb in neighbors[t])
+            {
+                if (occlusal[nb]) continue;
+                if (!CanGrowOcclusal(nb, occlusal, neighbors, z01, facing, radius, envR))
+                    continue;
+                occlusal[nb] = true;
+                q.Enqueue(nb);
+            }
+        }
+    }
+
+    private static bool CanGrowOcclusal(int t, bool[] occlusal, List<int>[] neighbors, double[] z01, double[] facing, double[] radius, double[] envR)
+    {
+        var z = z01[t];
+        var face = facing[t];
+        var r = radius[t];
+        var env = envR[t];
+        if (z < 0.40) return false;
+        var occN = 0;
+        foreach (var nb in neighbors[t])
+        {
+            if (occlusal[nb]) occN++;
+        }
+        if (face < 0.12 && r > env * 1.02) return false;
+        if (r <= env && z > 0.48) return true;
+        if (occN >= 2 && z > 0.52 && r <= env * 1.08 && face > 0.16) return true;
+        if (face > 0.30 && z > 0.55 && r <= env * 1.10) return true;
+        return false;
+    }
+
+    private static double[] BuildOcclusalEnvelope(Point3D[] centroids, double[] z01, double[] facing, out Point3D origin, out double envMin, out double envMax, out double envMean)
+    {
+        var sx = 0d;
+        var sy = 0d;
+        var n = 0;
+        for (var t = 0; t < centroids.Length; t++)
+        {
+            if (z01[t] < 0.66 || facing[t] < 0.38) continue;
+            sx += centroids[t].X;
+            sy += centroids[t].Y;
+            n++;
+        }
+        origin = n == 0 ? new Point3D(0, 0, 0) : new Point3D(sx / n, sy / n, 0);
+        var maxR = new double[EnvelopeBins];
+        var has = new bool[EnvelopeBins];
+        for (var t = 0; t < centroids.Length; t++)
+        {
+            if (z01[t] < 0.66 || facing[t] < 0.38) continue;
+            var dx = centroids[t].X - origin.X;
+            var dy = centroids[t].Y - origin.Y;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(dx, dy);
+            if (r >= maxR[bin])
+            {
+                maxR[bin] = r;
+                has[bin] = true;
+            }
+        }
+
+        FillEmptyBins(maxR, has);
+        envMin = double.PositiveInfinity;
+        envMax = 0;
+        var sum = 0d;
+        var filled = 0;
+        for (var i = 0; i < EnvelopeBins; i++)
+        {
+            maxR[i] *= 1.04;
+            if (maxR[i] <= 1e-9) continue;
+            envMin = Math.Min(envMin, maxR[i]);
+            envMax = Math.Max(envMax, maxR[i]);
+            sum += maxR[i];
+            filled++;
+        }
+        if (filled == 0)
+        {
+            envMin = 0;
+            envMax = 0;
+            envMean = 0;
+        }
+        else
+        {
+            envMean = sum / filled;
+        }
+        return maxR;
+    }
+
+    private static void FillEmptyBins(double[] maxR, bool[] has)
+    {
+        for (var i = 0; i < maxR.Length; i++)
+        {
+            if (has[i]) continue;
+            var prev = i;
+            var stepsBack = 0;
+            do
+            {
+                prev = (prev - 1 + maxR.Length) % maxR.Length;
+                stepsBack++;
+            } while (!has[prev] && stepsBack < maxR.Length);
+            var next = i;
+            var stepsFwd = 0;
+            do
+            {
+                next = (next + 1) % maxR.Length;
+                stepsFwd++;
+            } while (!has[next] && stepsFwd < maxR.Length);
+            if (!has[prev] && !has[next])
+            {
+                maxR[i] = 0;
+                continue;
+            }
+            if (!has[prev]) maxR[i] = maxR[next];
+            else if (!has[next]) maxR[i] = maxR[prev];
+            else
+            {
+                var w = stepsBack + stepsFwd;
+                maxR[i] = (maxR[prev] * stepsFwd + maxR[next] * stepsBack) / Math.Max(1, w);
+            }
+        }
+    }
+
+    private static int AngleBin(double dx, double dy)
+    {
+        var ang = Math.Atan2(dy, dx);
+        var bin = (int)Math.Floor((ang + Math.PI) / (2 * Math.PI) * EnvelopeBins);
+        return Math.Clamp(bin, 0, EnvelopeBins - 1);
+    }
+
+    private static double EnvelopeRadius(double[] envelope, double dx, double dy)
+    {
+        var ang = Math.Atan2(dy, dx);
+        var u = (ang + Math.PI) / (2 * Math.PI) * EnvelopeBins;
+        var i0 = ((int)Math.Floor(u) % EnvelopeBins + EnvelopeBins) % EnvelopeBins;
+        var i1 = (i0 + 1) % EnvelopeBins;
+        var frac = u - Math.Floor(u);
+        return envelope[i0] * (1 - frac) + envelope[i1] * frac;
     }
 
     private static ClinicalSurface AxialSurface(Point3D centroid, Vector3D normal, Point3D center)
@@ -166,7 +422,7 @@ internal static class CrownSurfaceClassifier
             return ClinicalSurface.Buccal;
         nxy.Normalize();
         pxy.Normalize();
-        var blend = 0.68 * nxy + 0.32 * pxy;
+        var blend = 0.46 * nxy + 0.54 * pxy;
         var buccal = blend.Y;
         var palatal = -blend.Y;
         var mesial = blend.X;
@@ -199,8 +455,10 @@ internal static class CrownSurfaceClassifier
             for (var i = 0; i < pair.Count; i++)
             for (var j = i + 1; j < pair.Count; j++)
             {
-                neighbors[pair[i]].Add(pair[j]);
-                neighbors[pair[j]].Add(pair[i]);
+                if (!neighbors[pair[i]].Contains(pair[j]))
+                    neighbors[pair[i]].Add(pair[j]);
+                if (!neighbors[pair[j]].Contains(pair[i]))
+                    neighbors[pair[j]].Add(pair[i]);
             }
         }
         return neighbors;
@@ -217,28 +475,96 @@ internal static class CrownSurfaceClassifier
         list.Add(tri);
     }
 
-    private static void Smooth(ClinicalSurface[] labels, List<int>[] neighbors, Vector3D[] normals, Vector3D occlusalDir)
+    private static void Cleanup(ClinicalSurface[] labels, List<int>[] neighbors, double[] z01, double[] facing)
     {
-        for (var pass = 0; pass < 2; pass++)
+        ReassignIsolated(labels, neighbors, z01, facing);
+        ReassignSmallComponents(labels, neighbors);
+        KeepLargestComponents(labels, neighbors);
+        MajoritySmooth(labels, neighbors, z01, facing, 4);
+        ReassignIsolated(labels, neighbors, z01, facing);
+        ReassignSmallComponents(labels, neighbors);
+        KeepLargestComponents(labels, neighbors);
+        MajoritySmooth(labels, neighbors, z01, facing, 2);
+    }
+
+    private static void ReassignIsolated(ClinicalSurface[] labels, List<int>[] neighbors, double[] z01, double[] facing)
+    {
+        var next = (ClinicalSurface[])labels.Clone();
+        for (var t = 0; t < labels.Length; t++)
+        {
+            if (neighbors[t].Count == 0) continue;
+            var same = 0;
+            var votes = new int[5];
+            foreach (var nb in neighbors[t])
+            {
+                votes[(int)labels[nb]]++;
+                if (labels[nb] == labels[t]) same++;
+            }
+            if (same >= 2) continue;
+            if (labels[t] == ClinicalSurface.Occlusal && z01[t] > 0.62 && facing[t] > 0.50)
+                continue;
+            var majority = Majority(votes, labels[t]);
+            if (majority != labels[t])
+                next[t] = majority;
+        }
+        Array.Copy(next, labels, labels.Length);
+    }
+
+    private static void ReassignSmallComponents(ClinicalSurface[] labels, List<int>[] neighbors)
+    {
+        var totals = new int[5];
+        foreach (var lab in labels)
+            totals[(int)lab]++;
+
+        for (var s = 0; s < 5; s++)
+        {
+            var surface = (ClinicalSurface)s;
+            foreach (var comp in Components(labels, neighbors, surface))
+            {
+                if (comp.Count >= IslandSize && comp.Count >= 0.012 * totals[s])
+                    continue;
+                var votes = new int[5];
+                foreach (var t in comp)
+                {
+                    foreach (var nb in neighbors[t])
+                    {
+                        if (labels[nb] != surface)
+                            votes[(int)labels[nb]]++;
+                    }
+                }
+                var target = Majority(votes, surface);
+                if (target == surface) continue;
+                foreach (var t in comp)
+                    labels[t] = target;
+            }
+        }
+    }
+
+    private static void MajoritySmooth(ClinicalSurface[] labels, List<int>[] neighbors, double[] z01, double[] facing, int passes)
+    {
+        for (var pass = 0; pass < passes; pass++)
         {
             var next = (ClinicalSurface[])labels.Clone();
             for (var t = 0; t < labels.Length; t++)
             {
-                var counts = new int[5];
+                var nCount = neighbors[t].Count;
+                if (nCount < 2) continue;
+                var votes = new int[5];
                 foreach (var nb in neighbors[t])
-                    counts[(int)labels[nb]]++;
+                    votes[(int)labels[nb]]++;
                 var majority = 0;
                 var majorityClass = labels[t];
                 for (var s = 0; s < 5; s++)
                 {
-                    if (counts[s] <= majority) continue;
-                    majority = counts[s];
+                    if (votes[s] <= majority) continue;
+                    majority = votes[s];
                     majorityClass = (ClinicalSurface)s;
                 }
-                if (majority < 2 || majorityClass == labels[t])
+                if (majorityClass == labels[t]) continue;
+                if (majority * 3 < nCount * 2) continue;
+                if (labels[t] == ClinicalSurface.Occlusal && facing[t] > 0.55 && z01[t] > 0.58)
                     continue;
-                var facing = Vector3D.DotProduct(normals[t], occlusalDir);
-                if (labels[t] == ClinicalSurface.Occlusal && facing > 0.62 && majorityClass != ClinicalSurface.Occlusal)
+                if (majorityClass == ClinicalSurface.Occlusal && facing[t] < 0.12 && z01[t] < 0.50)
                     continue;
                 next[t] = majorityClass;
             }
@@ -246,10 +572,129 @@ internal static class CrownSurfaceClassifier
         }
     }
 
+    private static ClinicalSurface Majority(int[] votes, ClinicalSurface fallback)
+    {
+        var best = fallback;
+        var n = 0;
+        for (var s = 0; s < 5; s++)
+        {
+            if (votes[s] <= n) continue;
+            n = votes[s];
+            best = (ClinicalSurface)s;
+        }
+        return n == 0 ? fallback : best;
+    }
+
+    private static List<List<int>> Components(ClinicalSurface[] labels, List<int>[] neighbors, ClinicalSurface surface)
+    {
+        var seen = new bool[labels.Length];
+        var result = new List<List<int>>();
+        for (var i = 0; i < labels.Length; i++)
+        {
+            if (seen[i] || labels[i] != surface) continue;
+            var stack = new Stack<int>();
+            var comp = new List<int>();
+            stack.Push(i);
+            seen[i] = true;
+            while (stack.Count > 0)
+            {
+                var t = stack.Pop();
+                comp.Add(t);
+                foreach (var nb in neighbors[t])
+                {
+                    if (seen[nb] || labels[nb] != surface) continue;
+                    seen[nb] = true;
+                    stack.Push(nb);
+                }
+            }
+            result.Add(comp);
+        }
+        return result;
+    }
+
+    private static void KeepLargestComponents(ClinicalSurface[] labels, List<int>[] neighbors)
+    {
+        for (var s = 0; s < 5; s++)
+        {
+            var surface = (ClinicalSurface)s;
+            var comps = Components(labels, neighbors, surface);
+            if (comps.Count <= 1) continue;
+            var largest = comps[0];
+            foreach (var comp in comps)
+            {
+                if (comp.Count > largest.Count)
+                    largest = comp;
+            }
+            foreach (var comp in comps)
+            {
+                if (ReferenceEquals(comp, largest)) continue;
+                var votes = new int[5];
+                foreach (var t in comp)
+                {
+                    foreach (var nb in neighbors[t])
+                    {
+                        if (labels[nb] != surface)
+                            votes[(int)labels[nb]]++;
+                    }
+                }
+                var target = Majority(votes, surface);
+                if (target == surface) continue;
+                foreach (var t in comp)
+                    labels[t] = target;
+            }
+        }
+    }
+
+    private static int[] Leftover(ClinicalSurface[] labels, List<int>[] neighbors)
+    {
+        var totals = new int[5];
+        foreach (var lab in labels)
+            totals[(int)lab]++;
+        var largest = LargestComponents(labels, neighbors);
+        var leftover = new int[5];
+        for (var s = 0; s < 5; s++)
+            leftover[s] = Math.Max(0, totals[s] - largest[s]);
+        return leftover;
+    }
+
+    private static int CountIslands(ClinicalSurface[] labels, List<int>[] neighbors, int maxSize)
+    {
+        var n = 0;
+        for (var s = 0; s < 5; s++)
+        {
+            foreach (var comp in Components(labels, neighbors, (ClinicalSurface)s))
+            {
+                if (comp.Count < maxSize)
+                    n++;
+            }
+        }
+        return n;
+    }
+
+    private static int[] LargestComponents(ClinicalSurface[] labels, List<int>[] neighbors)
+    {
+        var largest = new int[5];
+        for (var s = 0; s < 5; s++)
+        {
+            foreach (var comp in Components(labels, neighbors, (ClinicalSurface)s))
+                largest[s] = Math.Max(largest[s], comp.Count);
+        }
+        return largest;
+    }
+
+    private static void ApplyManualOverrides(ClinicalSurface[] labels)
+    {
+        foreach (var kv in Fdi16ManualOverrides.Triangles)
+        {
+            if ((uint)kv.Key < (uint)labels.Length)
+                labels[kv.Key] = kv.Value;
+        }
+    }
+
     // #region agent log
     private static void AgentLog(string hypothesisId, string message, string dataJson)
     {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"seg-v1\",\"hypothesisId\":\"" + hypothesisId +
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"seg-v3\",\"hypothesisId\":\"" + hypothesisId +
                    "\",\"location\":\"CrownSurfaceClassifier.cs\",\"message\":\"" + message +
                    "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
         try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
