@@ -51,8 +51,12 @@ public partial class ToothMeshView : UserControl
     private Point _downPos;
     private int _lastHoverTri = -1;
     private readonly Dictionary<(int, int, int), int> _triByVerts = new();
+    private readonly HashSet<ClinicalSurface> _fillingSurfaces = [];
+    private Material? _fillingMaterial;
     private Material? _hoverMaterial;
     private Material? _selectedMaterial;
+    private Material? _hoverOnFillingMaterial;
+    private Material? _selectedOnFillingMaterial;
     private double _theta;
     private double _phi;
     private double _radius = 6;
@@ -113,6 +117,7 @@ public partial class ToothMeshView : UserControl
                 RootModel.Geometry = parts.Root;
                 BuildTriangleLookup(parts.Crown);
                 RebuildSurfaceOverlays(parts.Crown);
+                ApplyClinicalOverlays();
                 ApplyInteractionOverlays();
                 FrameOcclusal();
                 AgentLog("A", "mesh-loaded", ToJson());
@@ -199,6 +204,23 @@ public partial class ToothMeshView : UserControl
         // #endregion
     }
 
+    public void SetFillingSurfaces(IEnumerable<string> names)
+    {
+        _fillingSurfaces.Clear();
+        foreach (var name in names)
+        {
+            if (Enum.TryParse<ClinicalSurface>(name, true, out var surface))
+                _fillingSurfaces.Add(surface);
+        }
+        ApplyClinicalOverlays();
+        ApplyInteractionOverlays();
+        // #region agent log
+        AgentLog("F", "clinical-fillings",
+            "{\"count\":" + _fillingSurfaces.Count +
+            ",\"names\":\"" + Esc(string.Join(",", _fillingSurfaces)) + "\"}");
+        // #endregion
+    }
+
     private void RebuildSurfaceOverlays(MeshGeometry3D crown)
     {
         _overlayGroup.Children.Clear();
@@ -268,6 +290,7 @@ public partial class ToothMeshView : UserControl
                 ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
                 ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
             // #endregion
+            ApplyClinicalOverlays();
             ApplyInteractionOverlays();
         }
         catch (Exception ex)
@@ -648,13 +671,53 @@ public partial class ToothMeshView : UserControl
         return (a, b, c);
     }
 
+    private void ApplyClinicalOverlays()
+    {
+        _fillingMaterial ??= InteractionMaterial(Color.FromArgb(0x6A, 0xB4, 0xBC, 0xC4), 0x16);
+        if (_fillingSurfaces.Count == 0)
+        {
+            ClinicalOverlayVisual.Content = null;
+            // #region agent log
+            AgentLog("C", "clinical-overlay",
+                "{\"fillCount\":0,\"added\":0,\"skipped\":0,\"contentNull\":true}");
+            // #endregion
+            return;
+        }
+        var group = new Model3DGroup();
+        var skipped = 0;
+        foreach (var surface in _fillingSurfaces)
+        {
+            var model = OverlayFor(surface, _fillingMaterial);
+            if (model is not null)
+                group.Children.Add(model);
+            else
+                skipped++;
+        }
+        ClinicalOverlayVisual.Content = group.Children.Count == 0 ? null : group;
+        // #region agent log
+        AgentLog("C", "clinical-overlay",
+            "{\"fillCount\":" + _fillingSurfaces.Count +
+            ",\"added\":" + group.Children.Count +
+            ",\"skipped\":" + skipped +
+            ",\"contentNull\":" + (ClinicalOverlayVisual.Content is null ? "true" : "false") + "}");
+        // #endregion
+    }
+
     private void ApplyInteractionOverlays()
     {
         _hoverMaterial ??= InteractionMaterial(Color.FromArgb(0x22, 0x72, 0xB8, 0xE4), 0x10);
         _selectedMaterial ??= InteractionMaterial(Color.FromArgb(0x4C, 0x3A, 0x8C, 0xD2), 0x1C);
-        SelectedOverlayVisual.Content = OverlayFor(_selectedSurface, _selectedMaterial);
+        _hoverOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x18, 0x8A, 0xC4, 0xE8), 0x0C);
+        _selectedOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x2A, 0x5A, 0x9A, 0xD4), 0x14);
+        var selectedMat = _selectedSurface is ClinicalSurface sel && _fillingSurfaces.Contains(sel)
+            ? _selectedOnFillingMaterial
+            : _selectedMaterial;
+        SelectedOverlayVisual.Content = OverlayFor(_selectedSurface, selectedMat!);
         var hover = _hoverSurface is ClinicalSurface h && h != _selectedSurface ? _hoverSurface : null;
-        HoverOverlayVisual.Content = OverlayFor(hover, _hoverMaterial);
+        var hoverMat = hover is ClinicalSurface hs && _fillingSurfaces.Contains(hs)
+            ? _hoverOnFillingMaterial
+            : _hoverMaterial;
+        HoverOverlayVisual.Content = OverlayFor(hover, hoverMat!);
     }
 
     private GeometryModel3D? OverlayFor(ClinicalSurface? surface, Material material)

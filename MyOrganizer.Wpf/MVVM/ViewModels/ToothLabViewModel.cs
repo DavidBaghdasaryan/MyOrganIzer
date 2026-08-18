@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Input;
 using MyOrganizer.Wpf.Controls;
+using MyOrganizer.Wpf.Dental;
 using MyOrganizer.Wpf.MVVM.Infrastructure;
 
 namespace MyOrganizer.Wpf.MVVM.ViewModels;
@@ -8,12 +10,15 @@ namespace MyOrganizer.Wpf.MVVM.ViewModels;
 public sealed class ToothLabViewModel : ObservableObject
 {
     private double _toothSize = 340;
-    private string _status = "Hover: None\nSelected: None";
+    private string _status = "Hover: None\nSelected: None\nFilling: —";
+    private string? _hoverName;
+    private string? _selectedName;
     private IReadOnlyList<ToothSurfaceType> _selected = [];
     private IReadOnlyDictionary<ToothSurfaceType, ToothSurfaceVisual> _surfaceStates;
 
     public ToothLabViewModel()
     {
+        Clinical = new ToothLabClinicalState("16");
         Surfaces =
         [
             new LabSurfaceRow(this, ToothSurfaceType.Occlusal, "Occlusal"),
@@ -26,11 +31,16 @@ public sealed class ToothLabViewModel : ObservableObject
         ClearSelectionCommand = new RelayCommand(ClearSelection);
         ResetHealthyCommand = new RelayCommand(ResetHealthy);
         DemoMixedCommand = new RelayCommand(DemoMixed);
+        AssignNoneCommand = new RelayCommand(AssignNone, () => HasSelectedSurface);
+        AssignFillingCommand = new RelayCommand(AssignFilling, () => HasSelectedSurface);
     }
+
+    public ToothLabClinicalState Clinical { get; }
+    public event EventHandler? ClinicalChanged;
 
     public string ToothNumber => "16";
     public string Hint =>
-        "Hover a crown surface to highlight it. Click to select; click again to clear. Drag to orbit. Segmentation debug stays off unless you turn it on.";
+        "Select a crown surface, then assign None or Filling. Filling persists after hover and selection change. Drag to orbit.";
 
     public string SourceNote =>
         "Mesh: Maxillary First Molar, University of Dundee School of Dentistry (Emily McDougall; " +
@@ -49,6 +59,8 @@ public sealed class ToothLabViewModel : ObservableObject
     public ICommand ClearSelectionCommand { get; }
     public ICommand ResetHealthyCommand { get; }
     public ICommand DemoMixedCommand { get; }
+    public ICommand AssignNoneCommand { get; }
+    public ICommand AssignFillingCommand { get; }
 
     public string LabelTop => "Buccal";
     public string LabelBottom => "Palatal";
@@ -67,6 +79,21 @@ public sealed class ToothLabViewModel : ObservableObject
         private set => SetProperty(ref _status, value);
     }
 
+    public bool HasSelectedSurface => TryParseSurface(_selectedName, out _);
+
+    public string SelectedSurfaceLabel => _selectedName ?? "None";
+
+    public string ClinicalSummary
+    {
+        get
+        {
+            var names = Clinical.FillingSurfaceNames();
+            return names.Count == 0 ? "Filling: —" : "Filling: " + string.Join(", ", names);
+        }
+    }
+
+    public IReadOnlyList<string> FillingSurfaceNames => Clinical.FillingSurfaceNames();
+
     public IReadOnlyList<ToothSurfaceType> SelectedSurfaces
     {
         get => _selected;
@@ -81,7 +108,16 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public void SetInteraction(string? hover, string? selected)
     {
-        Status = "Hover: " + (hover ?? "None") + "\nSelected: " + (selected ?? "None");
+        _hoverName = hover;
+        var selectedChanged = !string.Equals(_selectedName, selected, StringComparison.Ordinal);
+        _selectedName = selected;
+        RefreshStatus();
+        if (!selectedChanged)
+            return;
+        OnPropertyChanged(nameof(HasSelectedSurface));
+        OnPropertyChanged(nameof(SelectedSurfaceLabel));
+        ((RelayCommand)AssignNoneCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)AssignFillingCommand).RaiseCanExecuteChanged();
     }
 
     public void OnSurfaceClicked(ToothSurfaceEventArgs e)
@@ -100,6 +136,69 @@ public sealed class ToothLabViewModel : ObservableObject
     }
 
     internal void PublishStates() => SurfaceStates = BuildStates();
+
+    private void AssignNone() => Assign(DentalProcedureType.None);
+
+    private void AssignFilling() => Assign(DentalProcedureType.Filling);
+
+    private void Assign(DentalProcedureType procedure)
+    {
+        if (!TryParseSurface(_selectedName, out var surface))
+            return;
+        var changed = Clinical.Set(surface, procedure);
+        // #region agent log
+        AgentLog("A", "assign-procedure",
+            "{\"selected\":\"" + (_selectedName ?? "") +
+            "\",\"domain\":\"" + surface +
+            "\",\"procedure\":\"" + procedure +
+            "\",\"changed\":" + (changed ? "true" : "false") +
+            ",\"fillings\":\"" + string.Join(",", Clinical.FillingSurfaceNames()) + "\"}");
+        // #endregion
+        if (!changed)
+            return;
+        NotifyClinical();
+    }
+
+    // #region agent log
+    private static void AgentLog(string hypothesisId, string message, string dataJson)
+    {
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"filling-v1\",\"hypothesisId\":\"" + hypothesisId +
+                   "\",\"location\":\"ToothLabViewModel.cs\",\"message\":\"" + message +
+                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { /* lab logging must not break the workflow */ }
+    }
+    // #endregion
+
+    private void NotifyClinical()
+    {
+        OnPropertyChanged(nameof(ClinicalSummary));
+        OnPropertyChanged(nameof(FillingSurfaceNames));
+        RefreshStatus();
+        ClinicalChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void RefreshStatus()
+    {
+        var names = Clinical.FillingSurfaceNames();
+        Status =
+            "Hover: " + (_hoverName ?? "None") + "\n" +
+            "Selected: " + (_selectedName ?? "None") + "\n" +
+            (names.Count == 0 ? "Filling: —" : "Filling: " + string.Join(", ", names));
+    }
+
+    private static bool TryParseSurface(string? name, out ToothSurfaceType surface)
+    {
+        surface = ToothSurfaceType.Occlusal;
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+        if (name.Equals("Palatal", StringComparison.OrdinalIgnoreCase))
+        {
+            surface = ToothSurfaceType.Lingual;
+            return true;
+        }
+        return Enum.TryParse(name, true, out surface);
+    }
 
     private Dictionary<ToothSurfaceType, ToothSurfaceVisual> BuildStates() =>
         Surfaces.ToDictionary(
