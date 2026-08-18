@@ -192,7 +192,13 @@ public partial class ToothMeshView : UserControl
         _surfaceMap = null;
         try
         {
-            _surfaceMap = CrownSurfaceClassifier.Classify(crown);
+            _surfaceMap = Fdi16SurfaceMapStore.TryLoad(crown);
+            var source = "asset";
+            if (_surfaceMap is null)
+            {
+                _surfaceMap = Fdi16SurfaceMapStore.Build(crown);
+                source = "generated";
+            }
             var colors = new[]
             {
                 Color.FromArgb(0x7A, 0xE8, 0x5D, 0x4C),
@@ -217,10 +223,34 @@ public partial class ToothMeshView : UserControl
             }
             ApplyOverlayVisibility();
             // #region agent log
-            AgentLog("E", "overlay-built",
+            var nTri = crown.TriangleIndices.Count / 3;
+            var idx = crown.TriangleIndices;
+            var pos = crown.Positions;
+            var palDistalFlank = 0;
+            var distPalatalFlank = 0;
+            for (var t = 0; t < nTri; t++)
+            {
+                var a = pos[idx[t * 3]];
+                var b = pos[idx[t * 3 + 1]];
+                var c = pos[idx[t * 3 + 2]];
+                var cx = (a.X + b.X + c.X) / 3.0;
+                var cy = (a.Y + b.Y + c.Y) / 3.0;
+                var lab = _surfaceMap.SurfaceOf(t);
+                if (lab == ClinicalSurface.Palatal && cx < -0.15) palDistalFlank++;
+                if (lab == ClinicalSurface.Distal && cy < -0.15) distPalatalFlank++;
+            }
+            AgentLog("P", "overlay-built",
                 "{\"eps\":" + OverlayNormalEps.ToString("0.####", CultureInfo.InvariantCulture) +
                 ",\"overlayVerts\":" + overlayVerts +
-                ",\"crownTris\":" + (crown.TriangleIndices.Count / 3) +
+                ",\"crownTris\":" + nTri +
+                ",\"occlusal\":" + _surfaceMap.Counts[0] +
+                ",\"palatal\":" + _surfaceMap.Counts[2] +
+                ",\"distal\":" + _surfaceMap.Counts[4] +
+                ",\"palColor\":\"#2EBB6B\"" +
+                ",\"distColor\":\"#9B59B6\"" +
+                ",\"mapSource\":\"" + source + "\"" +
+                ",\"palDistalFlank\":" + palDistalFlank +
+                ",\"distPalatalFlank\":" + distPalatalFlank +
                 ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
                 ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
             // #endregion
@@ -259,8 +289,20 @@ public partial class ToothMeshView : UserControl
         }
         SurfaceOverlayVisual.Content = _overlayGroup;
         // #region agent log
-        AgentLog("A", "overlay-on",
-            "{\"inspect\":\"" + Esc(inspect) + "\",\"children\":" + _overlayGroup.Children.Count + "}");
+        AgentLog("P", "overlay-on",
+            "{\"inspect\":\"" + Esc(inspect) +
+            "\",\"children\":" + _overlayGroup.Children.Count +
+            ",\"palatal\":" + _surfaceMap.Counts[2] +
+            ",\"distal\":" + _surfaceMap.Counts[4] +
+            ",\"shownColor\":\"" + inspect switch
+            {
+                "Palatal" => "#2EBB6B green",
+                "Distal" => "#9B59B6 pink",
+                "Occlusal" => "#E85D4C coral",
+                "Buccal" => "#3D7CFF blue",
+                "Mesial" => "#F4D03F yellow",
+                _ => "all-five"
+            } + "\"}");
         // #endregion
     }
 

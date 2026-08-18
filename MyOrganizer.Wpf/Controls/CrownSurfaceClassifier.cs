@@ -118,6 +118,7 @@ internal static class CrownSurfaceClassifier
         var islandsBefore = CountIslands(labels, neighbors, IslandSize);
         var leftoverBefore = Leftover(labels, neighbors);
         Cleanup(labels, neighbors, z01, facing);
+        var greenInPink = RetractPalatalFromDistal(labels, neighbors, centroids, axialCenter);
         ApplyManualOverrides(labels);
         var islandsAfter = CountIslands(labels, neighbors, IslandSize);
 
@@ -159,7 +160,8 @@ internal static class CrownSurfaceClassifier
             ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
             ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
             ",\"sum\":" + (counts[0] + counts[1] + counts[2] + counts[3] + counts[4]) +
-            ",\"overrides\":" + Fdi16ManualOverrides.Triangles.Count + "}");
+            ",\"overrides\":" + Fdi16ManualOverrides.Triangles.Count +
+            ",\"greenInPink\":" + greenInPink + "}");
         AgentLog("G", "cleanup",
             "{\"islandsBefore\":" + islandsBefore + ",\"islandsAfter\":" + islandsAfter +
             ",\"largestO\":" + largest[0] + ",\"largestB\":" + largest[1] +
@@ -410,7 +412,7 @@ internal static class CrownSurfaceClassifier
         return envelope[i0] * (1 - frac) + envelope[i1] * frac;
     }
 
-    private static ClinicalSurface AxialSurface(Point3D centroid, Vector3D normal, Point3D center)
+    internal static ClinicalSurface AxialSurface(Point3D centroid, Vector3D normal, Point3D center)
     {
         var nxy = new Vector3D(normal.X, normal.Y, 0);
         var pxy = new Vector3D(centroid.X - center.X, centroid.Y - center.Y, 0);
@@ -435,7 +437,7 @@ internal static class CrownSurfaceClassifier
         return best;
     }
 
-    private static List<int>[] BuildNeighbors(Int32Collection idx, int nTri)
+    internal static List<int>[] BuildNeighbors(Int32Collection idx, int nTri)
     {
         var edge = new Dictionary<(int, int), List<int>>();
         for (var t = 0; t < nTri; t++)
@@ -485,6 +487,51 @@ internal static class CrownSurfaceClassifier
         ReassignSmallComponents(labels, neighbors);
         KeepLargestComponents(labels, neighbors);
         MajoritySmooth(labels, neighbors, z01, facing, 2);
+    }
+
+    private static int RetractPalatalFromDistal(
+        ClinicalSurface[] labels, List<int>[] neighbors, Point3D[] centroids, Point3D axialCenter)
+    {
+        var moved = 0;
+        for (var t = 0; t < labels.Length; t++)
+        {
+            if (labels[t] != ClinicalSurface.Palatal) continue;
+            var dx = centroids[t].X - axialCenter.X;
+            var dy = centroids[t].Y - axialCenter.Y;
+            var distal = -dx;
+            var palatal = -dy;
+            if (distal <= 0) continue;
+            if (distal < palatal * 0.88) continue;
+            labels[t] = ClinicalSurface.Distal;
+            moved++;
+        }
+
+        for (var pass = 0; pass < 6; pass++)
+        {
+            var changed = 0;
+            var next = (ClinicalSurface[])labels.Clone();
+            for (var t = 0; t < labels.Length; t++)
+            {
+                if (labels[t] != ClinicalSurface.Palatal) continue;
+                if (centroids[t].X > axialCenter.X) continue;
+                var distalNb = 0;
+                var palNb = 0;
+                foreach (var nb in neighbors[t])
+                {
+                    if (labels[nb] == ClinicalSurface.Distal) distalNb++;
+                    else if (labels[nb] == ClinicalSurface.Palatal) palNb++;
+                }
+                if (distalNb <= palNb) continue;
+                next[t] = ClinicalSurface.Distal;
+                changed++;
+            }
+            if (changed == 0) break;
+            Array.Copy(next, labels, labels.Length);
+            moved += changed;
+        }
+
+        KeepLargestComponents(labels, neighbors);
+        return moved;
     }
 
     private static void ReassignIsolated(ClinicalSurface[] labels, List<int>[] neighbors, double[] z01, double[] facing)
@@ -694,7 +741,7 @@ internal static class CrownSurfaceClassifier
     // #region agent log
     private static void AgentLog(string hypothesisId, string message, string dataJson)
     {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"seg-v3\",\"hypothesisId\":\"" + hypothesisId +
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"post-fix\",\"hypothesisId\":\"" + hypothesisId +
                    "\",\"location\":\"CrownSurfaceClassifier.cs\",\"message\":\"" + message +
                    "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
         try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
