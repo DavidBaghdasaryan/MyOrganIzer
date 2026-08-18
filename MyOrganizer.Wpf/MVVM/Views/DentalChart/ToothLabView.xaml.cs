@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using MyOrganizer.Wpf.Controls;
@@ -100,17 +101,31 @@ public partial class ToothLabView : UserControl
         if (_vm.ShowInspector)
             MeshView.LoadRegisteredAsset(_vm.ToothNumber);
         LogInspectorState();
+        SyncInspectComboLabel();
         if (_vm.ShowClinicalTools)
         {
             PushClinical(_vm);
             PushSelection(_vm);
-            ApplySurfaceDebug();
         }
         else
         {
             MeshView.SetFillingSurfaces([]);
             MeshView.SetSelectedSurfaces([]);
+        }
+        if (_vm.ShowSegTools)
+            ApplySurfaceDebug();
+        else
             MeshView.SetSurfaceDebug(false, "All");
+    }
+
+    private void SyncInspectComboLabel()
+    {
+        if (_vm is null || InspectCombo is null) return;
+        foreach (var item in InspectCombo.Items.OfType<ComboBoxItem>())
+        {
+            var text = item.Content?.ToString() ?? "";
+            if (text is "Palatal" or "Lingual")
+                item.Content = _vm.InnerCameraLabel;
         }
     }
 
@@ -124,6 +139,7 @@ public partial class ToothLabView : UserControl
                    ",\"meshAsset\":\"" + MeshView.AssetName +
                    "\",\"meshVisible\":" + (MeshView.IsVisible ? "true" : "false") +
                    ",\"clinical\":" + (_vm.ShowClinicalTools ? "true" : "false") +
+                   ",\"segTools\":" + (_vm.ShowSegTools ? "true" : "false") +
                    ",\"inner\":\"" + _vm.InnerCameraLabel + "\"" +
                    ",\"occlusalVisible\":" + (FindName("OcclusalTooth") is UIElement occlusal && occlusal.IsVisible ? "true" : "false") +
                    "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";

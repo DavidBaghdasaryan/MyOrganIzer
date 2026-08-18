@@ -15,7 +15,10 @@ internal static class CrownSurfaceClassifier
     private const int EnvelopeBins = 72;
     private const int IslandSize = 28;
 
-    public static ClinicalSurfaceMap Classify(MeshGeometry3D crown)
+    public static ClinicalSurfaceMap Classify(MeshGeometry3D crown) =>
+        Classify(crown, applyFdi16Overrides: true);
+
+    public static ClinicalSurfaceMap Classify(MeshGeometry3D crown, bool applyFdi16Overrides)
     {
         var idx = crown.TriangleIndices;
         var nTri = idx.Count / 3;
@@ -119,7 +122,8 @@ internal static class CrownSurfaceClassifier
         var leftoverBefore = Leftover(labels, neighbors);
         Cleanup(labels, neighbors, z01, facing);
         var greenInPink = RetractPalatalFromDistal(labels, neighbors, centroids, axialCenter);
-        ApplyManualOverrides(labels);
+        if (applyFdi16Overrides)
+            ApplyManualOverrides(labels);
         var islandsAfter = CountIslands(labels, neighbors, IslandSize);
 
         var counts = new int[5];
@@ -145,10 +149,13 @@ internal static class CrownSurfaceClassifier
             OcclusalDirection = occlusalDir,
             Counts = counts
         };
-        foreach (var kv in Fdi16ManualOverrides.Triangles)
+        if (applyFdi16Overrides)
         {
-            if ((uint)kv.Key < (uint)nTri)
-                map.Overrides[kv.Key] = kv.Value;
+            foreach (var kv in Fdi16ManualOverrides.Triangles)
+            {
+                if ((uint)kv.Key < (uint)nTri)
+                    map.Overrides[kv.Key] = kv.Value;
+            }
         }
 
         // #region agent log
@@ -160,7 +167,8 @@ internal static class CrownSurfaceClassifier
             ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
             ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
             ",\"sum\":" + (counts[0] + counts[1] + counts[2] + counts[3] + counts[4]) +
-            ",\"overrides\":" + Fdi16ManualOverrides.Triangles.Count +
+            ",\"apply16ov\":" + (applyFdi16Overrides ? "true" : "false") +
+            ",\"overrides\":" + (applyFdi16Overrides ? Fdi16ManualOverrides.Triangles.Count : 0) +
             ",\"greenInPink\":" + greenInPink + "}");
         AgentLog("G", "cleanup",
             "{\"islandsBefore\":" + islandsBefore + ",\"islandsAfter\":" + islandsAfter +

@@ -62,6 +62,7 @@ public sealed class ToothAssetDefinition
     public string? SurfaceMap { get; init; }
     public required bool RuntimeImported { get; init; }
     public required bool SurfaceMapAvailable { get; init; }
+    public required bool ClinicalInteraction { get; init; }
     public required ToothAssetAttribution Attribution { get; init; }
     public string? SourceNote { get; init; }
 
@@ -227,6 +228,7 @@ public static class ToothAssetRegistry
             ",\"fdi36Imported\":" + (map["36"].RuntimeImported ? "true" : "false") +
             ",\"fdi36Mirror\":" + (map["36"].MirrorX ? "true" : "false") +
             ",\"fdi36Map\":" + (map["36"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi36Interact\":" + (map["36"].ClinicalInteraction ? "true" : "false") +
             ",\"fdi46Imported\":" + (map["46"].RuntimeImported ? "true" : "false") + "}");
         // #endregion
         return map;
@@ -264,9 +266,10 @@ public static class ToothAssetRegistry
             RuntimeMesh = imported16 ? "FDI16_High.obj" : imported36 ? "FDI36_High.obj" : null,
             MirrorX = mirrorX,
             OrientationProfile = imported16 ? "ApprovedFdi16" : imported36 ? "MandibularFirstMolar" : "Pending",
-            SurfaceMap = imported16 ? "FDI16SurfaceMap.json" : null,
+            SurfaceMap = imported16 ? "FDI16SurfaceMap.json" : imported36 ? "FDI36SurfaceMap.json" : null,
             RuntimeImported = imported,
-            SurfaceMapAvailable = imported16,
+            SurfaceMapAvailable = imported16 || imported36,
+            ClinicalInteraction = imported16,
             Attribution = attr,
             SourceNote = note
         };

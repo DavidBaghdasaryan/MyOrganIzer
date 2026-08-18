@@ -13,6 +13,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Fdi36MapGen" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="appsettings.json" />
     <None Remove="Assets\add.png" />
     <None Remove="Assets\debt2.png" />
@@ -122,6 +126,7 @@
     <Resource Include="Assets\Teeth\Source\FDI16_High.obj" />
     <Resource Include="Assets\Teeth\Source\FDI36_High.obj" />
     <Resource Include="Assets\Teeth\FDI16SurfaceMap.json" />
+    <Resource Include="Assets\Teeth\FDI36SurfaceMap.json" />
   </ItemGroup>
 
   <ItemGroup>

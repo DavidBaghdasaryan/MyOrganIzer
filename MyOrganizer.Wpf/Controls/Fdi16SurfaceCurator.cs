@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Windows.Media.Media3D;
 
@@ -10,7 +11,13 @@ namespace MyOrganizer.Wpf.Controls;
 /// </summary>
 internal static class Fdi16SurfaceCurator
 {
-    public static ClinicalSurfaceMap Apply(ClinicalSurfaceMap automatic)
+    public static ClinicalSurfaceMap Apply(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: true);
+
+    public static ClinicalSurfaceMap ApplyGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: false);
+
+    private static ClinicalSurfaceMap ApplyCore(ClinicalSurfaceMap automatic, bool applyFdi16TriangleOverrides)
     {
         var crown = automatic.SourceCrown;
         var nTri = automatic.TriangleSurface.Length;
@@ -30,10 +37,17 @@ internal static class Fdi16SurfaceCurator
 
         PeelOuterBuccalPalatal(labels, neighbors, feat, peeled);
 
-        foreach (var kv in Fdi16ManualOverrides.Triangles)
+        if (applyFdi16TriangleOverrides)
         {
-            if ((uint)kv.Key < (uint)nTri)
-                labels[kv.Key] = kv.Value;
+            foreach (var kv in Fdi16ManualOverrides.Triangles)
+            {
+                if ((uint)kv.Key < (uint)nTri)
+                    labels[kv.Key] = kv.Value;
+            }
+        }
+        else
+        {
+            PlaceCervicalRedBand(crown, labels, neighbors, feat, peeled);
         }
 
         KeepLargestAxial(labels, neighbors);
@@ -57,8 +71,9 @@ internal static class Fdi16SurfaceCurator
         }
 
         // #region agent log
-        AgentLog("I", "curated",
-            "{\"peeledB\":" + peeled[1] + ",\"peeledP\":" + peeled[2] +
+        AgentLog("A", "curated",
+            "{\"apply16ov\":" + (applyFdi16TriangleOverrides ? "true" : "false") +
+            ",\"peeledB\":" + peeled[1] + ",\"peeledP\":" + peeled[2] +
             ",\"peeledM\":" + peeled[3] + ",\"peeledD\":" + peeled[4] +
             ",\"overrides\":" + map.Overrides.Count +
             ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
@@ -83,6 +98,201 @@ internal static class Fdi16SurfaceCurator
         if (ratio <= 1.02 && z >= 0.64 && face >= 0.32) return true;
         if (z >= 0.74 && face >= 0.36) return true;
         return false;
+    }
+
+    /// <summary>
+    /// Color 0 (coral/red) is the cervical/lower-crown band, not the chewing table.
+    /// Chewing-table triangles are released to the four directional walls.
+    /// Does not run on the frozen FDI 16 Apply() path.
+    /// </summary>
+    private static void PlaceCervicalRedBand(
+        MeshGeometry3D crown, ClinicalSurface[] labels, List<int>[] neighbors, Features feat, int[] peeled)
+    {
+        var nTri = labels.Length;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+            labels[t] = wall;
+            peeled[(int)wall]++;
+        }
+
+        var cej = CrownBoundaryTriangles(crown, nTri);
+        for (var t = 0; t < nTri; t++)
+        {
+            if (feat.Z01[t] < 0.06)
+                cej[t] = true;
+        }
+
+        const int bins = 72;
+        var cejZ01 = new double[bins];
+        Array.Fill(cejZ01, 1d);
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!cej[t]) continue;
+            var bin = AngleBin(feat.Centroids[t], feat.AxialCenter, bins);
+            cejZ01[bin] = Math.Min(cejZ01[bin], feat.Z01[t]);
+        }
+        for (var i = 0; i < bins; i++)
+        {
+            if (cejZ01[i] < 0.99) continue;
+            var prev = cejZ01[(i + bins - 1) % bins];
+            var next = cejZ01[(i + 1) % bins];
+            cejZ01[i] = Math.Min(prev, next);
+        }
+
+        var band = new bool[nTri];
+        var q = new Queue<int>();
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!cej[t]) continue;
+            band[t] = true;
+            q.Enqueue(t);
+        }
+
+        while (q.Count > 0)
+        {
+            var t = q.Dequeue();
+            var bin = AngleBin(feat.Centroids[t], feat.AxialCenter, bins);
+            var ceiling = Math.Min(0.34, cejZ01[bin] + 0.20);
+            foreach (var nb in neighbors[t])
+            {
+                if (band[nb]) continue;
+                if (feat.Z01[nb] > ceiling) continue;
+                if (feat.Z01[nb] > 0.28 && feat.Facing[nb] > 0.38) continue;
+                if (feat.Z01[nb] > 0.42) continue;
+                band[nb] = true;
+                q.Enqueue(nb);
+            }
+        }
+
+        for (var pass = 0; pass < 4; pass++)
+        {
+            var changed = 0;
+            for (var t = 0; t < nTri; t++)
+            {
+                if (band[t]) continue;
+                if (feat.Z01[t] > 0.32) continue;
+                var nOcc = 0;
+                foreach (var nb in neighbors[t])
+                    if (band[nb]) nOcc++;
+                if (nOcc < 3) continue;
+                band[t] = true;
+                changed++;
+            }
+            if (changed == 0) break;
+        }
+
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!band[t]) continue;
+            labels[t] = ClinicalSurface.Occlusal;
+        }
+
+        var seen = new bool[nTri];
+        for (var i = 0; i < nTri; i++)
+        {
+            if (seen[i] || labels[i] != ClinicalSurface.Occlusal) continue;
+            var stack = new Stack<int>();
+            var comp = new List<int>();
+            stack.Push(i);
+            seen[i] = true;
+            var touchesCej = false;
+            while (stack.Count > 0)
+            {
+                var t = stack.Pop();
+                comp.Add(t);
+                if (cej[t] || feat.Z01[t] < 0.10) touchesCej = true;
+                foreach (var nb in neighbors[t])
+                {
+                    if (seen[nb] || labels[nb] != ClinicalSurface.Occlusal) continue;
+                    seen[nb] = true;
+                    stack.Push(nb);
+                }
+            }
+            if (touchesCej) continue;
+            foreach (var t in comp)
+            {
+                labels[t] = CrownSurfaceClassifier.AxialSurface(
+                    feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+            }
+        }
+
+        var occ = 0;
+        var occZ = 0d;
+        var high = 0;
+        var low = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            occ++;
+            occZ += feat.Z01[t];
+            if (feat.Z01[t] >= 0.70) high++;
+            if (feat.Z01[t] < 0.35) low++;
+        }
+        // #region agent log
+        AgentLog("A", "cervical-band",
+            "{\"occ\":" + occ +
+            ",\"pct\":" + (nTri == 0 ? "0" : (100.0 * occ / nTri).ToString("0.0", CultureInfo.InvariantCulture)) +
+            ",\"meanZ01\":" + (occ == 0 ? "0" : (occZ / occ).ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"lowCervical\":" + low +
+            ",\"highTable\":" + high +
+            ",\"cejSeeds\":" + CountTrue(cej) + "}");
+        // #endregion
+    }
+
+    private static int CountTrue(bool[] flags)
+    {
+        var n = 0;
+        foreach (var f in flags)
+            if (f) n++;
+        return n;
+    }
+
+    private static int AngleBin(Point3D p, Point3D center, int bins)
+    {
+        var u = (Math.Atan2(p.Y - center.Y, p.X - center.X) + Math.PI) / (2 * Math.PI) * bins;
+        var bin = (int)Math.Floor(u);
+        return Math.Clamp(bin, 0, bins - 1);
+    }
+
+    private static bool[] CrownBoundaryTriangles(MeshGeometry3D crown, int nTri)
+    {
+        var idx = crown.TriangleIndices;
+        var count = new Dictionary<long, int>();
+        void Add(int a, int b)
+        {
+            var lo = Math.Min(a, b);
+            var hi = Math.Max(a, b);
+            var key = ((long)lo << 32) | (uint)hi;
+            count[key] = count.TryGetValue(key, out var n) ? n + 1 : 1;
+        }
+        for (var t = 0; t < nTri; t++)
+        {
+            var a = idx[t * 3];
+            var b = idx[t * 3 + 1];
+            var c = idx[t * 3 + 2];
+            Add(a, b);
+            Add(b, c);
+            Add(c, a);
+        }
+        var border = new bool[nTri];
+        bool Open(int a, int b)
+        {
+            var lo = Math.Min(a, b);
+            var hi = Math.Max(a, b);
+            var key = ((long)lo << 32) | (uint)hi;
+            return count.TryGetValue(key, out var n) && n == 1;
+        }
+        for (var t = 0; t < nTri; t++)
+        {
+            var a = idx[t * 3];
+            var b = idx[t * 3 + 1];
+            var c = idx[t * 3 + 2];
+            if (Open(a, b) || Open(b, c) || Open(c, a))
+                border[t] = true;
+        }
+        return border;
     }
 
     private static void PeelOuterBuccalPalatal(

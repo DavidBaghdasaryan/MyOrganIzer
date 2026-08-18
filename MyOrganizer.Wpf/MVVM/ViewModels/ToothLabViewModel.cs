@@ -60,11 +60,11 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
-        "Click an FDI number to inspect it. FDI 16 is the approved 3D inspector. " +
-        "Other positions show source status until their mesh is imported. " +
-        "On FDI 16: click surfaces to toggle a pending set, then Create Procedure. Drag to orbit. " +
-        "Select FDI 36 in the lower row (31–38) to load the mandibular first molar 3D model. " +
-        "FDI 36 is healthy anatomy only until its surface map is created.";
+        "Click an FDI number to inspect it. FDI 16 is the golden segmentation reference. " +
+        "Turn on Show Surface Segmentation, then switch 16 → 36 → 16 from comparable views. " +
+        "FDI 36 should look like the same system fitted to mandibular first-molar anatomy (Lingual, not Palatal). " +
+        "On FDI 16 only: click surfaces to toggle a pending set, then Create Procedure. " +
+        "FDI 36 clinical interaction is not enabled yet.";
 
     public string SourceNote =>
         "Mesh: Maxillary First Molar, University of Dundee School of Dentistry (Emily McDougall; " +
@@ -78,10 +78,15 @@ public sealed class ToothLabViewModel : ObservableObject
     public string InspectorNote =>
         _asset.FdiNumber == ToothAssetRegistry.ApprovedFdi
             ? SourceNote
-            : _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
-              _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
-              ". Healthy anatomy only; clinical surface map not created yet. " +
-              _asset.Attribution.SketchfabUrl;
+            : _asset.FdiNumber == "36"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Healthy anatomy is frozen. Debug overlay: Occlusal / Buccal / Lingual / Mesial / Distal. " +
+                  "Clinical interaction is not available yet. " + _asset.Attribution.SketchfabUrl
+                : _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Healthy anatomy only; clinical surface map not created yet. " +
+                  _asset.Attribution.SketchfabUrl;
 
     public IReadOnlyList<ProcedureOption> ProcedureOptions { get; } =
         ToothSurfaceAppearance.Keys
@@ -102,7 +107,8 @@ public sealed class ToothLabViewModel : ObservableObject
     public ToothAssetDefinition SelectedAsset => _asset;
     public bool ShowInspector => _asset.RuntimeImported;
     public bool ShowPlaceholder => !_asset.RuntimeImported;
-    public bool ShowClinicalTools => _asset.SurfaceMapAvailable;
+    public bool ShowClinicalTools => _asset.ClinicalInteraction;
+    public bool ShowSegTools => _asset.SurfaceMapAvailable;
     public bool ShowAssetStatus => !_asset.SurfaceMapAvailable;
     public string InnerCameraLabel => _asset.InnerSurfaceName;
 
@@ -214,6 +220,7 @@ public sealed class ToothLabViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowInspector));
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(ShowClinicalTools));
+        OnPropertyChanged(nameof(ShowSegTools));
         OnPropertyChanged(nameof(ShowAssetStatus));
         OnPropertyChanged(nameof(InnerCameraLabel));
         OnPropertyChanged(nameof(InspectorNote));
@@ -244,6 +251,9 @@ public sealed class ToothLabViewModel : ObservableObject
         else if (!asset.SurfaceMapAvailable)
             Status = "FDI " + asset.FdiNumber + " · " + asset.DisplayName +
                      "\nClinical surface map: Not created\nInteraction: Not available yet";
+        else if (!asset.ClinicalInteraction)
+            Status = "FDI " + asset.FdiNumber + " · " + asset.DisplayName +
+                     "\nSurface map: debug overlay available\nClinical interaction: Not available";
         else
             RefreshStatus();
     }

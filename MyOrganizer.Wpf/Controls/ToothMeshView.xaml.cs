@@ -139,11 +139,13 @@ public partial class ToothMeshView : UserControl
 
             _loadedFdi = asset.FdiNumber;
             _orientationProfile = asset.OrientationProfile;
-            _interactionEnabled = asset.SurfaceMapAvailable;
+            _interactionEnabled = asset.ClinicalInteraction;
             LabelPalatal.Text = asset.InnerSurfaceName;
-            HintCaption.Text = asset.SurfaceMapAvailable
+            HintCaption.Text = asset.ClinicalInteraction
                 ? "Hover a surface · click to toggle · drag to inspect"
-                : "Surface map: Not created · Clinical interaction: Not available · drag to inspect";
+                : asset.SurfaceMapAvailable
+                    ? "Surface map: debug overlay · Clinical interaction: Not available · drag to inspect"
+                    : "Surface map: Not created · Clinical interaction: Not available · drag to inspect";
             _fillingSurfaces.Clear();
             _selectedSurfaces.Clear();
             _hoverSurface = null;
@@ -331,21 +333,16 @@ public partial class ToothMeshView : UserControl
         _surfaceMap = null;
         try
         {
-            _surfaceMap = Fdi16SurfaceMapStore.TryLoad(crown);
+            _surfaceMap = ToothSurfaceMapStore.TryLoad(_loadedFdi, crown);
             var source = _surfaceMap is null ? "missing" : "asset";
             if (_surfaceMap is null)
             {
-                AgentLog("B", "map-missing", "{\"source\":\"missing\"}");
+                AgentLog("B", "map-missing",
+                    "{\"source\":\"missing\",\"fdi\":\"" + Esc(_loadedFdi) +
+                    "\",\"nTri\":" + (crown.TriangleIndices.Count / 3) + "}");
                 return;
             }
-            var colors = new[]
-            {
-                Color.FromArgb(0x7A, 0xE8, 0x5D, 0x4C),
-                Color.FromArgb(0x7A, 0x3D, 0x7C, 0xFF),
-                Color.FromArgb(0x7A, 0x2E, 0xBB, 0x6B),
-                Color.FromArgb(0x7A, 0xF4, 0xD0, 0x3F),
-                Color.FromArgb(0x7A, 0x9B, 0x59, 0xB6)
-            };
+            var colors = ToothSurfaceColorConvention.Overlay;
             var overlayVerts = 0;
             for (var s = 0; s < 5; s++)
             {
@@ -378,21 +375,26 @@ public partial class ToothMeshView : UserControl
                 if (lab == ClinicalSurface.Palatal && cx < -0.15) palDistalFlank++;
                 if (lab == ClinicalSurface.Distal && cy < -0.15) distPalatalFlank++;
             }
-            AgentLog("P", "overlay-built",
-                "{\"eps\":" + OverlayNormalEps.ToString("0.####", CultureInfo.InvariantCulture) +
+            AgentLog("A", "overlay-built",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"eps\":" + OverlayNormalEps.ToString("0.####", CultureInfo.InvariantCulture) +
                 ",\"overlayVerts\":" + overlayVerts +
                 ",\"crownTris\":" + nTri +
                 ",\"occlusal\":" + _surfaceMap.Counts[0] +
-                ",\"palatal\":" + _surfaceMap.Counts[2] +
+                ",\"buccal\":" + _surfaceMap.Counts[1] +
+                ",\"lingual\":" + _surfaceMap.Counts[2] +
+                ",\"mesial\":" + _surfaceMap.Counts[3] +
                 ",\"distal\":" + _surfaceMap.Counts[4] +
-                ",\"palColor\":\"#2EBB6B\"" +
-                ",\"distColor\":\"#9B59B6\"" +
+                ",\"interaction\":" + (_interactionEnabled ? "true" : "false") +
                 ",\"mapSource\":\"" + source + "\"" +
+                ",\"color0\":\"" + colors[0].ToString() + "\"" +
+                ",\"color1\":\"" + colors[1].ToString() + "\"" +
+                ",\"color2\":\"" + colors[2].ToString() + "\"" +
                 ",\"palDistalFlank\":" + palDistalFlank +
                 ",\"distPalatalFlank\":" + distPalatalFlank +
                 ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
                 ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
-            // #endregion
+            ToothSurfaceLayoutStats.Log("C", _loadedFdi, "asset", crown, _surfaceMap.TriangleSurface);
             ApplyClinicalOverlays();
             ApplyInteractionOverlays();
         }
@@ -404,6 +406,14 @@ public partial class ToothMeshView : UserControl
             AgentLog("B", "classify-failed", "{\"error\":\"" + Esc(ex.Message) + "\"}");
             // #endregion
         }
+    }
+
+    private static bool OverlayNameMatches(string inspect, ClinicalSurface surface)
+    {
+        if (string.Equals(inspect, surface.ToString(), StringComparison.OrdinalIgnoreCase))
+            return true;
+        return surface == ClinicalSurface.Palatal &&
+               inspect.Equals("Lingual", StringComparison.OrdinalIgnoreCase);
     }
 
     private void ApplyOverlayVisibility()
@@ -421,13 +431,13 @@ public partial class ToothMeshView : UserControl
         }
 
         _overlayGroup.Children.Clear();
-        var inspect = _inspectSurface.Trim();
-        for (var s = 0; s < 5; s++)
-        {
-            var name = ((ClinicalSurface)s).ToString();
-            if (inspect is "All" || string.Equals(inspect, name, StringComparison.OrdinalIgnoreCase))
-                _overlayGroup.Children.Add(_overlayModels[s]);
-        }
+            var inspect = _inspectSurface.Trim();
+            for (var s = 0; s < 5; s++)
+            {
+                var surface = (ClinicalSurface)s;
+                if (inspect is "All" || OverlayNameMatches(inspect, surface))
+                    _overlayGroup.Children.Add(_overlayModels[s]);
+            }
         SurfaceOverlayVisual.Content = _overlayGroup;
         // #region agent log
         AgentLog("P", "overlay-on",
@@ -438,6 +448,7 @@ public partial class ToothMeshView : UserControl
             ",\"shownColor\":\"" + inspect switch
             {
                 "Palatal" => "#2EBB6B green",
+                "Lingual" => "#2EBB6B green",
                 "Distal" => "#9B59B6 pink",
                 "Occlusal" => "#E85D4C coral",
                 "Buccal" => "#3D7CFF blue",
