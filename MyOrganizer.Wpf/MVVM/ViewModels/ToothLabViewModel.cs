@@ -37,7 +37,8 @@ public sealed class ToothLabViewModel : ObservableObject
         "Dr. Andrew Mason; Mark Roughley). CC BY 4.0. Original Sketchfab file UL6sketch_1.OBJ is a left " +
         "maxillary first molar (FDI 26), 28,506 vertices / 28,504 quad faces from CT via ZBrush. " +
         "Tooth Lab triangulates, mirrors/orients to FDI 16, and renders it in native WPF Viewport3D. " +
-        "Source kept at Assets/Teeth/Source. No five-surface interaction yet. " +
+        "Source kept at Assets/Teeth/Source. Optional debug overlay classifies existing crown triangles " +
+        "into Occlusal / Buccal / Palatal / Mesial / Distal; OFF restores the approved healthy tooth. " +
         "https://sketchfab.com/3d-models/maxillary-first-molar-e719a474ef7e4bd7abec508f85f1e984";
 
     public IReadOnlyList<ProcedureOption> ProcedureOptions { get; } =

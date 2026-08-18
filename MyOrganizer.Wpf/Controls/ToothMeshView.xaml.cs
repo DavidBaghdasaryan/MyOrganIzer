@@ -37,6 +37,12 @@ public partial class ToothMeshView : UserControl
     private bool _dragging;
     private StlMeshStats _stats = new();
     private string _viewMode = "none";
+    private ClinicalSurfaceMap? _surfaceMap;
+    private readonly GeometryModel3D[] _overlayModels = new GeometryModel3D[5];
+    private readonly Model3DGroup _overlayGroup = new();
+    private bool _showSurfaces;
+    private string _inspectSurface = "All";
+    private const double OverlayNormalEps = 0.0009;
     private double _theta;
     private double _phi;
     private double _radius = 6;
@@ -95,6 +101,7 @@ public partial class ToothMeshView : UserControl
                 _stats.SourcePath = path ?? "";
                 CrownModel.Geometry = parts.Crown;
                 RootModel.Geometry = parts.Root;
+                RebuildSurfaceOverlays(parts.Crown);
                 FrameOcclusal();
                 AgentLog("A", "mesh-loaded", ToJson());
             }
@@ -167,6 +174,106 @@ public partial class ToothMeshView : UserControl
     public void ShowMesial() => FrameSide("mesial", new Vector3D(1, 0, 0.16), new Vector3D(0, 0, 1));
 
     public void ShowDistal() => FrameSide("distal", new Vector3D(-1, 0, 0.16), new Vector3D(0, 0, 1));
+
+    public void SetSurfaceDebug(bool show, string inspect)
+    {
+        _showSurfaces = show;
+        _inspectSurface = string.IsNullOrWhiteSpace(inspect) ? "All" : inspect;
+        ApplyOverlayVisibility();
+        // #region agent log
+        AgentLog("A", "surface-debug", ToJson());
+        // #endregion
+    }
+
+    private void RebuildSurfaceOverlays(MeshGeometry3D crown)
+    {
+        _overlayGroup.Children.Clear();
+        SurfaceOverlayVisual.Content = null;
+        _surfaceMap = null;
+        try
+        {
+            _surfaceMap = CrownSurfaceClassifier.Classify(crown);
+            var colors = new[]
+            {
+                Color.FromArgb(0x9A, 0xE8, 0x5D, 0x4C),
+                Color.FromArgb(0x9A, 0x3D, 0x7C, 0xFF),
+                Color.FromArgb(0x9A, 0x2E, 0xBB, 0x6B),
+                Color.FromArgb(0x9A, 0xF4, 0xD0, 0x3F),
+                Color.FromArgb(0x9A, 0x9B, 0x59, 0xB6)
+            };
+            var overlayVerts = 0;
+            for (var s = 0; s < 5; s++)
+            {
+                var surface = (ClinicalSurface)s;
+                var mesh = CrownSurfaceClassifier.OverlayMesh(crown, _surfaceMap.Triangles(surface), OverlayNormalEps);
+                overlayVerts += mesh.Positions.Count;
+                var model = new GeometryModel3D
+                {
+                    Geometry = mesh,
+                    Material = OverlayMaterial(colors[s])
+                };
+                _overlayModels[s] = model;
+                _overlayGroup.Children.Add(model);
+            }
+            ApplyOverlayVisibility();
+            // #region agent log
+            AgentLog("E", "overlay-built",
+                "{\"eps\":" + OverlayNormalEps.ToString("0.####", CultureInfo.InvariantCulture) +
+                ",\"overlayVerts\":" + overlayVerts +
+                ",\"crownTris\":" + (crown.TriangleIndices.Count / 3) +
+                ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
+                ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
+            // #endregion
+        }
+        catch (Exception ex)
+        {
+            _surfaceMap = null;
+            SurfaceOverlayVisual.Content = null;
+            // #region agent log
+            AgentLog("B", "classify-failed", "{\"error\":\"" + Esc(ex.Message) + "\"}");
+            // #endregion
+        }
+    }
+
+    private void ApplyOverlayVisibility()
+    {
+        if (!_showSurfaces || _surfaceMap is null)
+        {
+            SurfaceOverlayVisual.Content = null;
+            // #region agent log
+            AgentLog("A", "overlay-off",
+                "{\"show\":" + (_showSurfaces ? "true" : "false") +
+                ",\"hasMap\":" + (_surfaceMap is null ? "false" : "true") +
+                ",\"contentNull\":true}");
+            // #endregion
+            return;
+        }
+
+        _overlayGroup.Children.Clear();
+        var inspect = _inspectSurface.Trim();
+        for (var s = 0; s < 5; s++)
+        {
+            var name = ((ClinicalSurface)s).ToString();
+            if (inspect is "All" || string.Equals(inspect, name, StringComparison.OrdinalIgnoreCase))
+                _overlayGroup.Children.Add(_overlayModels[s]);
+        }
+        SurfaceOverlayVisual.Content = _overlayGroup;
+        // #region agent log
+        AgentLog("A", "overlay-on",
+            "{\"inspect\":\"" + Esc(inspect) + "\",\"children\":" + _overlayGroup.Children.Count + "}");
+        // #endregion
+    }
+
+    private static Material OverlayMaterial(Color c)
+    {
+        var group = new MaterialGroup();
+        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(c))
+        {
+            AmbientColor = Color.FromRgb(c.R, c.G, c.B)
+        });
+        group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x28, c.R, c.G, c.B))));
+        return group;
+    }
 
     private void FrameOcclusal()
     {
@@ -424,9 +531,17 @@ public partial class ToothMeshView : UserControl
                "\"lightsFollow\":true," +
                LightingJson() +
                "\"viewportW\":" + F(ActualWidth) + "," +
-               "\"viewportH\":" + F(ActualHeight) +
+               "\"viewportH\":" + F(ActualHeight) + "," +
+               "\"showSurfaces\":" + (_showSurfaces ? "true" : "false") + "," +
+               "\"inspectSurface\":\"" + Esc(_inspectSurface) + "\"," +
+               "\"overlayVisible\":" + (SurfaceOverlayVisual.Content is null ? "false" : "true") + "," +
+               "\"occlusalTris\":" + C(0) + ",\"buccalTris\":" + C(1) +
+               ",\"palatalTris\":" + C(2) + ",\"mesialTris\":" + C(3) + ",\"distalTris\":" + C(4) +
                "}";
     }
+
+    private int C(int surface) =>
+        _surfaceMap?.Counts is { Length: >= 5 } counts ? counts[surface] : 0;
 
     private string LightingJson()
     {

@@ -16,6 +16,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <StackPanel>
@@ -45,10 +46,27 @@
                             Margin="0,0,8,8" Padding="12,6" Click="OnOcclusal"/>
                 </WrapPanel>
 
-                <TextBlock Grid.Row="3" Text="{Binding Status}" Style="{StaticResource Body}"
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10">
+                    <CheckBox x:Name="ShowSegCheck" Content="Show Surface Segmentation"
+                              VerticalAlignment="Center"
+                              Checked="OnSegChanged" Unchecked="OnSegChanged"/>
+                    <TextBlock Text="Inspect" Margin="18,0,8,0" VerticalAlignment="Center"
+                               Style="{StaticResource Caption}"/>
+                    <ComboBox x:Name="InspectCombo" Width="128" SelectedIndex="0"
+                              VerticalAlignment="Center" SelectionChanged="OnSegChanged">
+                        <ComboBoxItem Content="All"/>
+                        <ComboBoxItem Content="Occlusal"/>
+                        <ComboBoxItem Content="Buccal"/>
+                        <ComboBoxItem Content="Palatal"/>
+                        <ComboBoxItem Content="Mesial"/>
+                        <ComboBoxItem Content="Distal"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <TextBlock Grid.Row="4" Text="{Binding Status}" Style="{StaticResource Body}"
                            TextWrapping="Wrap" Margin="0,0,0,12"/>
 
-                <StackPanel Grid.Row="4">
+                <StackPanel Grid.Row="5">
                     <TextBlock Text="{Binding ToothSize, StringFormat=Viewport: {0:0} px}"
                                Style="{StaticResource Caption}" Margin="0,0,0,6"/>
                     <Slider Minimum="250" Maximum="360" Value="{Binding ToothSize}"
