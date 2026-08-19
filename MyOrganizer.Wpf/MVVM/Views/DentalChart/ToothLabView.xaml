@@ -24,7 +24,7 @@
                     <TextBlock Text="{Binding LabTitle}" Style="{StaticResource SectionTitle}"/>
                     <TextBlock Text="{Binding Hint}" Style="{StaticResource Caption}"
                                Margin="0,6,0,8" TextWrapping="Wrap"/>
-                    <controls:OdontogramView HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                    <controls:OdontogramView HorizontalAlignment="Stretch" Margin="0,0,0,4"/>
                 </StackPanel>
 
                 <Border Grid.Row="1" Margin="0,16,0,8" Padding="16"

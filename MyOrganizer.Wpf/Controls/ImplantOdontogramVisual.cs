@@ -144,22 +144,19 @@ public sealed class ImplantOdontogramVisual : FrameworkElement
         var dest = new int[w * h];
         crownBmp.CopyPixels(dest, w * 4, 0);
         var upper = asset.Jaw == ToothJaw.Maxilla;
-        var tuned = fdi == "24";
         ShiftTowardOcclusal(dest, w, h, upper, 1);
-        var extra = tuned ? 10 : 7;
+        const int extra = 10;
         StretchCrownTowardScrew(dest, w, h, upper, extra);
         if (!FindCervix(dest, w, h, upper, out var cervixY, out var cx, out var cervixW, out var crownH, out var firstRowW, out var maxRowW))
             return crownBmp;
 
-        var overlap = tuned ? 4 : 3;
-        var abutH = tuned ? 10 : 8;
-        var capH = tuned ? 9 : 6;
-        var screwHalf = tuned
-            ? ClampRange(cervixW * 0.32, 16.0, 18.0)
-            : ClampRange(cervixW * 0.14, 4.2, 7.2);
+        const int overlap = 4;
+        const int abutH = 10;
+        const int capH = 9;
+        var screwHalf = ClampRange(cervixW * 0.32, 16.0, 18.0);
         var abutMax = Math.Max(screwHalf + 2.0, cervixW * 0.52);
         var abutWide = ClampRange(cervixW * 0.48, screwHalf + 1.8, abutMax);
-        var tipPad = tuned ? 0 : 1;
+        const int tipPad = 0;
         var screwStart = cervixY + (upper ? -1 : 1) * (abutH - 2);
         var screwTip = upper ? tipPad : h - 1 - tipPad;
         var screwPx = Math.Abs(screwTip - screwStart);
@@ -205,14 +202,14 @@ public sealed class ImplantOdontogramVisual : FrameworkElement
                        ",\"extra\":" + extra + ",\"capH\":" + capH +
                        ",\"abutWide\":" + abutWide.ToString("0.0", inv) +
                        ",\"screwHalf\":" + screwHalf.ToString("0.0", inv) +
-                       ",\"tuned24\":" + (tuned ? "true" : "false") +
+                       ",\"tuned24\":false" +
                        "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
             File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-            if (tuned)
+            if (fdi is "24" or "34")
             {
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bmp));
-                using var fs = File.Create(@"c:\Users\david\source\repos\MyOrganIzer\debug-implant-24.png");
+                using var fs = File.Create(@"c:\Users\david\source\repos\MyOrganIzer\debug-implant-" + fdi + ".png");
                 encoder.Save(fs);
             }
         }
