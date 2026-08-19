@@ -24,6 +24,15 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Any(a => string.Equals(a, "--generate-odontogram-thumbs", StringComparison.OrdinalIgnoreCase)))
+        {
+            var dir = Controls.OdontogramThumbRenderer.GenerateAll();
+            try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "odontogram-thumbs.txt"), dir); }
+            catch { /* generate report is optional */ }
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi48-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi48SurfaceMapStore.GenerateDefault();

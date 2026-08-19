@@ -187,6 +187,7 @@
     <Resource Include="Assets\Teeth\FDI26SurfaceMap.json" />
     <Resource Include="Assets\Teeth\FDI36SurfaceMap.json" />
     <Resource Include="Assets\Teeth\FDI46SurfaceMap.json" />
+    <Resource Include="Assets\Teeth\Odontogram\*.png" />
   </ItemGroup>
 
   <ItemGroup>

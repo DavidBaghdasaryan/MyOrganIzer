@@ -3,11 +3,15 @@ using MyOrganizer.Wpf.Controls;
 namespace MyOrganizer.Wpf.Dental;
 
 /// <summary>
-/// Lab-only procedure catalog. Filling is the only type in this prototype.
+/// Lab procedure catalog. Filling is surface-scoped; the others are whole-tooth.
+/// Odontogram presentation is derived from these records, not stored separately.
 /// </summary>
 public enum DentalProcedureType
 {
-    Filling
+    Filling,
+    Implant,
+    Endodontic,
+    Extraction
 }
 
 /// <summary>
@@ -71,11 +75,12 @@ public sealed class ToothLabClinicalState
 
     /// <summary>
     /// Always appends a new record. Same tooth and type never merge automatically.
+    /// Filling requires at least one surface; whole-tooth types may have none.
     /// </summary>
     public DentalProcedure? TryCreate(DentalProcedureType type, IEnumerable<ToothSurfaceType> surfaces)
     {
         var set = LabSurfaces.Normalize(surfaces);
-        if (set.Count == 0)
+        if (DentalProcedureTypes.RequiresSurfaces(type) && set.Count == 0)
             return null;
         var procedure = new DentalProcedure(
             Guid.NewGuid(),
@@ -91,6 +96,12 @@ public sealed class ToothLabClinicalState
     {
         var procedure = Find(id);
         return procedure is not null && procedure.ReplaceSurfaces(surfaces);
+    }
+
+    public bool TryRemove(Guid id)
+    {
+        var n = _procedures.RemoveAll(p => p.Id == id);
+        return n > 0;
     }
 
     /// <summary>

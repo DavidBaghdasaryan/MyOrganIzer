@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
+using System.Windows.Media;
 using MyOrganizer.Wpf.Controls;
 using MyOrganizer.Wpf.Dental;
 using MyOrganizer.Wpf.MVVM.Infrastructure;
@@ -17,11 +18,18 @@ public sealed class ToothLabViewModel : ObservableObject
     private IReadOnlyList<ToothSurfaceType> _selected = [];
     private IReadOnlyDictionary<ToothSurfaceType, ToothSurfaceVisual> _surfaceStates;
     private ToothAssetDefinition _asset = ToothAssetRegistry.Get(ToothAssetRegistry.ApprovedFdi);
-    private readonly Dictionary<string, LabToothSession> _sessions = new();
+    private LabPatient _currentPatient = null!;
     private LabToothSession _session = null!;
+    private DentalProcedureType _procedureType = DentalProcedureType.Filling;
 
     public ToothLabViewModel()
     {
+        Patients =
+        [
+            new LabPatient("A", "Patient A"),
+            new LabPatient("B", "Patient B")
+        ];
+        _currentPatient = Patients[0];
         _session = SessionFor("16");
         SurfaceChoices =
         [
@@ -43,8 +51,8 @@ public sealed class ToothLabViewModel : ObservableObject
         ClearSelectionCommand = new RelayCommand(ClearPendingSelection, () => HasPendingSurfaces);
         ResetHealthyCommand = new RelayCommand(ResetHealthy);
         DemoMixedCommand = new RelayCommand(DemoMixed);
-        CreateProcedureCommand = new RelayCommand(CreateProcedure, () => !IsEditing && HasPendingSurfaces);
-        SaveProcedureCommand = new RelayCommand(SaveProcedure, () => IsEditing && HasPendingSurfaces);
+        CreateProcedureCommand = new RelayCommand(CreateProcedure, CanCreateProcedure);
+        SaveProcedureCommand = new RelayCommand(SaveProcedure, CanSaveProcedure);
         NewProcedureCommand = new RelayCommand(StartNewProcedure);
         SelectToothCommand = new RelayCommand(p => SelectTooth(p?.ToString() ?? ToothAssetRegistry.ApprovedFdi));
         ChartRows =
@@ -54,6 +62,10 @@ public sealed class ToothLabViewModel : ObservableObject
         ];
         ProcedureItems = [];
         SelectTooth(ToothAssetRegistry.ApprovedFdi);
+        SeedAcceptanceDemo();
+        OdontogramThumbStore.Warm();
+        RefreshOdontogramClinical();
+        RebuildProcedureItems();
     }
 
     public ToothLabClinicalState Clinical => _session.Clinical;
@@ -62,7 +74,8 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
-        "Click an FDI number to inspect it. FDI 16 and 26 are the approved maxillary first-molar pair. " +
+        "Click a tooth in the odontogram to open it in the detailed 3D viewer. Marks come from this patient's procedure records. " +
+        "FDI 16 and 26 are the approved maxillary first-molar pair. " +
         "FDI 36 and 46 are the approved mandibular first-molar pair. FDI 14 and 24 are the maxillary " +
         "first-premolar pair. FDI 34 and 44 are the mandibular first-premolar pair. FDI 15 and 25 are the maxillary " +
         "second-premolar pair. FDI 35 and 45 are the mandibular second-premolar pair. FDI 13 and 23 are the maxillary " +
@@ -288,6 +301,41 @@ public sealed class ToothLabViewModel : ObservableObject
     public ICommand NewProcedureCommand { get; }
     public ICommand SelectToothCommand { get; }
     public IReadOnlyList<LabChartRow> ChartRows { get; }
+    public IReadOnlyList<LabPatient> Patients { get; }
+    public IReadOnlyList<LabProcedureTypeChoice> ProcedureTypeChoices { get; } =
+    [
+        new(DentalProcedureType.Filling, DentalProcedureTypes.DisplayName(DentalProcedureType.Filling)),
+        new(DentalProcedureType.Implant, DentalProcedureTypes.DisplayName(DentalProcedureType.Implant)),
+        new(DentalProcedureType.Endodontic, DentalProcedureTypes.DisplayName(DentalProcedureType.Endodontic)),
+        new(DentalProcedureType.Extraction, DentalProcedureTypes.DisplayName(DentalProcedureType.Extraction))
+    ];
+
+    public LabPatient CurrentPatient
+    {
+        get => _currentPatient;
+        set
+        {
+            if (value is null || ReferenceEquals(_currentPatient, value))
+                return;
+            SwitchPatient(value);
+        }
+    }
+
+    public DentalProcedureType SelectedProcedureType
+    {
+        get => _procedureType;
+        set
+        {
+            if (!SetProperty(ref _procedureType, value))
+                return;
+            OnPropertyChanged(nameof(ShowSurfacePicker));
+            OnPropertyChanged(nameof(EditorStatus));
+            ((RelayCommand)CreateProcedureCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)SaveProcedureCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    public bool ShowSurfacePicker => DentalProcedureTypes.RequiresSurfaces(SelectedProcedureType);
 
     public ToothAssetDefinition SelectedAsset => _asset;
     public bool ShowInspector => _asset.RuntimeImported;
@@ -297,7 +345,7 @@ public sealed class ToothLabViewModel : ObservableObject
     public bool ShowAssetStatus => !_asset.SurfaceMapAvailable;
     public string InnerCameraLabel => _asset.InnerSurfaceName;
 
-    public string LabTitle => "Tooth Lab · FDI " + _asset.FdiNumber;
+    public string LabTitle => "Tooth Lab · " + _currentPatient.Name + " · FDI " + _asset.FdiNumber;
 
     public string PlaceholderBody
     {
@@ -357,8 +405,8 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string EditorStatus =>
         _editingId is Guid id && Clinical.Find(id) is { } editing
-            ? $"Editing #{editing.DisplayNumber} Filling"
-            : "New procedure";
+            ? $"Editing #{editing.DisplayNumber} {DentalProcedureTypes.DisplayName(editing.ProcedureType)}"
+            : "New procedure · " + DentalProcedureTypes.DisplayName(SelectedProcedureType);
 
     public string SelectedSurfacesLabel
     {
@@ -500,6 +548,7 @@ public sealed class ToothLabViewModel : ObservableObject
         if (procedure is null)
             return;
         _editingId = id;
+        SelectedProcedureType = procedure.ProcedureType;
         foreach (var choice in SurfaceChoices)
             choice.SetSilent(procedure.Surfaces.Contains(choice.Surface));
         OnPropertyChanged(nameof(IsEditing));
@@ -512,7 +561,7 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         if (IsEditing)
             return;
-        var created = Clinical.TryCreate(DentalProcedureType.Filling, PendingDomain());
+        var created = Clinical.TryCreate(SelectedProcedureType, PendingDomain());
         // #region agent log
         AgentLog("A", "procedure-commit", ProcedureLog("create", created, created is not null));
         // #endregion
@@ -523,21 +572,46 @@ public sealed class ToothLabViewModel : ObservableObject
         NotifyClinical();
     }
 
+    private bool CanCreateProcedure() =>
+        !IsEditing && (!DentalProcedureTypes.RequiresSurfaces(SelectedProcedureType) || HasPendingSurfaces);
+
+    private bool CanSaveProcedure()
+    {
+        if (_editingId is not Guid id)
+            return false;
+        var editing = Clinical.Find(id);
+        if (editing is null)
+            return false;
+        return !DentalProcedureTypes.RequiresSurfaces(editing.ProcedureType) || HasPendingSurfaces;
+    }
+
     private void SaveProcedure()
     {
         if (_editingId is not Guid id)
             return;
-        var changed = Clinical.TryUpdateSurfaces(id, PendingDomain());
         var saved = Clinical.Find(id);
+        if (saved is null)
+            return;
+        var changed = false;
+        if (DentalProcedureTypes.RequiresSurfaces(saved.ProcedureType))
+            changed = Clinical.TryUpdateSurfaces(id, PendingDomain());
         // #region agent log
         AgentLog("C", "procedure-commit", ProcedureLog("save", saved, changed));
         // #endregion
-        if (saved is null)
-            return;
         RebuildProcedureItems();
         StartNewProcedure();
-        if (changed)
+        if (changed || !DentalProcedureTypes.RequiresSurfaces(saved.ProcedureType))
             NotifyClinical();
+    }
+
+    internal void RemoveProcedure(Guid id)
+    {
+        if (!Clinical.TryRemove(id))
+            return;
+        if (_editingId == id)
+            StartNewProcedure();
+        RebuildProcedureItems();
+        NotifyClinical();
     }
 
     private void StartNewProcedure()
@@ -584,6 +658,7 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(ClinicalSummary));
         OnPropertyChanged(nameof(FillingSurfaceNames));
+        RefreshOdontogramClinical();
         RefreshStatus();
         ClinicalChanged?.Invoke(this, EventArgs.Empty);
         // #region agent log
@@ -609,14 +684,50 @@ public sealed class ToothLabViewModel : ObservableObject
     private IReadOnlyList<string> PendingDisplayNames() =>
         LabSurfaces.DisplayNames(PendingDomain(), InnerCameraLabel);
 
-    private LabToothSession SessionFor(string fdi)
+    private LabToothSession SessionFor(string fdi) => SessionFor(_currentPatient, fdi);
+
+    private static LabToothSession SessionFor(LabPatient patient, string fdi)
     {
-        if (!_sessions.TryGetValue(fdi, out var session))
+        if (!patient.Sessions.TryGetValue(fdi, out var session))
         {
             session = new LabToothSession(fdi);
-            _sessions[fdi] = session;
+            patient.Sessions[fdi] = session;
         }
         return session;
+    }
+
+    private void SwitchPatient(LabPatient patient)
+    {
+        StashCurrentSession();
+        _currentPatient = patient;
+        OnPropertyChanged(nameof(CurrentPatient));
+        OnPropertyChanged(nameof(LabTitle));
+        _session = SessionFor(ToothNumber);
+        RestoreSession();
+        NotifyClinical();
+    }
+
+    private void SeedAcceptanceDemo()
+    {
+        var a = Patients[0];
+        SessionFor(a, "16").Clinical.TryCreate(DentalProcedureType.Filling, [ToothSurfaceType.Occlusal]);
+        SessionFor(a, "24").Clinical.TryCreate(DentalProcedureType.Implant, []);
+        SessionFor(a, "36").Clinical.TryCreate(DentalProcedureType.Endodontic, []);
+        SessionFor(a, "46").Clinical.TryCreate(DentalProcedureType.Extraction, []);
+    }
+
+    private void RefreshOdontogramClinical()
+    {
+        foreach (var row in ChartRows)
+        {
+            foreach (var slot in row.Right.Concat(row.Left))
+            {
+                var clinical = SessionFor(slot.Fdi).Clinical;
+                slot.ApplyPresentation(
+                    OdontogramThumbStore.Get(slot.Fdi),
+                    ToothOdontogramState.From(slot.Fdi, clinical.Procedures));
+            }
+        }
     }
 
     private void StashCurrentSession()
@@ -649,9 +760,11 @@ public sealed class ToothLabViewModel : ObservableObject
         OnPropertyChanged(nameof(HasPendingSurfaces));
         OnPropertyChanged(nameof(SelectedSurfacesLabel));
         OnPropertyChanged(nameof(PendingSurfaceNames));
+        OnPropertyChanged(nameof(ShowSurfacePicker));
         ((RelayCommand)ClearSelectionCommand).RaiseCanExecuteChanged();
         ((RelayCommand)CreateProcedureCommand).RaiseCanExecuteChanged();
         ((RelayCommand)SaveProcedureCommand).RaiseCanExecuteChanged();
+        PendingSelectionChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static HashSet<ToothSurfaceType> ParsePending(IReadOnlyList<string>? names)
@@ -674,6 +787,7 @@ public sealed class ToothLabViewModel : ObservableObject
         ",\"id\":\"" + (procedure?.Id.ToString() ?? "") +
         "\",\"n\":" + (procedure?.DisplayNumber ?? 0) +
         ",\"surfaces\":\"" + (procedure is null ? "" : LabSurfaces.Join(procedure.Surfaces, InnerCameraLabel)) +
+        "\",\"type\":\"" + (procedure?.ProcedureType.ToString() ?? "") +
         "\",\"surfaceCount\":" + (procedure?.Surfaces.Count ?? 0) +
         ",\"procedureCount\":" + Clinical.Procedures.Count +
         ",\"history\":\"" + HistoryLog() +
@@ -681,7 +795,7 @@ public sealed class ToothLabViewModel : ObservableObject
 
     private string HistoryLog() =>
         string.Join(";", Clinical.Procedures.Select(p =>
-            "#" + p.DisplayNumber + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces, InnerCameraLabel)));
+            "#" + p.DisplayNumber + ":" + p.ProcedureType + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces, InnerCameraLabel)));
 
     // #region agent log
     private static void AgentLog(string hypothesisId, string message, string dataJson)
@@ -739,6 +853,31 @@ public sealed class ToothLabViewModel : ObservableObject
     }
 }
 
+public sealed class LabPatient
+{
+    public LabPatient(string id, string name)
+    {
+        Id = id;
+        Name = name;
+    }
+
+    public string Id { get; }
+    public string Name { get; }
+    internal Dictionary<string, LabToothSession> Sessions { get; } = new();
+}
+
+public sealed class LabProcedureTypeChoice
+{
+    public LabProcedureTypeChoice(DentalProcedureType type, string name)
+    {
+        Type = type;
+        Name = name;
+    }
+
+    public DentalProcedureType Type { get; }
+    public string Name { get; }
+}
+
 public sealed class LabChartRow
 {
     public LabChartRow(string jaw, IReadOnlyList<string> right, IReadOnlyList<string> left)
@@ -756,17 +895,76 @@ public sealed class LabChartRow
 public sealed class LabFdiSlot : ObservableObject
 {
     private bool _isSelected;
+    private ImageSource? _preview;
+    private bool _showNaturalTooth = true;
+    private bool _showImplant;
+    private bool _showMissing;
+    private bool _showEndodontic;
+    private bool _showFilling;
 
-    public LabFdiSlot(string fdi) => Fdi = fdi;
+    public LabFdiSlot(string fdi)
+    {
+        Fdi = fdi;
+        IsUpper = fdi.StartsWith('1') || fdi.StartsWith('2');
+    }
 
     public string Fdi { get; }
+    public bool IsUpper { get; }
+    public bool IsLower => !IsUpper;
+
+    public ImageSource? Preview
+    {
+        get => _preview;
+        private set => SetProperty(ref _preview, value);
+    }
+
     public bool IsSelected
     {
         get => _isSelected;
         private set => SetProperty(ref _isSelected, value);
     }
 
+    public bool ShowNaturalTooth
+    {
+        get => _showNaturalTooth;
+        private set => SetProperty(ref _showNaturalTooth, value);
+    }
+
+    public bool ShowImplant
+    {
+        get => _showImplant;
+        private set => SetProperty(ref _showImplant, value);
+    }
+
+    public bool ShowMissing
+    {
+        get => _showMissing;
+        private set => SetProperty(ref _showMissing, value);
+    }
+
+    public bool ShowEndodontic
+    {
+        get => _showEndodontic;
+        private set => SetProperty(ref _showEndodontic, value);
+    }
+
+    public bool ShowFilling
+    {
+        get => _showFilling;
+        private set => SetProperty(ref _showFilling, value);
+    }
+
     internal void SetSelected(bool value) => IsSelected = value;
+
+    internal void ApplyPresentation(ImageSource? preview, ToothOdontogramState state)
+    {
+        Preview = preview;
+        ShowNaturalTooth = state.ShowNaturalTooth;
+        ShowImplant = state.ShowImplant;
+        ShowMissing = state.ShowMissing;
+        ShowEndodontic = state.ShowEndodontic;
+        ShowFilling = state.ShowFilling;
+    }
 }
 
 public sealed class LabSurfaceChoice : ObservableObject
@@ -827,9 +1025,12 @@ public sealed class ProcedureListItem
     {
         Id = procedure.Id;
         DisplayNumber = procedure.DisplayNumber;
-        Title = $"#{procedure.DisplayNumber} Filling";
-        SurfacesDisplay = LabSurfaces.Join(procedure.Surfaces, owner.InnerCameraLabel);
+        Title = $"#{procedure.DisplayNumber} {DentalProcedureTypes.DisplayName(procedure.ProcedureType)}";
+        SurfacesDisplay = DentalProcedureTypes.RequiresSurfaces(procedure.ProcedureType)
+            ? LabSurfaces.Join(procedure.Surfaces, owner.InnerCameraLabel)
+            : "Whole tooth";
         EditCommand = new RelayCommand(() => owner.BeginEdit(Id));
+        RemoveCommand = new RelayCommand(() => owner.RemoveProcedure(Id));
     }
 
     public Guid Id { get; }
@@ -837,6 +1038,7 @@ public sealed class ProcedureListItem
     public string Title { get; }
     public string SurfacesDisplay { get; }
     public ICommand EditCommand { get; }
+    public ICommand RemoveCommand { get; }
 }
 
 public sealed class LabSurfaceRow : ObservableObject
