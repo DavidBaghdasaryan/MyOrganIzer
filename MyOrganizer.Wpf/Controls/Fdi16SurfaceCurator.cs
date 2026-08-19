@@ -97,6 +97,11 @@ internal static class Fdi16SurfaceCurator
             KeepLargestAxial(labels, neighbors);
             DropTinyOcclusalIslands(labels, neighbors);
         }
+        if (premolarChewing)
+        {
+            RetractPremolarPalatalTable(labels, neighbors, feat);
+            KeepLargestAxial(labels, neighbors);
+        }
 
         var counts = new int[5];
         foreach (var lab in labels)
@@ -218,6 +223,143 @@ internal static class Fdi16SurfaceCurator
             ",\"nHi\":" + nHi +
             ",\"meanRatio\":" + (nOcc == 0 ? "0" : (ratioSum / nOcc).ToString("0.000", CultureInfo.InvariantCulture)) +
             ",\"r70\":" + b70 + ",\"r78\":" + b78 + ",\"r86\":" + b86 + ",\"r94\":" + b94 + ",\"rOver\":" + bOver + "}");
+        // #endregion
+    }
+
+    /// <summary>
+    /// Palatal (green) tongues on the inner chewing table into Mesial/Distal
+    /// (yellow/purple). CleanNormalized hysteresis plus normal-based axial
+    /// assignment left a peninsula; this uses position-only sectors on the
+    /// high inner table only. Does not touch cervical red or outer walls.
+    /// </summary>
+    private static void RetractPremolarPalatalTable(
+        ClinicalSurface[] labels, List<int>[] neighbors, Features feat)
+    {
+        var nTri = labels.Length;
+        const int bins = 72;
+        var maxR = new double[bins];
+        var has = new bool[bins];
+        var sx = 0d;
+        var sy = 0d;
+        var nHi = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (feat.Z01[t] < 0.62) continue;
+            sx += feat.Centroids[t].X;
+            sy += feat.Centroids[t].Y;
+            nHi++;
+        }
+        var ox = nHi == 0 ? feat.AxialCenter.X : sx / nHi;
+        var oy = nHi == 0 ? feat.AxialCenter.Y : sy / nHi;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (feat.Z01[t] < 0.62) continue;
+            var dx = feat.Centroids[t].X - ox;
+            var dy = feat.Centroids[t].Y - oy;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(feat.Centroids[t], new Point3D(ox, oy, 0), bins);
+            if (r >= maxR[bin])
+            {
+                maxR[bin] = r;
+                has[bin] = true;
+            }
+        }
+        for (var i = 0; i < bins; i++)
+        {
+            if (has[i]) continue;
+            var prev = maxR[(i + bins - 1) % bins];
+            var next = maxR[(i + 1) % bins];
+            maxR[i] = Math.Max(prev, next);
+        }
+
+        bool InnerTable(int t)
+        {
+            if (feat.Z01[t] < 0.48) return false;
+            var dx = feat.Centroids[t].X - ox;
+            var dy = feat.Centroids[t].Y - oy;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(feat.Centroids[t], new Point3D(ox, oy, 0), bins);
+            return r / Math.Max(1e-9, maxR[bin]) <= 0.98;
+        }
+
+        var movedM = 0;
+        var movedD = 0;
+        var seen = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Palatal) continue;
+            if (!InnerTable(t)) continue;
+            seen++;
+            var ax = feat.Centroids[t].X - feat.AxialCenter.X;
+            var ay = feat.Centroids[t].Y - feat.AxialCenter.Y;
+            var mesial = ax;
+            var distal = -ax;
+            var palatal = -ay;
+            if (mesial >= distal && mesial >= palatal * 0.70)
+            {
+                labels[t] = ClinicalSurface.Mesial;
+                movedM++;
+            }
+            else if (distal >= mesial && distal >= palatal * 0.70)
+            {
+                labels[t] = ClinicalSurface.Distal;
+                movedD++;
+            }
+        }
+
+        var voteM = 0;
+        var voteD = 0;
+        for (var pass = 0; pass < 8; pass++)
+        {
+            var changed = 0;
+            var nextLab = (ClinicalSurface[])labels.Clone();
+            for (var t = 0; t < nTri; t++)
+            {
+                if (labels[t] != ClinicalSurface.Palatal) continue;
+                if (!InnerTable(t)) continue;
+                var nP = 0;
+                var nM = 0;
+                var nD = 0;
+                foreach (var nb in neighbors[t])
+                {
+                    if (labels[nb] == ClinicalSurface.Palatal) nP++;
+                    else if (labels[nb] == ClinicalSurface.Mesial) nM++;
+                    else if (labels[nb] == ClinicalSurface.Distal) nD++;
+                }
+                if (nM > nP)
+                {
+                    nextLab[t] = ClinicalSurface.Mesial;
+                    voteM++;
+                    changed++;
+                }
+                else if (nD > nP)
+                {
+                    nextLab[t] = ClinicalSurface.Distal;
+                    voteD++;
+                    changed++;
+                }
+            }
+            Array.Copy(nextLab, labels, nTri);
+            if (changed == 0) break;
+        }
+
+        var remainPalNegX = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Palatal) continue;
+            if (feat.Z01[t] < 0.48) continue;
+            if (feat.Centroids[t].X - feat.AxialCenter.X < -0.08)
+                remainPalNegX++;
+        }
+        // #region agent log
+        AgentLog("D", "premolar-palatal-table",
+            "{\"seen\":" + seen +
+            ",\"movedM\":" + movedM +
+            ",\"movedD\":" + movedD +
+            ",\"voteM\":" + voteM +
+            ",\"voteD\":" + voteD +
+            ",\"remainPalNegX\":" + remainPalNegX +
+            ",\"nHi\":" + nHi + "}");
         // #endregion
     }
 
