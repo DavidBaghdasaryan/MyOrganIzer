@@ -1245,6 +1245,12 @@ public partial class ToothMeshView : UserControl
 
     private string MapAssetName() =>
         _loadedFdi == "14" ? "FDI14SurfaceMap.json"
+        : _loadedFdi == "15" ? "FDI15SurfaceMap.json"
+        : _loadedFdi == "25" ? "FDI25SurfaceMap.json"
+        : _loadedFdi == "24" ? "FDI24SurfaceMap.json"
+        : _loadedFdi == "34" ? "FDI34SurfaceMap.json"
+        : _loadedFdi == "44" ? "FDI44SurfaceMap.json"
+        : _loadedFdi == "35" ? "FDI35SurfaceMap.json"
         : _loadedFdi == "26" ? "FDI26SurfaceMap.json"
         : _loadedFdi == "46" ? "FDI46SurfaceMap.json"
         : _loadedFdi == "36" ? "FDI36SurfaceMap.json"

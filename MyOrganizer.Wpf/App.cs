@@ -31,6 +31,48 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi15-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi15SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi25-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi25SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi24-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi24SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi34-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi34SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi35-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi35SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi44-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi44SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi16-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi16SurfaceMapStore.GenerateDefault();

@@ -187,6 +187,418 @@ internal static class ToothMeshOrient
     }
 
     /// <summary>
+    /// Canonical maxillary second-premolar axes after crown-up (LEFT family space):
+    /// +Z occlusal, +Y buccal, −Y palatal, +X mesial, −X distal.
+    /// One root is typical; two apical clusters or two occlusal cusps give the
+    /// buccal–palatal yaw. Taller cusp is buccal. Right laterality is a
+    /// post-align MirrorX in the loader — not this method.
+    /// </summary>
+    public static void AlignMaxillarySecondPremolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+            if (bp.LengthSquared >= 1e-12)
+            {
+                bp.Normalize();
+                var yaw = Math.Atan2(bp.X, bp.Y);
+                RotateZ(pts, -yaw);
+                stats.YawDeg = -yaw * 180.0 / Math.PI;
+            }
+        }
+        else
+        {
+            var zHi = max.Z - 0.14 * zSpan;
+            var occlusal = new List<Point3D>();
+            foreach (var p in pts)
+            {
+                if (p.Z >= zHi)
+                    occlusal.Add(p);
+            }
+            var cusps = ClusterXy(occlusal, 2);
+            if (cusps.Count >= 2)
+            {
+                var c0 = Centroid(cusps[0]);
+                var c1 = Centroid(cusps[1]);
+                var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+                if (bp.LengthSquared >= 1e-12)
+                {
+                    bp.Normalize();
+                    var yaw = Math.Atan2(bp.X, bp.Y);
+                    RotateZ(pts, -yaw);
+                    stats.YawDeg = -yaw * 180.0 / Math.PI;
+                }
+            }
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var zCut = max.Z - 0.14 * zSpan;
+        double sumPos = 0, sumNeg = 0;
+        var nPos = 0;
+        var nNeg = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut) continue;
+            if (p.Y >= 0)
+            {
+                sumPos += p.Z;
+                nPos++;
+            }
+            else
+            {
+                sumNeg += p.Z;
+                nNeg++;
+            }
+        }
+        var meanPos = nPos > 0 ? sumPos / nPos : 0;
+        var meanNeg = nNeg > 0 ? sumNeg / nNeg : 0;
+        stats.Palatal = meanNeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                        "/" + meanPos.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        if (meanNeg > meanPos)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        double bx = 0;
+        var bn = 0;
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        zCut = max.Z - 0.14 * zSpan;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut || p.Y < 0) continue;
+            bx += p.X;
+            bn++;
+        }
+        if (bn > 0 && bx / bn < 0)
+        {
+            MirrorXKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+
+        zCut = min.Z + 0.18 * Math.Max(1e-9, stats.Dz);
+        var apical2 = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= zCut)
+                apical2.Add(p);
+        }
+        var roots = ClusterXy(apical2, 2);
+        if (roots.Count >= 2)
+        {
+            var r0 = Centroid(roots[0]);
+            var r1 = Centroid(roots[1]);
+            var pal = r0.Y <= r1.Y ? r0 : r1;
+            var buc = r0.Y <= r1.Y ? r1 : r0;
+            stats.Palatal = Fmt(pal);
+            stats.Mb = Fmt(buc);
+            stats.Db = Fmt(pal);
+        }
+
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular first-premolar axes after crown-up (LEFT family space):
+    /// +Z occlusal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Taller occlusal cusp is buccal (unlike mandibular molars, whose lingual
+    /// cusps are taller). Right laterality is a post-align MirrorX in the loader.
+    /// </summary>
+    public static void AlignMandibularFirstPremolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+            if (bp.LengthSquared >= 1e-12)
+            {
+                bp.Normalize();
+                var yaw = Math.Atan2(bp.X, bp.Y);
+                RotateZ(pts, -yaw);
+                stats.YawDeg = -yaw * 180.0 / Math.PI;
+            }
+        }
+        else
+        {
+            var zHi = max.Z - 0.14 * zSpan;
+            var occlusal = new List<Point3D>();
+            foreach (var p in pts)
+            {
+                if (p.Z >= zHi)
+                    occlusal.Add(p);
+            }
+            var cusps = ClusterXy(occlusal, 2);
+            if (cusps.Count >= 2)
+            {
+                var c0 = Centroid(cusps[0]);
+                var c1 = Centroid(cusps[1]);
+                var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+                if (bp.LengthSquared >= 1e-12)
+                {
+                    bp.Normalize();
+                    var yaw = Math.Atan2(bp.X, bp.Y);
+                    RotateZ(pts, -yaw);
+                    stats.YawDeg = -yaw * 180.0 / Math.PI;
+                }
+            }
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var zCut = max.Z - 0.14 * zSpan;
+        double sumPos = 0, sumNeg = 0;
+        var nPos = 0;
+        var nNeg = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut) continue;
+            if (p.Y >= 0)
+            {
+                sumPos += p.Z;
+                nPos++;
+            }
+            else
+            {
+                sumNeg += p.Z;
+                nNeg++;
+            }
+        }
+        var meanPos = nPos > 0 ? sumPos / nPos : 0;
+        var meanNeg = nNeg > 0 ? sumNeg / nNeg : 0;
+        stats.Palatal = meanNeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                        "/" + meanPos.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        if (meanNeg > meanPos)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        double bx = 0;
+        var bn = 0;
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        zCut = max.Z - 0.14 * zSpan;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut || p.Y < 0) continue;
+            bx += p.X;
+            bn++;
+        }
+        if (bn > 0 && bx / bn < 0)
+        {
+            MirrorXKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+
+        zCut = min.Z + 0.18 * Math.Max(1e-9, stats.Dz);
+        var apical2 = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= zCut)
+                apical2.Add(p);
+        }
+        var roots = ClusterXy(apical2, 2);
+        if (roots.Count >= 2)
+        {
+            var r0 = Centroid(roots[0]);
+            var r1 = Centroid(roots[1]);
+            var lin = r0.Y <= r1.Y ? r0 : r1;
+            var buc = r0.Y <= r1.Y ? r1 : r0;
+            stats.Palatal = Fmt(lin);
+            stats.Mb = Fmt(buc);
+            stats.Db = Fmt(lin);
+        }
+
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular second-premolar axes after crown-up (LEFT family space):
+    /// +Z occlusal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Taller occlusal cusp is buccal. Right laterality is a post-align MirrorX
+    /// in the loader — not this method.
+    /// </summary>
+    public static void AlignMandibularSecondPremolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+            if (bp.LengthSquared >= 1e-12)
+            {
+                bp.Normalize();
+                var yaw = Math.Atan2(bp.X, bp.Y);
+                RotateZ(pts, -yaw);
+                stats.YawDeg = -yaw * 180.0 / Math.PI;
+            }
+        }
+        else
+        {
+            var zHi = max.Z - 0.14 * zSpan;
+            var occlusal = new List<Point3D>();
+            foreach (var p in pts)
+            {
+                if (p.Z >= zHi)
+                    occlusal.Add(p);
+            }
+            var cusps = ClusterXy(occlusal, 2);
+            if (cusps.Count >= 2)
+            {
+                var c0 = Centroid(cusps[0]);
+                var c1 = Centroid(cusps[1]);
+                var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+                if (bp.LengthSquared >= 1e-12)
+                {
+                    bp.Normalize();
+                    var yaw = Math.Atan2(bp.X, bp.Y);
+                    RotateZ(pts, -yaw);
+                    stats.YawDeg = -yaw * 180.0 / Math.PI;
+                }
+            }
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var zCut = max.Z - 0.14 * zSpan;
+        double sumPos = 0, sumNeg = 0;
+        var nPos = 0;
+        var nNeg = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut) continue;
+            if (p.Y >= 0)
+            {
+                sumPos += p.Z;
+                nPos++;
+            }
+            else
+            {
+                sumNeg += p.Z;
+                nNeg++;
+            }
+        }
+        var meanPos = nPos > 0 ? sumPos / nPos : 0;
+        var meanNeg = nNeg > 0 ? sumNeg / nNeg : 0;
+        stats.Palatal = meanNeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                        "/" + meanPos.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        if (meanNeg > meanPos)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        double bx = 0;
+        var bn = 0;
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        zCut = max.Z - 0.14 * zSpan;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut || p.Y < 0) continue;
+            bx += p.X;
+            bn++;
+        }
+        if (bn > 0 && bx / bn < 0)
+        {
+            MirrorXKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+
+        zCut = min.Z + 0.18 * Math.Max(1e-9, stats.Dz);
+        var apical2 = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= zCut)
+                apical2.Add(p);
+        }
+        var roots = ClusterXy(apical2, 2);
+        if (roots.Count >= 2)
+        {
+            var r0 = Centroid(roots[0]);
+            var r1 = Centroid(roots[1]);
+            var lin = r0.Y <= r1.Y ? r0 : r1;
+            var buc = r0.Y <= r1.Y ? r1 : r0;
+            stats.Palatal = Fmt(lin);
+            stats.Mb = Fmt(buc);
+            stats.Db = Fmt(lin);
+        }
+
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
     /// Canonical FDI 36 axes after crown-up:
     /// +Z occlusal, +Y buccal, −Y lingual, +X mesial, −X distal.
     /// Uses two mandibular roots (larger = mesial) and taller occlusal cusps as lingual.

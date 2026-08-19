@@ -69,10 +69,19 @@ internal static class StlToothLoader
         AlignCrownUp(welded, stats);
         var maxillaryMolar = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
         var maxillaryPremolar = options.OrientationProfile == MaxillaryFirstPremolarTemplate.OrientationProfile;
+        var maxillarySecondPremolar = options.OrientationProfile == MaxillarySecondPremolarTemplate.OrientationProfile;
+        var mandibularPremolar = options.OrientationProfile == MandibularFirstPremolarTemplate.OrientationProfile;
+        var mandibularSecondPremolar = options.OrientationProfile == MandibularSecondPremolarTemplate.OrientationProfile;
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
             ToothMeshOrient.AlignFdi36(welded, stats);
         else if (maxillaryPremolar)
             ToothMeshOrient.AlignMaxillaryFirstPremolar(welded, stats);
+        else if (maxillarySecondPremolar)
+            ToothMeshOrient.AlignMaxillarySecondPremolar(welded, stats);
+        else if (mandibularPremolar)
+            ToothMeshOrient.AlignMandibularFirstPremolar(welded, stats);
+        else if (mandibularSecondPremolar)
+            ToothMeshOrient.AlignMandibularSecondPremolar(welded, stats);
         else if (options.OrientFdi16 || maxillaryMolar)
             ToothMeshOrient.AlignFdi16(welded, stats);
         if (options.MirrorX && (stats.RootClusters < 3 || maxillaryMolar))
@@ -112,6 +121,63 @@ internal static class StlToothLoader
                            ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
                            ",\"buccalRoot\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
                            "\",\"palatalRoot\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillarySecondPremolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi15-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"second-premolar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"buccalRoot\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"palatalRoot\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularPremolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi34-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-premolar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"buccalRoot\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"lingualRoot\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularSecondPremolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi35-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-second-premolar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"buccalRoot\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"lingualRoot\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
                            "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
                 File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
             }

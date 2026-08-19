@@ -13,6 +13,12 @@ internal static class ToothSurfaceMapStore
         fdi switch
         {
             "14" => Fdi14SurfaceMapStore.TryLoad(crown),
+            "15" => Fdi15SurfaceMapStore.TryLoad(crown),
+            "25" => Fdi25SurfaceMapStore.TryLoad(crown),
+            "24" => Fdi24SurfaceMapStore.TryLoad(crown),
+            "34" => Fdi34SurfaceMapStore.TryLoad(crown),
+            "44" => Fdi44SurfaceMapStore.TryLoad(crown),
+            "35" => Fdi35SurfaceMapStore.TryLoad(crown),
             "16" => Fdi16SurfaceMapStore.TryLoad(crown),
             "26" => Fdi26SurfaceMapStore.TryLoad(crown),
             "36" => Fdi36SurfaceMapStore.TryLoad(crown),

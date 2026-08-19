@@ -3,20 +3,20 @@ using System.Windows.Media.Media3D;
 namespace MyOrganizer.Wpf.Controls;
 
 /// <summary>
-/// Reusable maxillary first-premolar segmentation rules. Classifies in
+/// Reusable mandibular first-premolar segmentation rules. Classifies in
 /// tooth-local space after family orientation:
-/// +Z occlusal, +Y buccal, −Y palatal.
-/// Laterality.Left (FDI 24): +X mesial, −X distal; no post-align MirrorX.
-/// Laterality.Right (FDI 14): post-align MirrorX; Mesial/Distal labels swap
-/// so names stay anatomical. Never copies molar triangle indices.
-/// Occlusal/color 0 is the cervical neck band (same role as the molar family).
-/// The chewing table is Buccal/Palatal/Mesial/Distal.
+/// +Z occlusal, +Y buccal, −Y lingual.
+/// Laterality.Left (FDI 34): +X mesial, −X distal; no post-align MirrorX.
+/// Laterality.Right (FDI 44): post-align MirrorX; Mesial/Distal labels swap
+/// so names stay anatomical. Never copies maxillary-premolar or molar triangle indices.
+/// Occlusal/color 0 is the cervical neck band. The chewing table is
+/// Buccal/Lingual/Mesial/Distal. Inner surface is Lingual (enum Palatal).
 /// </summary>
-internal static class MaxillaryFirstPremolarTemplate
+internal static class MandibularFirstPremolarTemplate
 {
-    public const string OrientationProfile = "MaxillaryFirstPremolar";
+    public const string OrientationProfile = "MandibularFirstPremolar";
     public const string PipelineSource =
-        "maxillary-first-premolar-template+cervical-occlusal+upper-wall-topology";
+        "mandibular-first-premolar-template+cervical-occlusal+upper-wall-topology";
 
     public static MeshLoadOptions LoadOptions(ToothSide laterality) => new()
     {
@@ -25,7 +25,7 @@ internal static class MaxillaryFirstPremolarTemplate
         OrientationProfile = OrientationProfile
     };
 
-    public static ClinicalSurfaceMap Generate(MeshGeometry3D crown, ToothSide laterality = ToothSide.Right)
+    public static ClinicalSurfaceMap Generate(MeshGeometry3D crown, ToothSide laterality = ToothSide.Left)
     {
         var map = Fdi16SurfaceCurator.ApplyPremolarGeometry(
             CrownSurfaceClassifier.Classify(
@@ -43,11 +43,11 @@ internal static class MaxillaryFirstPremolarTemplate
         try
         {
             var n = map.TriangleSurface.Length;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi14-template\",\"hypothesisId\":\"D\",\"location\":\"MaxillaryFirstPremolarTemplate.cs\",\"message\":\"generated\",\"data\":{\"laterality\":\"" +
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi34-template\",\"hypothesisId\":\"D\",\"location\":\"MandibularFirstPremolarTemplate.cs\",\"message\":\"generated\",\"data\":{\"laterality\":\"" +
                        laterality + "\",\"mdSwapped\":" + (swapped ? "true" : "false") +
                        ",\"nTri\":" + n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"palatal\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"copiedMolarTriangleIds\":false" +
+                       ",\"lingual\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
+                       ",\"distal\":" + map.Counts[4] + ",\"copiedMaxPremolarTriangleIds\":false" +
                        "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
             System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
         }

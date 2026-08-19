@@ -63,8 +63,9 @@ public sealed class ToothLabViewModel : ObservableObject
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
         "Click an FDI number to inspect it. FDI 16 and 26 are the approved maxillary first-molar pair. " +
-        "FDI 36 and 46 are the approved mandibular first-molar pair. FDI 14 is the first maxillary " +
-        "first-premolar reference (not a molar). All imported teeth share hover, multi-select, " +
+        "FDI 36 and 46 are the approved mandibular first-molar pair. FDI 14 and 24 are the maxillary " +
+        "first-premolar pair. FDI 34 and 44 are the mandibular first-premolar pair. FDI 15 and 25 are the maxillary " +
+        "second-premolar pair. FDI 35 is the mandibular second-premolar reference. All imported teeth share hover, multi-select, " +
         "Filling, Create Procedure, Edit, and New Procedure. Terminology is tooth-aware " +
         "(Palatal on maxillary teeth, Lingual on mandibular). Procedure records stay isolated per tooth. " +
         "Other FDI positions remain placeholders.";
@@ -86,6 +87,42 @@ public sealed class ToothLabViewModel : ObservableObject
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
                   ". Right maxillary first premolar generated from MaxillaryFirstPremolarTemplate " +
                   "(chewing Occlusal, Palatal not Lingual, FDI14SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "15"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary second premolar generated from MaxillarySecondPremolarTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI15SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "25"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary second premolar generated from MaxillarySecondPremolarTemplate " +
+                  "(same rules as approved FDI 15, left laterality, FDI25SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "24"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary first premolar generated from MaxillaryFirstPremolarTemplate " +
+                  "(same rules as approved FDI 14, left laterality, FDI24SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "34"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular first premolar generated from MandibularFirstPremolarTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI34SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "44"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular first premolar generated from MandibularFirstPremolarTemplate " +
+                  "(same rules as approved FDI 34, right laterality, FDI44SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "35"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular second premolar generated from MandibularSecondPremolarTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI35SurfaceMap). " +
                   _asset.Attribution.SketchfabUrl
             : _asset.FdiNumber == "26"
                 ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
