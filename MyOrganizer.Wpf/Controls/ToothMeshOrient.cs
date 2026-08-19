@@ -73,6 +73,120 @@ internal static class ToothMeshOrient
     }
 
     /// <summary>
+    /// Canonical maxillary first-premolar axes after crown-up (LEFT family space):
+    /// +Z occlusal, +Y buccal, −Y palatal, +X mesial, −X distal.
+    /// Two apical roots give the buccal–palatal axis; the taller occlusal cusp
+    /// is buccal; the buccal cusp sits slightly mesial. Right laterality is a
+    /// post-align MirrorX in the loader — not this method.
+    /// </summary>
+    public static void AlignMaxillaryFirstPremolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            var bp = new Vector3D(c1.X - c0.X, c1.Y - c0.Y, 0);
+            if (bp.LengthSquared >= 1e-12)
+            {
+                bp.Normalize();
+                var yaw = Math.Atan2(bp.X, bp.Y);
+                RotateZ(pts, -yaw);
+                stats.YawDeg = -yaw * 180.0 / Math.PI;
+            }
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var zCut = max.Z - 0.14 * zSpan;
+        double sumPos = 0, sumNeg = 0;
+        var nPos = 0;
+        var nNeg = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut) continue;
+            if (p.Y >= 0)
+            {
+                sumPos += p.Z;
+                nPos++;
+            }
+            else
+            {
+                sumNeg += p.Z;
+                nNeg++;
+            }
+        }
+        var meanPos = nPos > 0 ? sumPos / nPos : 0;
+        var meanNeg = nNeg > 0 ? sumNeg / nNeg : 0;
+        stats.Palatal = meanNeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                        "/" + meanPos.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        if (meanNeg > meanPos)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        double bx = 0;
+        var bn = 0;
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        zCut = max.Z - 0.14 * zSpan;
+        foreach (var p in pts)
+        {
+            if (p.Z < zCut || p.Y < 0) continue;
+            bx += p.X;
+            bn++;
+        }
+        if (bn > 0 && bx / bn < 0)
+        {
+            MirrorXKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+
+        zCut = min.Z + 0.18 * Math.Max(1e-9, stats.Dz);
+        var apical2 = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= zCut)
+                apical2.Add(p);
+        }
+        var roots = ClusterXy(apical2, 2);
+        if (roots.Count >= 2)
+        {
+            var r0 = Centroid(roots[0]);
+            var r1 = Centroid(roots[1]);
+            var pal = r0.Y <= r1.Y ? r0 : r1;
+            var buc = r0.Y <= r1.Y ? r1 : r0;
+            stats.Palatal = Fmt(pal);
+            stats.Mb = Fmt(buc);
+            stats.Db = Fmt(pal);
+        }
+
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
     /// Canonical FDI 36 axes after crown-up:
     /// +Z occlusal, +Y buccal, −Y lingual, +X mesial, −X distal.
     /// Uses two mandibular roots (larger = mesial) and taller occlusal cusps as lingual.
@@ -286,6 +400,55 @@ internal static class ToothMeshOrient
         var c = Math.Cos(yaw);
         var s = Math.Sin(yaw);
         return new Point3D(p.X * c - p.Y * s, p.X * s + p.Y * c, p.Z);
+    }
+
+    /// <summary>
+    /// Premolar Dundee winding faces inward, so shared overlay lift
+    /// (along the face normal) hid every surface inside the crown.
+    /// Swap triangle winding only when a majority of faces point inward.
+    /// Does not change overlay materials, eps, or molar aligners.
+    /// </summary>
+    private static void EnsureOutwardWinding(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        var idx = mesh.TriangleIndices;
+        var nTri = idx.Count / 3;
+        var outward = 0;
+        var inward = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            var a = pts[idx[t * 3]];
+            var b = pts[idx[t * 3 + 1]];
+            var c = pts[idx[t * 3 + 2]];
+            var cx = (a.X + b.X + c.X) / 3.0;
+            var cy = (a.Y + b.Y + c.Y) / 3.0;
+            var cz = (a.Z + b.Z + c.Z) / 3.0;
+            var face = Vector3D.CrossProduct(b - a, c - a);
+            if (cx * face.X + cy * face.Y + cz * face.Z >= 0)
+                outward++;
+            else
+                inward++;
+        }
+        var reversed = false;
+        if (inward > outward)
+        {
+            for (var i = 0; i + 2 < idx.Count; i += 3)
+                (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);
+            reversed = true;
+            (outward, inward) = (inward, outward);
+        }
+        _ = stats;
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"post-fix\",\"hypothesisId\":\"B\",\"location\":\"ToothMeshOrient.cs\",\"message\":\"premolar-winding\",\"data\":{\"nTri\":" +
+                       nTri + ",\"outward\":" + outward + ",\"inward\":" + inward +
+                       ",\"reversed\":" + (reversed ? "true" : "false") +
+                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { }
+        // #endregion
     }
 
     private static void MirrorXKeepWinding(Point3DCollection pts, Int32Collection idx)

@@ -26,10 +26,19 @@ internal static class Fdi16SurfaceCurator
     public static ClinicalSurfaceMap ApplyMaxillaryGeometry(ClinicalSurfaceMap automatic) =>
         ApplyCore(automatic, applyFdi16TriangleOverrides: false, highCervicalBand: true);
 
+    /// <summary>
+    /// Premolar family: color 0 is the cervical/neck band (like the approved
+    /// molars). Chewing table is B/P/M/D. This mesh is crown-up, so the band
+    /// is grown from the low-z01 CEJ. No FDI 16 triangle IDs.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyPremolarGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: false, premolarChewing: true);
+
     private static ClinicalSurfaceMap ApplyCore(
         ClinicalSurfaceMap automatic,
         bool applyFdi16TriangleOverrides,
-        bool highCervicalBand = false)
+        bool highCervicalBand = false,
+        bool premolarChewing = false)
     {
         var crown = automatic.SourceCrown;
         var nTri = automatic.TriangleSurface.Length;
@@ -38,16 +47,27 @@ internal static class Fdi16SurfaceCurator
         var neighbors = CrownSurfaceClassifier.BuildNeighbors(crown.TriangleIndices, nTri);
         var peeled = new int[5];
 
-        for (var t = 0; t < nTri; t++)
+        if (premolarChewing)
         {
-            if (labels[t] != ClinicalSurface.Occlusal) continue;
-            if (IsChewingSurface(feat, t)) continue;
-            var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
-            labels[t] = wall;
-            peeled[(int)wall]++;
+            // Color 0 is the cervical neck band, same visual role as 16/26/36/46.
+            // This mesh is crown-up (+Z occlusal), so the CEJ is low z01 — not
+            // the maxillary-molar high-z01 convention. Walls already classified
+            // stay; the chewing table is recast to B/P/M/D.
+            PlaceCervicalRedBand(crown, labels, neighbors, feat, peeled);
         }
+        else
+        {
+            for (var t = 0; t < nTri; t++)
+            {
+                if (labels[t] != ClinicalSurface.Occlusal) continue;
+                if (IsChewingSurface(feat, t)) continue;
+                var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+                labels[t] = wall;
+                peeled[(int)wall]++;
+            }
 
-        PeelOuterBuccalPalatal(labels, neighbors, feat, peeled);
+            PeelOuterBuccalPalatal(labels, neighbors, feat, peeled);
+        }
 
         if (applyFdi16TriangleOverrides)
         {
@@ -62,7 +82,7 @@ internal static class Fdi16SurfaceCurator
             StripLowOcclusal(labels, feat, peeled);
             PlaceHighCervicalBand(crown, labels, neighbors, feat);
         }
-        else
+        else if (!premolarChewing)
         {
             PlaceCervicalRedBand(crown, labels, neighbors, feat, peeled);
         }
@@ -99,6 +119,7 @@ internal static class Fdi16SurfaceCurator
         AgentLog("A", "curated",
             "{\"apply16ov\":" + (applyFdi16TriangleOverrides ? "true" : "false") +
             ",\"highCervicalBand\":" + (highCervicalBand ? "true" : "false") +
+            ",\"premolarChewing\":" + (premolarChewing ? "true" : "false") +
             ",\"peeledB\":" + peeled[1] + ",\"peeledP\":" + peeled[2] +
             ",\"peeledM\":" + peeled[3] + ",\"peeledD\":" + peeled[4] +
             ",\"overrides\":" + map.Overrides.Count +
@@ -106,6 +127,98 @@ internal static class Fdi16SurfaceCurator
             ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] + "}");
         // #endregion
         return map;
+    }
+
+    /// <summary>
+    /// Premolar Occlusal is the chewing table in this tooth's z01 space:
+    /// high and relatively inner, not the axial walls. Does not use molar
+    /// facing thresholds (two-cusp slopes often face below 0.15).
+    /// </summary>
+    private static void PeelPremolarWalls(ClinicalSurface[] labels, Features feat, int[] peeled)
+    {
+        var nTri = labels.Length;
+        const int bins = 72;
+        var maxR = new double[bins];
+        var has = new bool[bins];
+        var sx = 0d;
+        var sy = 0d;
+        var nHi = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (feat.Z01[t] < 0.70) continue;
+            sx += feat.Centroids[t].X;
+            sy += feat.Centroids[t].Y;
+            nHi++;
+        }
+        var ox = nHi == 0 ? feat.AxialCenter.X : sx / nHi;
+        var oy = nHi == 0 ? feat.AxialCenter.Y : sy / nHi;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (feat.Z01[t] < 0.70) continue;
+            var dx = feat.Centroids[t].X - ox;
+            var dy = feat.Centroids[t].Y - oy;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(feat.Centroids[t], new Point3D(ox, oy, 0), bins);
+            if (r >= maxR[bin])
+            {
+                maxR[bin] = r;
+                has[bin] = true;
+            }
+        }
+        for (var i = 0; i < bins; i++)
+        {
+            if (has[i]) continue;
+            var prev = maxR[(i + bins - 1) % bins];
+            var next = maxR[(i + 1) % bins];
+            maxR[i] = Math.Max(prev, next);
+        }
+
+        var kept = 0;
+        var ratioSum = 0d;
+        var nOcc = 0;
+        var b70 = 0;
+        var b78 = 0;
+        var b86 = 0;
+        var b94 = 0;
+        var bOver = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            nOcc++;
+            var dx = feat.Centroids[t].X - ox;
+            var dy = feat.Centroids[t].Y - oy;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(feat.Centroids[t], new Point3D(ox, oy, 0), bins);
+            var env = Math.Max(1e-9, maxR[bin]);
+            var ratio = r / env;
+            ratioSum += ratio;
+            if (ratio <= 0.70) b70++;
+            else if (ratio <= 0.78) b78++;
+            else if (ratio <= 0.86) b86++;
+            else if (ratio <= 0.94) b94++;
+            else bOver++;
+            if (feat.Z01[t] >= 0.50 && ratio <= 0.78)
+            {
+                kept++;
+                continue;
+            }
+            if (feat.Z01[t] >= 0.58 && ratio <= 0.86)
+            {
+                kept++;
+                continue;
+            }
+            var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+            labels[t] = wall;
+            peeled[(int)wall]++;
+        }
+        // #region agent log
+        AgentLog("D", "premolar-peel",
+            "{\"nOcc\":" + nOcc +
+            ",\"kept\":" + kept +
+            ",\"nHi\":" + nHi +
+            ",\"meanRatio\":" + (nOcc == 0 ? "0" : (ratioSum / nOcc).ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"r70\":" + b70 + ",\"r78\":" + b78 + ",\"r86\":" + b86 + ",\"r94\":" + b94 + ",\"rOver\":" + bOver + "}");
+        // #endregion
     }
 
     private static bool IsChewingSurface(Features f, int t)

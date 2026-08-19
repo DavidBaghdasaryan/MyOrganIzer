@@ -20,7 +20,14 @@ internal static class CrownSurfaceClassifier
     public static ClinicalSurfaceMap Classify(MeshGeometry3D crown) =>
         Classify(crown, applyFdi16Overrides: true);
 
-    public static ClinicalSurfaceMap Classify(MeshGeometry3D crown, bool applyFdi16Overrides)
+    public static ClinicalSurfaceMap Classify(MeshGeometry3D crown, bool applyFdi16Overrides) =>
+        Classify(crown, applyFdi16Overrides, occlusalDirection: null, premolarTable: false);
+
+    public static ClinicalSurfaceMap Classify(
+        MeshGeometry3D crown,
+        bool applyFdi16Overrides,
+        Vector3D? occlusalDirection,
+        bool premolarTable = false)
     {
         var idx = crown.TriangleIndices;
         var nTri = idx.Count / 3;
@@ -63,7 +70,11 @@ internal static class CrownSurfaceClassifier
         }
 
         var center = new Point3D(sx / nTri, sy / nTri, sz / nTri);
-        var occlusalDir = DetectOcclusalDirection(centroids, normals, min.Z, max.Z);
+        var occlusalDir = occlusalDirection ?? DetectOcclusalDirection(centroids, normals, min.Z, max.Z);
+        if (occlusalDir.LengthSquared < 1e-12)
+            occlusalDir = new Vector3D(0, 0, 1);
+        else
+            occlusalDir.Normalize();
         var along = new double[nTri];
         var minAlong = double.PositiveInfinity;
         var maxAlong = double.NegativeInfinity;
@@ -85,7 +96,11 @@ internal static class CrownSurfaceClassifier
 
         var axialCenter = AxialCenter(centroids, z01);
         var neighbors = BuildNeighbors(idx, nTri);
-        var envelope = BuildOcclusalEnvelope(centroids, z01, facing, out var tableOrigin, out var envMin, out var envMax, out var envMean);
+        Point3D tableOrigin;
+        double envMin, envMax, envMean;
+        var envelope = premolarTable
+            ? BuildPremolarEnvelope(centroids, z01, out tableOrigin, out envMin, out envMax, out envMean)
+            : BuildOcclusalEnvelope(centroids, z01, facing, out tableOrigin, out envMin, out envMax, out envMean);
         var radius = new double[nTri];
         var envR = new double[nTri];
         for (var t = 0; t < nTri; t++)
@@ -100,12 +115,17 @@ internal static class CrownSurfaceClassifier
         var seedCount = 0;
         for (var t = 0; t < nTri; t++)
         {
-            if (!IsOcclusalSeed(z01[t], facing[t], radius[t], envR[t]))
+            if (premolarTable)
+            {
+                if (!IsPremolarOcclusalSeed(z01[t], facing[t], radius[t], envR[t]))
+                    continue;
+            }
+            else if (!IsOcclusalSeed(z01[t], facing[t], radius[t], envR[t]))
                 continue;
             occlusal[t] = true;
             seedCount++;
         }
-        GrowOcclusal(occlusal, neighbors, z01, facing, radius, envR);
+        GrowOcclusal(occlusal, neighbors, z01, facing, radius, envR, premolarTable);
         var occlusalGrown = 0;
         for (var t = 0; t < nTri; t++)
         {
@@ -287,7 +307,92 @@ internal static class CrownSurfaceClassifier
         return false;
     }
 
-    private static void GrowOcclusal(bool[] occlusal, List<int>[] neighbors, double[] z01, double[] facing, double[] radius, double[] envR)
+    private static bool IsPremolarOcclusalSeed(double z, double face, double r, double env)
+    {
+        var inside = r <= env * 0.88;
+        if (inside && z > 0.54) return true;
+        if (inside && z > 0.48 && face > -0.05) return true;
+        return false;
+    }
+
+    private static bool CanGrowPremolarOcclusal(
+        int t, bool[] occlusal, List<int>[] neighbors, double[] z01, double[] facing, double[] radius, double[] envR)
+    {
+        var z = z01[t];
+        var r = radius[t];
+        var env = envR[t];
+        if (z < 0.48) return false;
+        if (r > env * 0.98) return false;
+        var occN = 0;
+        foreach (var nb in neighbors[t])
+        {
+            if (occlusal[nb]) occN++;
+        }
+        if (z > 0.54 && r <= env * 0.82) return true;
+        if (occN >= 2 && z > 0.52 && r <= env * 0.88) return true;
+        if (facing[t] > 0.12 && z > 0.52 && r <= env * 0.92) return true;
+        return false;
+    }
+
+    private static double[] BuildPremolarEnvelope(
+        Point3D[] centroids, double[] z01, out Point3D origin, out double envMin, out double envMax, out double envMean)
+    {
+        var sx = 0d;
+        var sy = 0d;
+        var n = 0;
+        for (var t = 0; t < centroids.Length; t++)
+        {
+            if (z01[t] < 0.62) continue;
+            sx += centroids[t].X;
+            sy += centroids[t].Y;
+            n++;
+        }
+        origin = n == 0 ? new Point3D(0, 0, 0) : new Point3D(sx / n, sy / n, 0);
+        var maxR = new double[EnvelopeBins];
+        var has = new bool[EnvelopeBins];
+        for (var t = 0; t < centroids.Length; t++)
+        {
+            if (z01[t] < 0.62) continue;
+            var dx = centroids[t].X - origin.X;
+            var dy = centroids[t].Y - origin.Y;
+            var r = Math.Sqrt(dx * dx + dy * dy);
+            var bin = AngleBin(dx, dy);
+            if (r >= maxR[bin])
+            {
+                maxR[bin] = r;
+                has[bin] = true;
+            }
+        }
+
+        FillEmptyBins(maxR, has);
+        envMin = double.PositiveInfinity;
+        envMax = 0;
+        var sum = 0d;
+        var filled = 0;
+        for (var i = 0; i < EnvelopeBins; i++)
+        {
+            maxR[i] *= 0.86;
+            if (maxR[i] <= 1e-9) continue;
+            envMin = Math.Min(envMin, maxR[i]);
+            envMax = Math.Max(envMax, maxR[i]);
+            sum += maxR[i];
+            filled++;
+        }
+        if (filled == 0)
+        {
+            envMin = 0;
+            envMax = 0;
+            envMean = 0;
+        }
+        else
+        {
+            envMean = sum / filled;
+        }
+        return maxR;
+    }
+
+    private static void GrowOcclusal(
+        bool[] occlusal, List<int>[] neighbors, double[] z01, double[] facing, double[] radius, double[] envR, bool premolarTable)
     {
         var q = new Queue<int>();
         for (var t = 0; t < occlusal.Length; t++)
@@ -301,7 +406,12 @@ internal static class CrownSurfaceClassifier
             foreach (var nb in neighbors[t])
             {
                 if (occlusal[nb]) continue;
-                if (!CanGrowOcclusal(nb, occlusal, neighbors, z01, facing, radius, envR))
+                if (premolarTable)
+                {
+                    if (!CanGrowPremolarOcclusal(nb, occlusal, neighbors, z01, facing, radius, envR))
+                        continue;
+                }
+                else if (!CanGrowOcclusal(nb, occlusal, neighbors, z01, facing, radius, envR))
                     continue;
                 occlusal[nb] = true;
                 q.Enqueue(nb);

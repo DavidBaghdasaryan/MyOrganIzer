@@ -12,6 +12,7 @@ internal static class ToothSurfaceMapStore
     public static ClinicalSurfaceMap? TryLoad(string fdi, MeshGeometry3D crown) =>
         fdi switch
         {
+            "14" => Fdi14SurfaceMapStore.TryLoad(crown),
             "16" => Fdi16SurfaceMapStore.TryLoad(crown),
             "26" => Fdi26SurfaceMapStore.TryLoad(crown),
             "36" => Fdi36SurfaceMapStore.TryLoad(crown),

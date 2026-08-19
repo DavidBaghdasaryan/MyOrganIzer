@@ -24,6 +24,13 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi14-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi14SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi16-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi16SurfaceMapStore.GenerateDefault();

@@ -457,6 +457,8 @@ public partial class ToothMeshView : UserControl
                 ",\"color0\":\"" + colors[0].ToString() + "\"" +
                 ",\"color1\":\"" + colors[1].ToString() + "\"" +
                 ",\"color2\":\"" + colors[2].ToString() + "\"" +
+                ",\"color3\":\"" + colors[3].ToString() + "\"" +
+                ",\"color4\":\"" + colors[4].ToString() + "\"" +
                 ",\"palDistalFlank\":" + palDistalFlank +
                 ",\"distPalatalFlank\":" + distPalatalFlank +
                 ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
@@ -1242,14 +1244,15 @@ public partial class ToothMeshView : UserControl
         surface == ClinicalSurface.Palatal ? LabelPalatal.Text : surface.ToString();
 
     private string MapAssetName() =>
-        _loadedFdi == "26" ? "FDI26SurfaceMap.json"
+        _loadedFdi == "14" ? "FDI14SurfaceMap.json"
+        : _loadedFdi == "26" ? "FDI26SurfaceMap.json"
         : _loadedFdi == "46" ? "FDI46SurfaceMap.json"
         : _loadedFdi == "36" ? "FDI36SurfaceMap.json"
         : _loadedFdi == "16" ? "FDI16SurfaceMap.json"
         : "";
 
     private bool MandibularMdMirrored() =>
-        ToothAssetRegistry.TryGet(_loadedFdi, out var asset) && asset.FirstMolarContralateralMirror;
+        ToothAssetRegistry.TryGet(_loadedFdi, out var asset) && asset.ContralateralCameraMirror;
 
     private static bool TryParseOverlaySurface(string name, out ClinicalSurface surface)
     {

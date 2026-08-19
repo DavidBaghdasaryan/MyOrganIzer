@@ -67,17 +67,20 @@ internal static class StlToothLoader
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
-        var maxillaryTemplate = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
+        var maxillaryMolar = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
+        var maxillaryPremolar = options.OrientationProfile == MaxillaryFirstPremolarTemplate.OrientationProfile;
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
             ToothMeshOrient.AlignFdi36(welded, stats);
-        else if (options.OrientFdi16 || maxillaryTemplate)
+        else if (maxillaryPremolar)
+            ToothMeshOrient.AlignMaxillaryFirstPremolar(welded, stats);
+        else if (options.OrientFdi16 || maxillaryMolar)
             ToothMeshOrient.AlignFdi16(welded, stats);
-        if (options.MirrorX && (stats.RootClusters < 3 || maxillaryTemplate))
+        if (options.MirrorX && (stats.RootClusters < 3 || maxillaryMolar))
         {
             MirrorX(welded);
             stats.Mirrored = true;
         }
-        if (maxillaryTemplate)
+        if (maxillaryMolar)
         {
             // #region agent log
             try
@@ -90,6 +93,25 @@ internal static class StlToothLoader
                            ",\"flippedX\":" + (stats.FlippedX ? "true" : "false") +
                            ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
                            "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillaryPremolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi14-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"premolar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"buccalRoot\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"palatalRoot\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
                            "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
                 File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
             }
