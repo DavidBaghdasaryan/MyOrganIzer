@@ -31,6 +31,13 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi26-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi26SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi36-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi16SurfaceMapStore.DumpTopology();

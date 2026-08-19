@@ -17,7 +17,19 @@ internal static class Fdi16SurfaceCurator
     public static ClinicalSurfaceMap ApplyGeometry(ClinicalSurfaceMap automatic) =>
         ApplyCore(automatic, applyFdi16TriangleOverrides: false);
 
-    private static ClinicalSurfaceMap ApplyCore(ClinicalSurfaceMap automatic, bool applyFdi16TriangleOverrides)
+    /// <summary>
+    /// Maxillary first-molar family rules in this mesh's normalized space.
+    /// Does not apply FDI 16 triangle IDs and does not use the mandibular
+    /// low-z01 cervical band (that paints the chewing table on this family).
+    /// Color 0 is a high-z01 cervical/neck band matching approved FDI 16's role.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyMaxillaryGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: false, highCervicalBand: true);
+
+    private static ClinicalSurfaceMap ApplyCore(
+        ClinicalSurfaceMap automatic,
+        bool applyFdi16TriangleOverrides,
+        bool highCervicalBand = false)
     {
         var crown = automatic.SourceCrown;
         var nTri = automatic.TriangleSurface.Length;
@@ -45,6 +57,11 @@ internal static class Fdi16SurfaceCurator
                     labels[kv.Key] = kv.Value;
             }
         }
+        else if (highCervicalBand)
+        {
+            StripLowOcclusal(labels, feat, peeled);
+            PlaceHighCervicalBand(crown, labels, neighbors, feat);
+        }
         else
         {
             PlaceCervicalRedBand(crown, labels, neighbors, feat, peeled);
@@ -54,6 +71,12 @@ internal static class Fdi16SurfaceCurator
         DropTinyOcclusalIslands(labels, neighbors);
         if (!applyFdi16TriangleOverrides)
             ToothSurfaceTopology.CleanNormalized(crown, labels, neighbors);
+        if (highCervicalBand)
+        {
+            ToothSurfaceTopology.AssignLowTableSectors(crown, labels);
+            KeepLargestAxial(labels, neighbors);
+            DropTinyOcclusalIslands(labels, neighbors);
+        }
 
         var counts = new int[5];
         foreach (var lab in labels)
@@ -75,6 +98,7 @@ internal static class Fdi16SurfaceCurator
         // #region agent log
         AgentLog("A", "curated",
             "{\"apply16ov\":" + (applyFdi16TriangleOverrides ? "true" : "false") +
+            ",\"highCervicalBand\":" + (highCervicalBand ? "true" : "false") +
             ",\"peeledB\":" + peeled[1] + ",\"peeledP\":" + peeled[2] +
             ",\"peeledM\":" + peeled[3] + ",\"peeledD\":" + peeled[4] +
             ",\"overrides\":" + map.Overrides.Count +
@@ -122,6 +146,131 @@ internal static class Fdi16SurfaceCurator
             labels[t] = wall;
             peeled[(int)wall]++;
         }
+    }
+
+    /// <summary>
+    /// Chewing table on this family is low z01. Color 0 must stay the high
+    /// cervical band (approved FDI 16 min z01 ≈ 0.70), never the table.
+    /// </summary>
+    private static void StripLowOcclusal(ClinicalSurface[] labels, Features feat, int[] peeled)
+    {
+        const double neckFloor = 0.70;
+        for (var t = 0; t < labels.Length; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            if (feat.Z01[t] >= neckFloor) continue;
+            var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+            labels[t] = wall;
+            peeled[(int)wall]++;
+        }
+    }
+
+    /// <summary>
+    /// Approved FDI 16 color-0 role: high-z01 cervical/neck band in this mesh's
+    /// own z01 space. Grow from the crown open boundary down to the approved
+    /// normalized floor (0.70), same anatomical thickness role as FDI 16.
+    /// Never paints z01 &lt; 0.35 (table). Rules only — no FDI 16 triangle indices.
+    /// </summary>
+    private static void PlaceHighCervicalBand(
+        MeshGeometry3D crown, ClinicalSurface[] labels, List<int>[] neighbors, Features feat)
+    {
+        var nTri = labels.Length;
+        var border = CrownBoundaryTriangles(crown, nTri);
+        const int bins = 72;
+        var cejZ01 = new double[bins];
+        Array.Fill(cejZ01, 0d);
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!border[t]) continue;
+            var bin = AngleBin(feat.Centroids[t], feat.AxialCenter, bins);
+            cejZ01[bin] = Math.Max(cejZ01[bin], feat.Z01[t]);
+        }
+        for (var i = 0; i < bins; i++)
+        {
+            if (cejZ01[i] > 1e-6) continue;
+            var prev = cejZ01[(i + bins - 1) % bins];
+            var next = cejZ01[(i + 1) % bins];
+            cejZ01[i] = Math.Max(prev, next);
+        }
+
+        var band = new bool[nTri];
+        var q = new Queue<int>();
+        var flipped = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!border[t] || feat.Z01[t] < 0.70) continue;
+            band[t] = true;
+            q.Enqueue(t);
+            flipped++;
+        }
+
+        var dilated = 0;
+        while (q.Count > 0)
+        {
+            var t = q.Dequeue();
+            var bin = AngleBin(feat.Centroids[t], feat.AxialCenter, bins);
+            var floor = Math.Max(0.70, cejZ01[bin] - 0.22);
+            foreach (var nb in neighbors[t])
+            {
+                if (band[nb]) continue;
+                if (feat.Z01[nb] < floor) continue;
+                if (feat.Z01[nb] < 0.68) continue;
+                band[nb] = true;
+                q.Enqueue(nb);
+                dilated++;
+            }
+        }
+
+        for (var pass = 0; pass < 4; pass++)
+        {
+            var changed = 0;
+            for (var t = 0; t < nTri; t++)
+            {
+                if (band[t]) continue;
+                if (feat.Z01[t] < 0.70) continue;
+                var nOcc = 0;
+                foreach (var nb in neighbors[t])
+                    if (band[nb]) nOcc++;
+                if (nOcc < 3) continue;
+                band[t] = true;
+                changed++;
+                dilated++;
+            }
+            if (changed == 0) break;
+        }
+
+        for (var t = 0; t < nTri; t++)
+        {
+            if (!band[t]) continue;
+            labels[t] = ClinicalSurface.Occlusal;
+        }
+
+        var occ = 0;
+        var occZ = 0d;
+        var occMin = 1d;
+        var high = 0;
+        var low = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            occ++;
+            occZ += feat.Z01[t];
+            occMin = Math.Min(occMin, feat.Z01[t]);
+            if (feat.Z01[t] >= 0.70) high++;
+            if (feat.Z01[t] < 0.35) low++;
+        }
+        // #region agent log
+        AgentLog("A", "high-cervical-band",
+            "{\"flipped\":" + flipped +
+            ",\"dilated\":" + dilated +
+            ",\"occ\":" + occ +
+            ",\"meanZ01\":" + (occ == 0 ? "0" : (occZ / occ).ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"minZ01\":" + (occ == 0 ? "0" : occMin.ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"lowTable\":" + low +
+            ",\"highNeck\":" + high +
+            ",\"usedLowBand\":false" +
+            ",\"bfsFloor\":0.70}");
+        // #endregion
     }
 
     /// <summary>

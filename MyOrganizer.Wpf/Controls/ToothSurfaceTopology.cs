@@ -67,6 +67,42 @@ internal static class ToothSurfaceTopology
         return (0, unassigned);
     }
 
+    /// <summary>
+    /// Maxillary occlusal table (low z01) must follow the same angular
+    /// Buccal/Palatal/Mesial/Distal sectors as the upper walls. Shared
+    /// CleanNormalized skips z01 &lt; 0.38, which left palatal tongues on
+    /// the chewing table. Does not reassign cervical red. Mandibular
+    /// Generate paths do not call this.
+    /// </summary>
+    public static void AssignLowTableSectors(MeshGeometry3D crown, ClinicalSurface[] labels)
+    {
+        var feat = Measure(crown);
+        var hyster = HysteresisDeg * Math.PI / 180.0;
+        var palatalInDistal = 0;
+        var palatalInMesial = 0;
+        var moved = 0;
+        var table = 0;
+        for (var t = 0; t < labels.Length; t++)
+        {
+            if (labels[t] == ClinicalSurface.Occlusal) continue;
+            if (feat.Z01[t] >= HighTableZ) continue;
+            table++;
+            var next = SectorOf(feat.Centroids[t], feat.AxialCenter, labels[t], hyster);
+            if (labels[t] == ClinicalSurface.Palatal && next == ClinicalSurface.Distal)
+                palatalInDistal++;
+            if (labels[t] == ClinicalSurface.Palatal && next == ClinicalSurface.Mesial)
+                palatalInMesial++;
+            if (next != labels[t])
+                moved++;
+            labels[t] = next;
+        }
+        AgentLog("C", "table-sectors",
+            "{\"table\":" + table +
+            ",\"moved\":" + moved +
+            ",\"palatalInDistal\":" + palatalInDistal +
+            ",\"palatalInMesial\":" + palatalInMesial + "}");
+    }
+
     private static string Analyze(ClinicalSurface[] labels, List<int>[] neighbors, Features feat)
     {
         var n = labels.Length;

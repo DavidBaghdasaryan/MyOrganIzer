@@ -203,7 +203,8 @@ public partial class ToothMeshView : UserControl
                 var parts = StlToothLoader.LoadAlignedParts(stream, out _stats, new MeshLoadOptions
                 {
                     MirrorX = asset.MirrorX,
-                    OrientFdi16 = asset.OrientationProfile == "ApprovedFdi16",
+                    OrientFdi16 = asset.OrientationProfile is "ApprovedFdi16"
+                        or MaxillaryFirstMolarTemplate.OrientationProfile,
                     OrientationProfile = asset.OrientationProfile
                 });
                 _stats.SourcePath = path ?? "";
@@ -1241,13 +1242,14 @@ public partial class ToothMeshView : UserControl
         surface == ClinicalSurface.Palatal ? LabelPalatal.Text : surface.ToString();
 
     private string MapAssetName() =>
-        _loadedFdi == "46" ? "FDI46SurfaceMap.json"
+        _loadedFdi == "26" ? "FDI26SurfaceMap.json"
+        : _loadedFdi == "46" ? "FDI46SurfaceMap.json"
         : _loadedFdi == "36" ? "FDI36SurfaceMap.json"
         : _loadedFdi == "16" ? "FDI16SurfaceMap.json"
         : "";
 
     private bool MandibularMdMirrored() =>
-        ToothAssetRegistry.TryGet(_loadedFdi, out var asset) && asset.MandibularContralateralMirror;
+        ToothAssetRegistry.TryGet(_loadedFdi, out var asset) && asset.FirstMolarContralateralMirror;
 
     private static bool TryParseOverlaySurface(string name, out ClinicalSurface surface)
     {

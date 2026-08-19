@@ -67,14 +67,34 @@ internal static class StlToothLoader
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
+        var maxillaryTemplate = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
             ToothMeshOrient.AlignFdi36(welded, stats);
-        else if (options.OrientFdi16)
+        else if (options.OrientFdi16 || maxillaryTemplate)
             ToothMeshOrient.AlignFdi16(welded, stats);
-        if (options.MirrorX && stats.RootClusters < 3)
+        if (options.MirrorX && (stats.RootClusters < 3 || maxillaryTemplate))
         {
             MirrorX(welded);
             stats.Mirrored = true;
+        }
+        if (maxillaryTemplate)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi26-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedX\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
         }
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
         {

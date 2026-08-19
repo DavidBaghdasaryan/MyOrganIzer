@@ -63,10 +63,11 @@ public sealed class ToothLabViewModel : ObservableObject
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
         "Click an FDI number to inspect it. FDI 16 is the golden maxillary first-molar reference. " +
+        "FDI 26 is generated from the same maxillary first-molar template with left laterality. " +
         "FDI 36 is the approved mandibular left first molar. FDI 46 is generated from the same " +
-        "mandibular first-molar template with right laterality. All three share hover, multi-select, " +
+        "mandibular first-molar template with right laterality. All four share hover, multi-select, " +
         "Filling, Create Procedure, Edit, and New Procedure. Terminology is tooth-aware " +
-        "(Palatal on 16, Lingual on 36 and 46). Procedure records stay isolated per tooth. " +
+        "(Palatal on 16 and 26, Lingual on 36 and 46). Procedure records stay isolated per tooth. " +
         "Other FDI positions remain placeholders.";
 
     public string SourceNote =>
@@ -81,6 +82,12 @@ public sealed class ToothLabViewModel : ObservableObject
     public string InspectorNote =>
         _asset.FdiNumber == ToothAssetRegistry.ApprovedFdi
             ? SourceNote
+            : _asset.FdiNumber == "26"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary first molar generated from MaxillaryFirstMolarTemplate " +
+                  "(same rules as approved FDI 16, left laterality, FDI26SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
             : _asset.FdiNumber == "36"
                 ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
@@ -152,8 +159,8 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string LabelTop => "Buccal";
     public string LabelBottom => _asset.InnerSurfaceName;
-    public string LabelLeft => _asset.MandibularContralateralMirror ? "Mesial" : "Distal";
-    public string LabelRight => _asset.MandibularContralateralMirror ? "Distal" : "Mesial";
+    public string LabelLeft => _asset.FirstMolarContralateralMirror ? "Mesial" : "Distal";
+    public string LabelRight => _asset.FirstMolarContralateralMirror ? "Distal" : "Mesial";
 
     public double ToothSize
     {
