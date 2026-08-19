@@ -45,6 +45,56 @@ internal static class OdontogramThumbRenderer
         return Rasterize(asset, parts);
     }
 
+    /// <summary>
+    /// Crown-only raster for implant visuals. Same camera as the odontogram
+    /// thumb so neighbor size matches; root mesh is not drawn.
+    /// Does not change packed natural-tooth thumbnails.
+    /// </summary>
+    internal static BitmapSource? RenderImplantCrown(ToothAssetDefinition asset)
+    {
+        if (string.IsNullOrWhiteSpace(asset.RuntimeMesh))
+            return null;
+        using var stream = OpenMesh(asset.RuntimeMesh);
+        if (stream is null)
+            return null;
+        var parts = StlToothLoader.LoadAlignedParts(stream, out _, LoadOptions(asset));
+        return RasterizeImplantCrown(asset, parts);
+    }
+
+    private static BitmapSource RasterizeImplantCrown(ToothAssetDefinition asset, ToothMeshParts parts)
+    {
+        var w = Width;
+        var h = Height;
+        var argb = new int[w * h];
+        var zbuf = new float[w * h];
+        Array.Fill(zbuf, float.MinValue);
+
+        var minX = double.PositiveInfinity;
+        var maxX = double.NegativeInfinity;
+        var minZ = double.PositiveInfinity;
+        var maxZ = double.NegativeInfinity;
+        Bound(parts.Crown, ref minX, ref maxX, ref minZ, ref maxZ);
+        Bound(parts.Root, ref minX, ref maxX, ref minZ, ref maxZ);
+        Bound(parts.Cervical, ref minX, ref maxX, ref minZ, ref maxZ);
+        if (double.IsInfinity(minX))
+            return Empty();
+
+        var mandibular = asset.Jaw == ToothJaw.Mandible;
+        var crownRgb = mandibular ? 0xF3EFE6 : 0xF8F6F1;
+        var light = new Vector3D(0.22, 0.88, 0.42);
+        light.Normalize();
+        var crownDown = CrownAtBottom(asset, parts);
+
+        Draw(parts.Cervical, argb, zbuf, w, h, minX, maxX, minZ, maxZ, crownDown, crownRgb, light);
+        Draw(parts.Crown, argb, zbuf, w, h, minX, maxX, minZ, maxZ, crownDown, crownRgb, light);
+        Outline(argb, zbuf, w, h);
+
+        var bmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+        bmp.WritePixels(new Int32Rect(0, 0, w, h), argb, w * 4, 0);
+        bmp.Freeze();
+        return bmp;
+    }
+
     internal static MeshLoadOptions LoadOptions(ToothAssetDefinition asset) => new()
     {
         MirrorX = asset.MirrorX,
