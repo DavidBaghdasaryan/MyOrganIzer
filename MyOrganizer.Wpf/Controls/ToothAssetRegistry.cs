@@ -269,7 +269,7 @@ public static class ToothAssetRegistry
             SurfaceMap = imported16 ? "FDI16SurfaceMap.json" : imported36 ? "FDI36SurfaceMap.json" : null,
             RuntimeImported = imported,
             SurfaceMapAvailable = imported16 || imported36,
-            ClinicalInteraction = imported16,
+            ClinicalInteraction = imported,
             Attribution = attr,
             SourceNote = note
         };

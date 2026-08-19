@@ -101,5 +101,72 @@ internal static class ToothSurfaceLayoutStats
         catch { }
     }
 
+    public readonly record struct RedHeight(int Count, double Min, double Mean, double Max, double PctLow, double PctHigh)
+    {
+        public string Json(string fdi) =>
+            "{\"fdi\":\"" + fdi +
+            "\",\"redCount\":" + Count +
+            ",\"redMinZ01\":" + F(Min) +
+            ",\"redMeanZ01\":" + F(Mean) +
+            ",\"redMaxZ01\":" + F(Max) +
+            ",\"redPctCervical\":" + F(PctLow) +
+            ",\"redPctTable\":" + F(PctHigh) +
+            ",\"cervicalZone\":" + (Mean <= 0.40 && PctHigh <= 10 ? "true" : "false") + "}";
+    }
+
+    public static RedHeight RedHeightOf(MeshGeometry3D crown, ClinicalSurface[] labels)
+    {
+        var idx = crown.TriangleIndices;
+        var n = labels.Length;
+        var minZ = double.PositiveInfinity;
+        var maxZ = double.NegativeInfinity;
+        var z = new double[n];
+        for (var t = 0; t < n; t++)
+        {
+            var a = crown.Positions[idx[t * 3]];
+            var b = crown.Positions[idx[t * 3 + 1]];
+            var c = crown.Positions[idx[t * 3 + 2]];
+            z[t] = (a.Z + b.Z + c.Z) / 3.0;
+            minZ = Math.Min(minZ, z[t]);
+            maxZ = Math.Max(maxZ, z[t]);
+        }
+        var span = Math.Max(1e-9, maxZ - minZ);
+        var count = 0;
+        var sum = 0d;
+        var lo = 1d;
+        var hi = 0d;
+        var low = 0;
+        var high = 0;
+        for (var t = 0; t < n; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            var z01 = (z[t] - minZ) / span;
+            count++;
+            sum += z01;
+            lo = Math.Min(lo, z01);
+            hi = Math.Max(hi, z01);
+            if (z01 < 0.35) low++;
+            if (z01 >= 0.70) high++;
+        }
+        return new RedHeight(
+            count,
+            count == 0 ? 0 : lo,
+            count == 0 ? 0 : sum / count,
+            count == 0 ? 0 : hi,
+            count == 0 ? 0 : 100.0 * low / count,
+            count == 0 ? 0 : 100.0 * high / count);
+    }
+
+    public static void LogRedHeight(string hypothesisId, string fdi, MeshGeometry3D crown, ClinicalSurface[] labels)
+    {
+        var red = RedHeightOf(crown, labels);
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"" + hypothesisId +
+                   "\",\"location\":\"ToothSurfaceLayoutStats.cs\",\"message\":\"red-height\"" +
+                   ",\"data\":" + red.Json(fdi) +
+                   ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
+    }
+
     private static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 }

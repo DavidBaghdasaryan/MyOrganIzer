@@ -37,9 +37,11 @@ internal static class Fdi36SurfaceMapStore
         }
     }
 
-    public static ClinicalSurfaceMap Build(MeshGeometry3D crown) =>
-        Fdi16SurfaceCurator.ApplyGeometry(
+    public static ClinicalSurfaceMap Build(MeshGeometry3D crown)
+    {
+        return Fdi16SurfaceCurator.ApplyGeometry(
             CrownSurfaceClassifier.Classify(crown, applyFdi16Overrides: false));
+    }
 
     public static string GenerateDefault()
     {
@@ -52,10 +54,49 @@ internal static class Fdi36SurfaceMapStore
             OrientFdi16 = false,
             OrientationProfile = "MandibularFirstMolar"
         });
+        if (File.Exists(json))
+        {
+            var oldLabels = ReadLabelsFromFile(json, parts.Crown.TriangleIndices.Count / 3);
+            if (oldLabels is not null)
+            {
+                ToothSurfaceLayoutStats.Log("A", "36", "before-topology", parts.Crown, oldLabels);
+                ToothSurfaceTopology.LogAnalyze("A", "36", "before-topology", parts.Crown, oldLabels);
+            }
+        }
         var map = Build(parts.Crown);
         Save(map, json);
         DumpMeans(parts.Crown, map);
+        ToothSurfaceLayoutStats.Log("A", "36", "cervical-red", parts.Crown, map.TriangleSurface);
+        ToothSurfaceTopology.LogAnalyze("A", "36", "cervical-red", parts.Crown, map.TriangleSurface);
+        ToothSurfaceLayoutStats.LogRedHeight("A", "36", parts.Crown, map.TriangleSurface);
+        var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
+        if (own.Dup != 0 || own.Unassigned != 0)
+            throw new InvalidDataException("ownership dup=" + own.Dup + " unassigned=" + own.Unassigned);
+        var red = ToothSurfaceLayoutStats.RedHeightOf(parts.Crown, map.TriangleSurface);
+        if (red.Mean > 0.40 || red.PctHigh > 10)
+            throw new InvalidDataException(
+                "FDI36 RED is not cervical meanZ01=" + red.Mean.ToString("0.333") +
+                " pctHigh=" + red.PctHigh.ToString("0.0"));
         return json;
+    }
+
+    private static ClinicalSurface[]? ReadLabelsFromFile(string path, int nTri)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var dto = JsonSerializer.Deserialize<Dto>(stream, JsonOpts);
+            if (dto?.Labels is null || dto.Labels.Length != nTri)
+                return null;
+            var labels = new ClinicalSurface[nTri];
+            for (var i = 0; i < nTri; i++)
+                labels[i] = (ClinicalSurface)(dto.Labels[i] - '0');
+            return labels;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void DumpMeans(MeshGeometry3D crown, ClinicalSurfaceMap map)
@@ -96,7 +137,7 @@ internal static class Fdi36SurfaceMapStore
         {
             Mesh = "FDI36_High.obj",
             TriangleCount = n,
-            Source = "fdi16-classifier+cleanup+cervical-red-band",
+            Source = "fdi16-classifier+cervical-red-band+upper-wall-topology",
             Curated = map.Overrides.Count,
             Occlusal = map.Counts[0],
             Buccal = map.Counts[1],

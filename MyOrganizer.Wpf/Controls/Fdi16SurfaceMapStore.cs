@@ -40,6 +40,23 @@ internal static class Fdi16SurfaceMapStore
     public static ClinicalSurfaceMap Build(MeshGeometry3D crown) =>
         Fdi16SurfaceCurator.Apply(CrownSurfaceClassifier.Classify(crown));
 
+    public static void DumpTopology()
+    {
+        var obj = FindObj() ?? throw new FileNotFoundException("FDI16_High.obj not found.");
+        var json = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(obj)!, "..", "FDI16SurfaceMap.json"));
+        using var fs = File.OpenRead(obj);
+        var parts = StlToothLoader.LoadAlignedParts(fs, out _, new MeshLoadOptions
+        {
+            MirrorX = true,
+            OrientFdi16 = true
+        });
+        var map = Read(parts.Crown, File.OpenRead(json))
+                  ?? throw new InvalidDataException("FDI16SurfaceMap.json could not be read.");
+        ToothSurfaceLayoutStats.Log("C", "16", "golden-asset", parts.Crown, map.TriangleSurface);
+        ToothSurfaceTopology.LogAnalyze("C", "16", "golden-asset", parts.Crown, map.TriangleSurface);
+        ToothSurfaceLayoutStats.LogRedHeight("C", "16", parts.Crown, map.TriangleSurface);
+    }
+
     public static string GenerateDefault()
     {
         var obj = FindObj() ?? throw new FileNotFoundException("FDI16_High.obj not found.");
@@ -107,8 +124,10 @@ internal static class Fdi16SurfaceMapStore
         var dir = AppContext.BaseDirectory;
         for (var i = 0; i < 8; i++)
         {
-            var candidate = Path.Combine(dir, "Assets", "Teeth", "Source", "FDI16_High.obj");
-            if (File.Exists(candidate)) return candidate;
+            var a = Path.Combine(dir, "Assets", "Teeth", "Source", "FDI16_High.obj");
+            var b = Path.Combine(dir, "MyOrganizer.Wpf", "Assets", "Teeth", "Source", "FDI16_High.obj");
+            if (File.Exists(a)) return a;
+            if (File.Exists(b)) return b;
             var parent = Directory.GetParent(dir);
             if (parent is null) break;
             dir = parent.FullName;

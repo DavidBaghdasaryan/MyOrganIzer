@@ -17,10 +17,12 @@ public sealed class ToothLabViewModel : ObservableObject
     private IReadOnlyList<ToothSurfaceType> _selected = [];
     private IReadOnlyDictionary<ToothSurfaceType, ToothSurfaceVisual> _surfaceStates;
     private ToothAssetDefinition _asset = ToothAssetRegistry.Get(ToothAssetRegistry.ApprovedFdi);
+    private readonly Dictionary<string, LabToothSession> _sessions = new();
+    private LabToothSession _session = null!;
 
     public ToothLabViewModel()
     {
-        Clinical = new ToothLabClinicalState("16");
+        _session = SessionFor("16");
         SurfaceChoices =
         [
             new LabSurfaceChoice(this, ToothSurfaceType.Occlusal, "Occlusal"),
@@ -54,17 +56,16 @@ public sealed class ToothLabViewModel : ObservableObject
         SelectTooth(ToothAssetRegistry.ApprovedFdi);
     }
 
-    public ToothLabClinicalState Clinical { get; }
+    public ToothLabClinicalState Clinical => _session.Clinical;
     public event EventHandler? ClinicalChanged;
     public event EventHandler? PendingSelectionChanged;
 
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
         "Click an FDI number to inspect it. FDI 16 is the golden segmentation reference. " +
-        "Turn on Show Surface Segmentation, then switch 16 → 36 → 16 from comparable views. " +
-        "FDI 36 should look like the same system fitted to mandibular first-molar anatomy (Lingual, not Palatal). " +
-        "On FDI 16 only: click surfaces to toggle a pending set, then Create Procedure. " +
-        "FDI 36 clinical interaction is not enabled yet.";
+        "FDI 16 and FDI 36 share the same clinical workflow: hover, multi-select, Filling, " +
+        "Create Procedure, Edit, New Procedure. Terminology is tooth-aware (Palatal on 16, Lingual on 36). " +
+        "Procedure records stay isolated per tooth. Other FDI positions remain placeholders.";
 
     public string SourceNote =>
         "Mesh: Maxillary First Molar, University of Dundee School of Dentistry (Emily McDougall; " +
@@ -82,7 +83,7 @@ public sealed class ToothLabViewModel : ObservableObject
                 ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
                   ". Healthy anatomy is frozen. Debug overlay: Occlusal / Buccal / Lingual / Mesial / Distal. " +
-                  "Clinical interaction is not available yet. " + _asset.Attribution.SketchfabUrl
+                  "Clinical interaction uses FDI36SurfaceMap (Lingual, not Palatal). " + _asset.Attribution.SketchfabUrl
                 : _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
                   ". Healthy anatomy only; clinical surface map not created yet. " +
@@ -129,7 +130,7 @@ public sealed class ToothLabViewModel : ObservableObject
                 "Inner OBJ: " + _asset.InnerObjName + "\n" +
                 "Runtime mesh: " + runtime + "\n" +
                 "Surface map: " + map + "\n" +
-                "Interaction: " + (_asset.SurfaceMapAvailable ? "available" : "Not available yet") + "\n" +
+                "Interaction: " + (_asset.ClinicalInteraction ? "available" : "Not available yet") + "\n" +
                 "MirrorX: " + _asset.MirrorX + " (contralateral FDI " + _asset.ContralateralFdi + ")\n" +
                 "Clinical inner surface: " + _asset.InnerSurfaceName + "\n" +
                 "Chewing/incisal label: " + _asset.ChewingSurfaceName + "\n" +
@@ -188,13 +189,13 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         get
         {
-            var names = Clinical.FillingSurfaceNames();
+            var names = Clinical.FillingSurfaceNames(InnerCameraLabel);
             var derived = names.Count == 0 ? "Derived Filling: —" : "Derived Filling: " + string.Join(", ", names);
             return derived + "\nProcedure records: " + Clinical.Procedures.Count;
         }
     }
 
-    public IReadOnlyList<string> FillingSurfaceNames => Clinical.FillingSurfaceNames();
+    public IReadOnlyList<string> FillingSurfaceNames => Clinical.FillingSurfaceNames(InnerCameraLabel);
 
     public IReadOnlyList<string> PendingSurfaceNames => PendingDisplayNames();
 
@@ -214,7 +215,13 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         if (!ToothAssetRegistry.TryGet(fdi, out var asset))
             return;
+        var fromFdi = _session.Clinical.ToothNumber;
+        var fromProcs = Clinical.Procedures.Count;
+        var fromPending = string.Join(",", PendingDisplayNames());
+        if (fromFdi != asset.FdiNumber)
+            StashCurrentSession();
         _asset = asset;
+        _session = SessionFor(asset.FdiNumber);
         OnPropertyChanged(nameof(SelectedAsset));
         OnPropertyChanged(nameof(ToothNumber));
         OnPropertyChanged(nameof(ShowInspector));
@@ -235,15 +242,25 @@ public sealed class ToothLabViewModel : ObservableObject
             foreach (var slot in row.Left)
                 slot.SetSelected(slot.Fdi == asset.FdiNumber);
         }
+        RestoreSession();
         // #region agent log
         AgentLog("B", "select-tooth",
             "{\"fdi\":\"" + asset.FdiNumber +
+            "\",\"from\":\"" + fromFdi +
             "\",\"source\":\"" + asset.SourceKind +
             "\",\"mirrorX\":" + (asset.MirrorX ? "true" : "false") +
             ",\"imported\":" + (asset.RuntimeImported ? "true" : "false") +
             ",\"sourceAvailable\":" + (asset.SourceAvailable ? "true" : "false") +
             ",\"map\":" + (asset.SurfaceMapAvailable ? "true" : "false") +
-            ",\"contra\":\"" + asset.ContralateralFdi + "\"}");
+            ",\"interaction\":" + (asset.ClinicalInteraction ? "true" : "false") +
+            ",\"inner\":\"" + asset.InnerSurfaceName +
+            "\",\"mapAsset\":\"" + (asset.SurfaceMap ?? "") +
+            "\",\"fromProcs\":" + fromProcs +
+            ",\"toProcs\":" + Clinical.Procedures.Count +
+            ",\"fromPending\":\"" + fromPending +
+            "\",\"toPending\":\"" + string.Join(",", PendingDisplayNames()) +
+            "\",\"toDerived\":\"" + string.Join(",", FillingSurfaceNames) +
+            "\",\"contra\":\"" + asset.ContralateralFdi + "\"}");
         // #endregion
         if (!asset.RuntimeImported)
             Status = "FDI " + asset.FdiNumber + " placeholder · source " +
@@ -369,7 +386,8 @@ public sealed class ToothLabViewModel : ObservableObject
         {
             // #region agent log
             AgentLog("E", "pending-selection",
-                "{\"selected\":\"" + string.Join(",", PendingDisplayNames()) +
+                "{\"fdi\":\"" + ToothNumber +
+                "\",\"selected\":\"" + string.Join(",", PendingDisplayNames()) +
                 "\",\"procedureCount\":" + Clinical.Procedures.Count +
                 ",\"editing\":" + (_editingId.HasValue ? "true" : "false") + "}");
             // #endregion
@@ -384,9 +402,10 @@ public sealed class ToothLabViewModel : ObservableObject
         ClinicalChanged?.Invoke(this, EventArgs.Empty);
         // #region agent log
         AgentLog("B", "procedure-project",
-            "{\"procedureCount\":" + Clinical.Procedures.Count +
+            "{\"fdi\":\"" + ToothNumber +
+            "\",\"procedureCount\":" + Clinical.Procedures.Count +
             ",\"history\":\"" + HistoryLog() +
-            "\",\"derived\":\"" + string.Join(",", Clinical.FillingSurfaceNames()) + "\"}");
+            "\",\"derived\":\"" + string.Join(",", FillingSurfaceNames) + "\"}");
         // #endregion
     }
 
@@ -402,7 +421,52 @@ public sealed class ToothLabViewModel : ObservableObject
         SurfaceChoices.Where(c => c.IsSelected).Select(c => c.Surface).ToHashSet();
 
     private IReadOnlyList<string> PendingDisplayNames() =>
-        LabSurfaces.DisplayNames(PendingDomain());
+        LabSurfaces.DisplayNames(PendingDomain(), InnerCameraLabel);
+
+    private LabToothSession SessionFor(string fdi)
+    {
+        if (!_sessions.TryGetValue(fdi, out var session))
+        {
+            session = new LabToothSession(fdi);
+            _sessions[fdi] = session;
+        }
+        return session;
+    }
+
+    private void StashCurrentSession()
+    {
+        _session.EditingId = _editingId;
+        _session.Pending.Clear();
+        foreach (var surface in PendingDomain())
+            _session.Pending.Add(surface);
+    }
+
+    private void RestoreSession()
+    {
+        _editingId = _session.EditingId;
+        foreach (var choice in SurfaceChoices)
+        {
+            if (choice.Surface == ToothSurfaceType.Lingual)
+                choice.SetLabel(_asset.InnerSurfaceName);
+            choice.SetSilent(_session.Pending.Contains(choice.Surface));
+        }
+        foreach (var row in Surfaces)
+        {
+            if (row.Surface == ToothSurfaceType.Lingual)
+                row.SetLabel(_asset.InnerSurfaceName);
+        }
+        RebuildProcedureItems();
+        OnPropertyChanged(nameof(IsEditing));
+        OnPropertyChanged(nameof(EditorStatus));
+        OnPropertyChanged(nameof(ClinicalSummary));
+        OnPropertyChanged(nameof(FillingSurfaceNames));
+        OnPropertyChanged(nameof(HasPendingSurfaces));
+        OnPropertyChanged(nameof(SelectedSurfacesLabel));
+        OnPropertyChanged(nameof(PendingSurfaceNames));
+        ((RelayCommand)ClearSelectionCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)CreateProcedureCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)SaveProcedureCommand).RaiseCanExecuteChanged();
+    }
 
     private static HashSet<ToothSurfaceType> ParsePending(IReadOnlyList<string>? names)
     {
@@ -418,19 +482,20 @@ public sealed class ToothLabViewModel : ObservableObject
     }
 
     private string ProcedureLog(string mode, DentalProcedure? procedure, bool changed) =>
-        "{\"mode\":\"" + mode +
+        "{\"fdi\":\"" + ToothNumber +
+        "\",\"mode\":\"" + mode +
         "\",\"changed\":" + (changed ? "true" : "false") +
         ",\"id\":\"" + (procedure?.Id.ToString() ?? "") +
         "\",\"n\":" + (procedure?.DisplayNumber ?? 0) +
-        ",\"surfaces\":\"" + (procedure is null ? "" : LabSurfaces.Join(procedure.Surfaces)) +
+        ",\"surfaces\":\"" + (procedure is null ? "" : LabSurfaces.Join(procedure.Surfaces, InnerCameraLabel)) +
         "\",\"surfaceCount\":" + (procedure?.Surfaces.Count ?? 0) +
         ",\"procedureCount\":" + Clinical.Procedures.Count +
         ",\"history\":\"" + HistoryLog() +
-        "\",\"derived\":\"" + string.Join(",", Clinical.FillingSurfaceNames()) + "\"}";
+        "\",\"derived\":\"" + string.Join(",", FillingSurfaceNames) + "\"}";
 
     private string HistoryLog() =>
         string.Join(";", Clinical.Procedures.Select(p =>
-            "#" + p.DisplayNumber + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces)));
+            "#" + p.DisplayNumber + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces, InnerCameraLabel)));
 
     // #region agent log
     private static void AgentLog(string hypothesisId, string message, string dataJson)
@@ -445,7 +510,7 @@ public sealed class ToothLabViewModel : ObservableObject
 
     private void RefreshStatus()
     {
-        var names = Clinical.FillingSurfaceNames();
+        var names = Clinical.FillingSurfaceNames(InnerCameraLabel);
         Status =
             "Hover: " + (_hoverName ?? "None") + "\n" +
             "Selected: " + SelectedSurfacesLabel + "\n" +
@@ -531,7 +596,7 @@ public sealed class LabSurfaceChoice : ObservableObject
     }
 
     public ToothSurfaceType Surface { get; }
-    public string Label { get; }
+    public string Label { get; private set; }
 
     public bool IsSelected
     {
@@ -551,6 +616,23 @@ public sealed class LabSurfaceChoice : ObservableObject
         _isSelected = value;
         OnPropertyChanged(nameof(IsSelected));
     }
+
+    internal void SetLabel(string value)
+    {
+        if (Label == value)
+            return;
+        Label = value;
+        OnPropertyChanged(nameof(Label));
+    }
+}
+
+internal sealed class LabToothSession
+{
+    public LabToothSession(string fdi) => Clinical = new ToothLabClinicalState(fdi);
+
+    public ToothLabClinicalState Clinical { get; }
+    public HashSet<ToothSurfaceType> Pending { get; } = [];
+    public Guid? EditingId { get; set; }
 }
 
 public sealed class ProcedureListItem
@@ -560,7 +642,7 @@ public sealed class ProcedureListItem
         Id = procedure.Id;
         DisplayNumber = procedure.DisplayNumber;
         Title = $"#{procedure.DisplayNumber} Filling";
-        SurfacesDisplay = LabSurfaces.Join(procedure.Surfaces);
+        SurfacesDisplay = LabSurfaces.Join(procedure.Surfaces, owner.InnerCameraLabel);
         EditCommand = new RelayCommand(() => owner.BeginEdit(Id));
     }
 
@@ -584,7 +666,7 @@ public sealed class LabSurfaceRow : ObservableObject
     }
 
     public ToothSurfaceType Surface { get; }
-    public string Label { get; }
+    public string Label { get; private set; }
 
     public string ProcedureKey
     {
@@ -604,6 +686,14 @@ public sealed class LabSurfaceRow : ObservableObject
         _procedureKey = key;
         OnPropertyChanged(nameof(ProcedureKey));
         OnPropertyChanged(nameof(DisplayName));
+    }
+
+    internal void SetLabel(string value)
+    {
+        if (Label == value)
+            return;
+        Label = value;
+        OnPropertyChanged(nameof(Label));
     }
 }
 

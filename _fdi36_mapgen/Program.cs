@@ -15,7 +15,7 @@ DumpStored("36", obj36, map36, new MeshLoadOptions
     MirrorX = false,
     OrientFdi16 = false,
     OrientationProfile = "MandibularFirstMolar"
-}, "old-fdi36-classifier");
+}, "before-topology");
 
 var path = Fdi36SurfaceMapStore.GenerateDefault();
 Console.WriteLine("wrote " + path);
@@ -29,8 +29,11 @@ using (var fs = File.OpenRead(obj36))
         OrientationProfile = "MandibularFirstMolar"
     });
     var labels = LoadLabels(map36);
-    ToothSurfaceLayoutStats.Log("A", "36", "fdi16-template", parts.Crown, labels);
-    Console.WriteLine("new 36 " + ToothSurfaceLayoutStats.Json("36", "fdi16-template", parts.Crown, labels));
+    ToothSurfaceLayoutStats.Log("A", "36", "normalized-topology", parts.Crown, labels);
+    Console.WriteLine("new 36 " + ToothSurfaceLayoutStats.Json("36", "normalized-topology", parts.Crown, labels));
+    Console.WriteLine("new 36 topology " + ToothSurfaceTopology.AnalyzeJson(parts.Crown, labels));
+    var own = ToothSurfaceTopology.ValidateOwnership(labels);
+    Console.WriteLine("ownership dup=" + own.Dup + " unassigned=" + own.Unassigned);
 }
 
 static void DumpStored(string fdi, string obj, string json, MeshLoadOptions opt, string pipeline)
@@ -42,6 +45,7 @@ static void DumpStored(string fdi, string obj, string json, MeshLoadOptions opt,
         throw new InvalidDataException(fdi + " label count mismatch");
     ToothSurfaceLayoutStats.Log(fdi == "16" ? "C" : "A", fdi, pipeline, parts.Crown, labels);
     Console.WriteLine(fdi + " " + pipeline + " " + ToothSurfaceLayoutStats.Json(fdi, pipeline, parts.Crown, labels));
+    Console.WriteLine(fdi + " topology " + ToothSurfaceTopology.AnalyzeJson(parts.Crown, labels));
 }
 
 static ClinicalSurface[] LoadLabels(string jsonPath)

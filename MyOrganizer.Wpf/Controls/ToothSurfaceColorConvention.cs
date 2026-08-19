@@ -4,7 +4,7 @@ namespace MyOrganizer.Wpf.Controls;
 
 /// <summary>
 /// Authoritative debug overlay colors from the approved FDI 16 segmentation.
-/// Every tooth map reuses this mapping. Do not invent per-tooth palettes.
+/// Shared by every tooth. Maps supply triangle ownership only — never colors.
 /// Index order matches <see cref="ClinicalSurface"/>.
 /// </summary>
 internal static class ToothSurfaceColorConvention

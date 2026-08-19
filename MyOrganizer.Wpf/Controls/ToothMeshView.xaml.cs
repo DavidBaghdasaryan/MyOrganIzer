@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,6 +14,9 @@ namespace MyOrganizer.Wpf.Controls;
 /// <summary>
 /// Lab-only 3D tooth viewer. Canonical clinical view is orthographic occlusal.
 /// Lights follow the camera so every preset has the same medical lighting.
+/// Rendering, overlays, orbit, and procedures are the FDI 16 golden template.
+/// Per-tooth data (mesh, bounds, orientation, surface map, terminology) comes
+/// from <see cref="ToothAssetDefinition"/>.
 /// </summary>
 public partial class ToothMeshView : UserControl
 {
@@ -65,6 +70,22 @@ public partial class ToothMeshView : UserControl
     private bool _interactionEnabled = true;
     private string _loadedFdi = "16";
     private string _orientationProfile = "ApprovedFdi16";
+    private int _orbitMoves;
+    private int _orbitSlow;
+    private int _orbitSlowLogged;
+    private double _orbitMaxMs;
+    private int _rebuildDuringDrag;
+    private int _hoverDuringPress;
+    private int _upSnaps;
+    private int _lostCaptures;
+    private int _orbitPhiClamps;
+    private int _orbitUpSwitches;
+    private int _orbitJumpDeltas;
+    private int _orbitCamAssigns;
+    private bool _orbitUpY;
+    private Vector3D _prevOrbitUp;
+    private long _orbitLastMoveMs;
+    private string _orbitRebuildKinds = "";
 
     public ToothMeshView()
     {
@@ -75,6 +96,8 @@ public partial class ToothMeshView : UserControl
         PreviewMouseLeftButtonUp += OnDragEnd;
         PreviewMouseMove += OnDragMove;
         PreviewMouseWheel += OnWheel;
+        LostMouseCapture += OnLostCapture;
+        GotMouseCapture += OnGotCapture;
         MouseLeave += OnMouseLeft;
         MouseDoubleClick += (_, _) => ResetToOcclusal();
     }
@@ -104,7 +127,7 @@ public partial class ToothMeshView : UserControl
 
     private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (IsVisible && IsLoaded && CrownModel.Geometry is not null)
+        if (IsVisible && IsLoaded && CrownModel.Geometry is not null && !_pressing && !_dragging)
             FrameOcclusal();
     }
 
@@ -140,6 +163,7 @@ public partial class ToothMeshView : UserControl
             _loadedFdi = asset.FdiNumber;
             _orientationProfile = asset.OrientationProfile;
             _interactionEnabled = asset.ClinicalInteraction;
+            NoteRebuildDuringDrag("load-mesh");
             LabelPalatal.Text = asset.InnerSurfaceName;
             HintCaption.Text = asset.ClinicalInteraction
                 ? "Hover a surface · click to toggle · drag to inspect"
@@ -300,18 +324,22 @@ public partial class ToothMeshView : UserControl
 
     public void SetFillingSurfaces(IEnumerable<string> names)
     {
+        var incoming = string.Join(",", names);
         _fillingSurfaces.Clear();
         foreach (var name in names)
         {
-            if (Enum.TryParse<ClinicalSurface>(name, true, out var surface))
+            if (TryParseOverlaySurface(name, out var surface))
                 _fillingSurfaces.Add(surface);
         }
         ApplyClinicalOverlays();
         ApplyInteractionOverlays();
         // #region agent log
-        AgentLog("F", "clinical-fillings",
-            "{\"count\":" + _fillingSurfaces.Count +
-            ",\"names\":\"" + Esc(string.Join(",", _fillingSurfaces)) + "\"}");
+        AgentLog("C", "clinical-fillings",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"incoming\":\"" + Esc(incoming) +
+            "\",\"count\":" + _fillingSurfaces.Count +
+            ",\"parsed\":\"" + Esc(string.Join(",", _fillingSurfaces.Select(DisplaySurfaceName))) +
+            "\",\"mapAsset\":\"" + MapAssetName() + "\"}");
         // #endregion
     }
 
@@ -320,7 +348,7 @@ public partial class ToothMeshView : UserControl
         _selectedSurfaces.Clear();
         foreach (var name in names)
         {
-            if (Enum.TryParse<ClinicalSurface>(name, true, out var surface))
+            if (TryParseOverlaySurface(name, out var surface))
                 _selectedSurfaces.Add(surface);
         }
         ApplyInteractionOverlays();
@@ -331,6 +359,7 @@ public partial class ToothMeshView : UserControl
         _overlayGroup.Children.Clear();
         SurfaceOverlayVisual.Content = null;
         _surfaceMap = null;
+        NoteRebuildDuringDrag("rebuild-overlays");
         try
         {
             _surfaceMap = ToothSurfaceMapStore.TryLoad(_loadedFdi, crown);
@@ -344,10 +373,29 @@ public partial class ToothMeshView : UserControl
             }
             var colors = ToothSurfaceColorConvention.Overlay;
             var overlayVerts = 0;
+            var nTri = crown.TriangleIndices.Count / 3;
+            var owned = 0;
+            var missing = 0;
+            var dup = 0;
+            var seen = new int[nTri];
             for (var s = 0; s < 5; s++)
             {
                 var surface = (ClinicalSurface)s;
-                var mesh = CrownSurfaceClassifier.OverlayMesh(crown, _surfaceMap.Triangles(surface), OverlayNormalEps);
+                var tris = _surfaceMap.Triangles(surface);
+                foreach (var t in tris)
+                {
+                    if ((uint)t >= (uint)nTri)
+                    {
+                        missing++;
+                        continue;
+                    }
+                    seen[t]++;
+                    if (seen[t] == 1)
+                        owned++;
+                    else
+                        dup++;
+                }
+                var mesh = CrownSurfaceClassifier.OverlayMesh(crown, tris, OverlayNormalEps);
                 overlayVerts += mesh.Positions.Count;
                 var model = new GeometryModel3D
                 {
@@ -357,9 +405,13 @@ public partial class ToothMeshView : UserControl
                 _overlayModels[s] = model;
                 _overlayGroup.Children.Add(model);
             }
+            for (var t = 0; t < nTri; t++)
+            {
+                if (seen[t] == 0)
+                    missing++;
+            }
             ApplyOverlayVisibility();
             // #region agent log
-            var nTri = crown.TriangleIndices.Count / 3;
             var idx = crown.TriangleIndices;
             var pos = crown.Positions;
             var palDistalFlank = 0;
@@ -378,6 +430,11 @@ public partial class ToothMeshView : UserControl
             AgentLog("A", "overlay-built",
                 "{\"fdi\":\"" + Esc(_loadedFdi) +
                 "\",\"eps\":" + OverlayNormalEps.ToString("0.####", CultureInfo.InvariantCulture) +
+                ",\"sharedOverlay\":true" +
+                ",\"overlayLift\":\"faceNormal\"" +
+                ",\"owned\":" + owned +
+                ",\"dup\":" + dup +
+                ",\"missing\":" + missing +
                 ",\"overlayVerts\":" + overlayVerts +
                 ",\"crownTris\":" + nTri +
                 ",\"occlusal\":" + _surfaceMap.Counts[0] +
@@ -387,6 +444,7 @@ public partial class ToothMeshView : UserControl
                 ",\"distal\":" + _surfaceMap.Counts[4] +
                 ",\"interaction\":" + (_interactionEnabled ? "true" : "false") +
                 ",\"mapSource\":\"" + source + "\"" +
+                ",\"mapAsset\":\"" + MapAssetName() + "\"" +
                 ",\"color0\":\"" + colors[0].ToString() + "\"" +
                 ",\"color1\":\"" + colors[1].ToString() + "\"" +
                 ",\"color2\":\"" + colors[2].ToString() + "\"" +
@@ -395,6 +453,7 @@ public partial class ToothMeshView : UserControl
                 ",\"contentNull\":" + (SurfaceOverlayVisual.Content is null ? "true" : "false") +
                 ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
             ToothSurfaceLayoutStats.Log("C", _loadedFdi, "asset", crown, _surfaceMap.TriangleSurface);
+            ToothSurfaceLayoutStats.LogRedHeight("C", _loadedFdi, crown, _surfaceMap.TriangleSurface);
             ApplyClinicalOverlays();
             ApplyInteractionOverlays();
         }
@@ -421,6 +480,7 @@ public partial class ToothMeshView : UserControl
         if (!_showSurfaces || _surfaceMap is null)
         {
             SurfaceOverlayVisual.Content = null;
+            SyncCervicalForDebug();
             // #region agent log
             AgentLog("A", "overlay-off",
                 "{\"show\":" + (_showSurfaces ? "true" : "false") +
@@ -439,6 +499,7 @@ public partial class ToothMeshView : UserControl
                     _overlayGroup.Children.Add(_overlayModels[s]);
             }
         SurfaceOverlayVisual.Content = _overlayGroup;
+        SyncCervicalForDebug();
         // #region agent log
         AgentLog("P", "overlay-on",
             "{\"inspect\":\"" + Esc(inspect) +
@@ -456,6 +517,19 @@ public partial class ToothMeshView : UserControl
                 _ => "all-five"
             } + "\"}");
         // #endregion
+    }
+
+    private void SyncCervicalForDebug()
+    {
+        if (CervicalModel.Geometry is null)
+            return;
+        if (_showSurfaces)
+        {
+            CervicalModel.Material = new DiffuseMaterial(Brushes.Transparent);
+            CervicalModel.BackMaterial = null;
+        }
+        else
+            ToothLabAppearance.Apply(_loadedFdi, CrownModel, RootModel, CervicalModel);
     }
 
     private static Material OverlayMaterial(Color c)
@@ -520,17 +594,50 @@ public partial class ToothMeshView : UserControl
 
     private void ApplyOrbitCamera()
     {
+        var switched = !ReferenceEquals(View3D.Camera, _orbitCam);
+        if (switched && _dragging)
+            _orbitCamAssigns++;
         View3D.Camera = _orbitCam;
         var x = _radius * Math.Sin(_phi) * Math.Cos(_theta);
         var y = _radius * Math.Sin(_phi) * Math.Sin(_theta);
         var z = _radius * Math.Cos(_phi);
         _orbitCam.Position = new Point3D(x, y, z);
         _orbitCam.LookDirection = new Vector3D(-x, -y, -z);
-        _orbitCam.UpDirection = _phi < 18 * Deg
-            ? new Vector3D(0, 1, 0)
-            : new Vector3D(0, 0, 1);
+        var up = SharedOrbitUp(_orbitCam.LookDirection);
+        _orbitUpY = _phi < 18 * Deg;
+        if (_dragging && _prevOrbitUp.LengthSquared > 0 &&
+            Vector3D.DotProduct(_prevOrbitUp, up) < 0.985)
+            _upSnaps++;
+        _prevOrbitUp = up;
+        _orbitCam.UpDirection = up;
         SyncLights(_orbitCam.LookDirection, _orbitCam.UpDirection);
         UpdateChrome();
+    }
+
+    /// <summary>
+    /// Shared orbit up from the same θ/φ basis used to place the camera.
+    /// Replaces the hard Y↔Z switch at 18° that produced logged upSnaps.
+    /// Side views (φ ≥ 18°) remain world Z-up.
+    /// </summary>
+    private Vector3D SharedOrbitUp(Vector3D look)
+    {
+        if (look.LengthSquared < 1e-12)
+            look = new Vector3D(0, 0, -1);
+        else
+            look.Normalize();
+        var right = new Vector3D(-Math.Sin(_theta), Math.Cos(_theta), 0);
+        if (right.LengthSquared < 1e-10)
+            right = new Vector3D(1, 0, 0);
+        else
+            right.Normalize();
+        var up = Vector3D.CrossProduct(right, look);
+        if (up.LengthSquared < 1e-12)
+            up = new Vector3D(0, 0, 1);
+        else
+            up.Normalize();
+        if (_prevOrbitUp.LengthSquared > 0 && Vector3D.DotProduct(up, _prevOrbitUp) < 0)
+            up = -up;
+        return up;
     }
 
     private void SyncLights(Vector3D look, Vector3D up)
@@ -635,29 +742,105 @@ public partial class ToothMeshView : UserControl
         _pressing = true;
         _orbitMoved = false;
         _dragging = false;
+        _hoverDuringPress = 0;
+        _lostCaptures = 0;
         _downPos = e.GetPosition(this);
         _last = _downPos;
         CaptureMouse();
+        View3D.IsHitTestVisible = false;
         Focus();
+        // #region agent log
+        AgentLog("D", "orbit-down",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"captured\":" + (IsMouseCaptured ? "true" : "false") +
+            ",\"capturedEl\":\"" + Esc(Mouse.Captured?.GetType().Name ?? "none") +
+            "\",\"hitVis\":" + (View3D.IsHitTestVisible ? "true" : "false") +
+            ",\"mode\":\"element\"}");
+        // #endregion
         e.Handled = true;
     }
 
     private void OnDragEnd(object sender, MouseButtonEventArgs e)
     {
         var click = _pressing && !_orbitMoved;
+        var wasDragging = _dragging;
         _pressing = false;
         _dragging = false;
+        View3D.IsHitTestVisible = true;
         if (IsMouseCaptured)
             ReleaseMouseCapture();
         if (click)
             TrySelectAt(e.GetPosition(View3D));
         UpdateHover(e.GetPosition(View3D));
+        // #region agent log
+        if (wasDragging || _orbitMoves > 0)
+            AgentLog("B", "orbit-end",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"moves\":" + _orbitMoves +
+                ",\"slow\":" + _orbitSlow +
+                ",\"maxMs\":" + _orbitMaxMs.ToString("0.###", CultureInfo.InvariantCulture) +
+                ",\"rebuilds\":" + _rebuildDuringDrag +
+                ",\"rebuildKinds\":\"" + Esc(_orbitRebuildKinds) +
+                "\",\"hoverDuringPress\":" + _hoverDuringPress +
+                ",\"upSnaps\":" + _upSnaps +
+                ",\"camAssigns\":" + _orbitCamAssigns +
+                ",\"lostCaptures\":" + _lostCaptures +
+                ",\"phiClamps\":" + _orbitPhiClamps +
+                ",\"upSwitches\":" + _orbitUpSwitches +
+                ",\"jumpDeltas\":" + _orbitJumpDeltas +
+                ",\"captured\":" + (IsMouseCaptured ? "true" : "false") +
+                ",\"capturedEl\":\"" + Esc(Mouse.Captured?.GetType().Name ?? "none") +
+                "\",\"sharedOrbit\":true" +
+                ",\"thetaDeg\":" + F(_theta / Deg) +
+                ",\"phiDeg\":" + F(_phi / Deg) +
+                ",\"radius\":" + F(_radius) +
+                ",\"click\":" + (click ? "true" : "false") + "}");
+        // #endregion
         e.Handled = true;
+    }
+
+    private void OnGotCapture(object sender, MouseEventArgs e)
+    {
+        // #region agent log
+        AgentLog("D", "orbit-got-capture",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"capturedEl\":\"" + Esc(Mouse.Captured?.GetType().Name ?? "none") +
+            "\",\"pressing\":" + (_pressing ? "true" : "false") + "}");
+        // #endregion
+    }
+
+    private void OnLostCapture(object sender, MouseEventArgs e)
+    {
+        // #region agent log
+        AgentLog("D", "orbit-lost-capture",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"pressing\":" + (_pressing ? "true" : "false") +
+            ",\"dragging\":" + (_dragging ? "true" : "false") +
+            ",\"hitVis\":" + (View3D.IsHitTestVisible ? "true" : "false") +
+            ",\"capturedEl\":\"" + Esc(Mouse.Captured?.GetType().Name ?? "none") +
+            "\",\"left\":\"" + Mouse.LeftButton + "\"}");
+        // #endregion
+        if (_pressing && Mouse.LeftButton == MouseButtonState.Pressed)
+        {
+            _lostCaptures++;
+            CaptureMouse();
+            View3D.IsHitTestVisible = false;
+            _last = Mouse.GetPosition(this);
+            return;
+        }
+        _pressing = false;
+        _dragging = false;
+        View3D.IsHitTestVisible = true;
     }
 
     private void OnDragMove(object sender, MouseEventArgs e)
     {
+        var clock = Stopwatch.StartNew();
         var p = e.GetPosition(this);
+        var seeded = false;
+        var seedFrom = _viewMode;
+        var radiusBefore = _radius;
+        var phiBefore = _phi;
         if (_pressing && e.LeftButton == MouseButtonState.Pressed)
         {
             if (!_orbitMoved)
@@ -668,13 +851,49 @@ public partial class ToothMeshView : UserControl
                 {
                     _orbitMoved = true;
                     _dragging = true;
+                    _orbitMoves = 0;
+                    _orbitSlow = 0;
+                    _orbitSlowLogged = 0;
+                    _orbitMaxMs = 0;
+                    _rebuildDuringDrag = 0;
+                    _orbitRebuildKinds = "";
+                    _upSnaps = 0;
+                    _lostCaptures = 0;
+                    _orbitPhiClamps = 0;
+                    _orbitUpSwitches = 0;
+                    _orbitJumpDeltas = 0;
+                    _orbitCamAssigns = 0;
+                    _orbitLastMoveMs = 0;
+                    _prevOrbitUp = new Vector3D();
                     if (_viewMode != "orbit")
                     {
+                        seeded = true;
                         SeedOrbitFromCurrent();
                         _viewMode = "orbit";
                         ApplyOrbitCamera();
                     }
                     _last = p;
+                    // #region agent log
+                    AgentLog("A", "orbit-begin",
+                        "{\"fdi\":\"" + Esc(_loadedFdi) +
+                        "\",\"fromView\":\"" + Esc(seedFrom) +
+                        "\",\"seeded\":" + (seeded ? "true" : "false") +
+                        ",\"cam\":\"" + (View3D.Camera is OrthographicCamera ? "ortho" : "persp") +
+                        "\",\"boundR\":" + F(BoundingRadius()) +
+                        ",\"radiusBefore\":" + F(radiusBefore) +
+                        ",\"radiusAfter\":" + F(_radius) +
+                        ",\"phiBefore\":" + F(phiBefore / Deg) +
+                        ",\"phiAfter\":" + F(_phi / Deg) +
+                        ",\"thetaDeg\":" + F(_theta / Deg) +
+                        ",\"dx\":" + F(_stats.Dx) +
+                        ",\"dy\":" + F(_stats.Dy) +
+                        ",\"dz\":" + F(_stats.Dz) +
+                        ",\"cervicalTris\":" + _stats.CervicalTriangles +
+                        ",\"overlayVerts\":" + OverlayVertCount() +
+                        ",\"fillCount\":" + _fillingSurfaces.Count +
+                        ",\"segOn\":" + (_showSurfaces ? "true" : "false") +
+                        ",\"hoverDuringPress\":" + _hoverDuringPress + "}");
+                    // #endregion
                 }
             }
             if (_dragging)
@@ -682,21 +901,91 @@ public partial class ToothMeshView : UserControl
                 var dx = p.X - _last.X;
                 var dy = p.Y - _last.Y;
                 _last = p;
+                if (Math.Abs(dx) > 30 || Math.Abs(dy) > 30)
+                {
+                    _orbitJumpDeltas++;
+                    // #region agent log
+                    AgentLog("D", "orbit-jump-delta",
+                        "{\"fdi\":\"" + Esc(_loadedFdi) +
+                        "\",\"dx\":" + F(dx) +
+                        ",\"dy\":" + F(dy) +
+                        ",\"move\":" + _orbitMoves +
+                        ",\"captured\":" + (IsMouseCaptured ? "true" : "false") + "}");
+                    // #endregion
+                }
+                var phiBeforeMove = _phi;
+                var upBefore = _phi < 18 * Deg;
                 _theta -= dx * 0.008;
                 _phi = Math.Clamp(_phi - dy * 0.008, 6 * Deg, 165 * Deg);
+                if ((_phi <= 6 * Deg && phiBeforeMove > 6 * Deg) ||
+                    (_phi >= 165 * Deg && phiBeforeMove < 165 * Deg))
+                {
+                    _orbitPhiClamps++;
+                    // #region agent log
+                    AgentLog("D", "orbit-phi-clamp",
+                        "{\"fdi\":\"" + Esc(_loadedFdi) +
+                        "\",\"phiDeg\":" + F(_phi / Deg) +
+                        ",\"dy\":" + F(dy) +
+                        ",\"move\":" + _orbitMoves + "}");
+                    // #endregion
+                }
+                if (upBefore != (_phi < 18 * Deg))
+                {
+                    _orbitUpSwitches++;
+                    // #region agent log
+                    AgentLog("D", "orbit-up-switch",
+                        "{\"fdi\":\"" + Esc(_loadedFdi) +
+                        "\",\"phiDeg\":" + F(_phi / Deg) +
+                        ",\"upY\":" + (_phi < 18 * Deg ? "true" : "false") +
+                        ",\"move\":" + _orbitMoves + "}");
+                    // #endregion
+                }
                 ApplyOrbitCamera();
             }
         }
-        if (!_dragging)
+        if (!_pressing && !_dragging)
             UpdateHover(e.GetPosition(View3D));
+        clock.Stop();
+        if (_dragging)
+        {
+            _orbitMoves++;
+            var ms = clock.Elapsed.TotalMilliseconds;
+            if (ms > _orbitMaxMs)
+                _orbitMaxMs = ms;
+            if (ms >= 8)
+                _orbitSlow++;
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var gap = _orbitLastMoveMs == 0 ? 0 : now - _orbitLastMoveMs;
+            _orbitLastMoveMs = now;
+            // #region agent log
+            if ((ms >= 8 || gap >= 40) && _orbitSlowLogged < 6)
+            {
+                _orbitSlowLogged++;
+                AgentLog("B", "orbit-hitch",
+                    "{\"fdi\":\"" + Esc(_loadedFdi) +
+                    "\",\"ms\":" + ms.ToString("0.###", CultureInfo.InvariantCulture) +
+                    ",\"gapMs\":" + gap +
+                    ",\"move\":" + _orbitMoves +
+                    ",\"rebuilds\":" + _rebuildDuringDrag +
+                    ",\"phiDeg\":" + F(_phi / Deg) +
+                    ",\"upY\":" + (_orbitUpY ? "true" : "false") + "}");
+            }
+            // #endregion
+        }
     }
 
     private void OnMouseLeft(object sender, MouseEventArgs e)
     {
-        if (IsMouseCaptured)
+        // #region agent log
+        if (_pressing || _dragging)
+            AgentLog("D", "orbit-leave",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"pressing\":" + (_pressing ? "true" : "false") +
+                ",\"dragging\":" + (_dragging ? "true" : "false") +
+                ",\"captured\":" + (IsMouseCaptured ? "true" : "false") + "}");
+        // #endregion
+        if (_pressing || _dragging)
             return;
-        _dragging = false;
-        _pressing = false;
         if (_hoverSurface is null)
             return;
         _hoverSurface = null;
@@ -708,6 +997,8 @@ public partial class ToothMeshView : UserControl
 
     private void UpdateHover(Point viewportPoint)
     {
+        if (_pressing || _dragging)
+            return;
         if (!_interactionEnabled)
         {
             Cursor = Cursors.Arrow;
@@ -724,12 +1015,18 @@ public partial class ToothMeshView : UserControl
         _lastHoverTri = tri;
         ApplyInteractionOverlays();
         RaiseInteraction(tri);
+        if (_pressing)
+            _hoverDuringPress++;
         // #region agent log
-        AgentLog("H", "hover",
-            "{\"hover\":\"" + (hit?.ToString() ?? "None") +
-            "\",\"selected\":\"" + Esc(SelectedJoin()) +
-            "\",\"tri\":" + tri +
-            ",\"viewMode\":\"" + Esc(_viewMode) + "\"}");
+        if (!_pressing)
+            AgentLog("A", "hover",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"hoverEnum\":\"" + (hit?.ToString() ?? "None") +
+                "\",\"hoverDisplay\":\"" + (hit is ClinicalSurface hs ? DisplaySurfaceName(hs) : "None") +
+                "\",\"selected\":\"" + Esc(SelectedJoin()) +
+                "\",\"tri\":" + tri +
+                ",\"mapAsset\":\"" + MapAssetName() +
+                "\",\"viewMode\":\"" + Esc(_viewMode) + "\"}");
         // #endregion
     }
 
@@ -745,10 +1042,13 @@ public partial class ToothMeshView : UserControl
         ApplyInteractionOverlays();
         RaiseInteraction(tri);
         // #region agent log
-        AgentLog("H", "select",
-            "{\"hover\":\"" + (_hoverSurface?.ToString() ?? "None") +
+        AgentLog("A", "select",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"hoverEnum\":\"" + (_hoverSurface?.ToString() ?? "None") +
+            "\",\"hoverDisplay\":\"" + (_hoverSurface is ClinicalSurface hs ? DisplaySurfaceName(hs) : "None") +
             "\",\"selected\":\"" + Esc(SelectedJoin()) +
-            "\",\"tri\":" + tri + "}");
+            "\",\"tri\":" + tri +
+            ",\"mapAsset\":\"" + MapAssetName() + "\"}");
         // #endregion
     }
 
@@ -796,12 +1096,14 @@ public partial class ToothMeshView : UserControl
     private void ApplyClinicalOverlays()
     {
         _fillingMaterial ??= InteractionMaterial(Color.FromArgb(0x6A, 0xB4, 0xBC, 0xC4), 0x16);
+        NoteRebuildDuringDrag("clinical-overlay");
         if (_fillingSurfaces.Count == 0)
         {
             ClinicalOverlayVisual.Content = null;
             // #region agent log
             AgentLog("C", "clinical-overlay",
-                "{\"fillCount\":0,\"added\":0,\"skipped\":0,\"contentNull\":true}");
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"fillCount\":0,\"added\":0,\"skipped\":0,\"contentNull\":true}");
             // #endregion
             return;
         }
@@ -818,16 +1120,19 @@ public partial class ToothMeshView : UserControl
         ClinicalOverlayVisual.Content = group.Children.Count == 0 ? null : group;
         // #region agent log
         AgentLog("C", "clinical-overlay",
-            "{\"fillCount\":" + _fillingSurfaces.Count +
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"fillCount\":" + _fillingSurfaces.Count +
             ",\"added\":" + group.Children.Count +
             ",\"skipped\":" + skipped +
-            ",\"contentNull\":" + (ClinicalOverlayVisual.Content is null ? "true" : "false") + "}");
+            ",\"contentNull\":" + (ClinicalOverlayVisual.Content is null ? "true" : "false") +
+            ",\"parsed\":\"" + Esc(string.Join(",", _fillingSurfaces.Select(DisplaySurfaceName))) + "\"}");
         // #endregion
     }
 
     private void ApplyInteractionOverlays()
     {
         _hoverMaterial ??= InteractionMaterial(Color.FromArgb(0x22, 0x72, 0xB8, 0xE4), 0x10);
+        NoteRebuildDuringDrag("interaction-overlay");
         _selectedMaterial ??= InteractionMaterial(Color.FromArgb(0x4C, 0x3A, 0x8C, 0xD2), 0x1C);
         _hoverOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x18, 0x8A, 0xC4, 0xE8), 0x0C);
         _selectedOnFillingMaterial ??= InteractionMaterial(Color.FromArgb(0x2A, 0x5A, 0x9A, 0xD4), 0x14);
@@ -877,11 +1182,57 @@ public partial class ToothMeshView : UserControl
         var selected = SelectedNames();
         InteractionChanged?.Invoke(this, new ToothLabHitEventArgs
         {
-            Hover = _hoverSurface?.ToString(),
+            Hover = _hoverSurface is ClinicalSurface hover ? DisplaySurfaceName(hover) : null,
             Selected = selected.Count == 0 ? null : string.Join(",", selected),
             SelectedSurfaces = selected,
             Triangle = triangle
         });
+    }
+
+    private int OverlayVertCount()
+    {
+        var n = 0;
+        foreach (var model in _overlayModels)
+        {
+            if (model?.Geometry is MeshGeometry3D mesh)
+                n += mesh.Positions.Count;
+        }
+        return n;
+    }
+
+    private void NoteRebuildDuringDrag(string kind)
+    {
+        if (!_dragging && !_orbitMoved)
+            return;
+        _rebuildDuringDrag++;
+        if (_orbitRebuildKinds.Length == 0)
+            _orbitRebuildKinds = kind;
+        else if (!_orbitRebuildKinds.Contains(kind, StringComparison.Ordinal))
+            _orbitRebuildKinds += "," + kind;
+        // #region agent log
+        if (_rebuildDuringDrag <= 4)
+            AgentLog("C", "orbit-rebuild",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"kind\":\"" + Esc(kind) +
+                "\",\"n\":" + _rebuildDuringDrag + "}");
+        // #endregion
+    }
+
+    private string DisplaySurfaceName(ClinicalSurface surface) =>
+        surface == ClinicalSurface.Palatal ? LabelPalatal.Text : surface.ToString();
+
+    private string MapAssetName() =>
+        _loadedFdi == "36" ? "FDI36SurfaceMap.json" : _loadedFdi == "16" ? "FDI16SurfaceMap.json" : "";
+
+    private static bool TryParseOverlaySurface(string name, out ClinicalSurface surface)
+    {
+        if (name.Equals("Lingual", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("Palatal", StringComparison.OrdinalIgnoreCase))
+        {
+            surface = ClinicalSurface.Palatal;
+            return true;
+        }
+        return Enum.TryParse(name, true, out surface);
     }
 
     private IReadOnlyList<string> SelectedNames()
@@ -890,7 +1241,7 @@ public partial class ToothMeshView : UserControl
         foreach (var surface in Enum.GetValues<ClinicalSurface>())
         {
             if (_selectedSurfaces.Contains(surface))
-                names.Add(surface.ToString());
+                names.Add(DisplaySurfaceName(surface));
         }
         return names;
     }

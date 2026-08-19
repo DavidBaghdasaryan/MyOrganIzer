@@ -95,9 +95,9 @@ public sealed class ToothLabClinicalState
 
     /// <summary>
     /// Current visualization: union of Filling surfaces across all records.
-    /// Names are 3D labels (Palatal, not Lingual).
+    /// Names are tooth-aware 3D labels (Palatal on maxilla, Lingual on mandible).
     /// </summary>
-    public IReadOnlyList<string> FillingSurfaceNames()
+    public IReadOnlyList<string> FillingSurfaceNames(string innerName = "Palatal")
     {
         var set = new HashSet<ToothSurfaceType>();
         foreach (var procedure in _procedures)
@@ -107,7 +107,7 @@ public sealed class ToothLabClinicalState
             foreach (var surface in procedure.Surfaces)
                 set.Add(surface);
         }
-        return LabSurfaces.DisplayNames(set);
+        return LabSurfaces.DisplayNames(set, innerName);
     }
 }
 
@@ -122,19 +122,19 @@ public static class LabSurfaces
         ToothSurfaceType.Distal
     ];
 
-    public static string DisplayName(ToothSurfaceType surface) =>
-        surface == ToothSurfaceType.Lingual ? "Palatal" : surface.ToString();
+    public static string DisplayName(ToothSurfaceType surface, string innerName = "Palatal") =>
+        surface == ToothSurfaceType.Lingual ? innerName : surface.ToString();
 
-    public static string Join(IEnumerable<ToothSurfaceType> surfaces)
+    public static string Join(IEnumerable<ToothSurfaceType> surfaces, string innerName = "Palatal")
     {
         var set = surfaces as ISet<ToothSurfaceType> ?? surfaces.ToHashSet();
-        return string.Join(", ", All.Where(set.Contains).Select(DisplayName));
+        return string.Join(", ", All.Where(set.Contains).Select(s => DisplayName(s, innerName)));
     }
 
-    public static IReadOnlyList<string> DisplayNames(IEnumerable<ToothSurfaceType> surfaces)
+    public static IReadOnlyList<string> DisplayNames(IEnumerable<ToothSurfaceType> surfaces, string innerName = "Palatal")
     {
         var set = surfaces as ISet<ToothSurfaceType> ?? surfaces.ToHashSet();
-        return All.Where(set.Contains).Select(DisplayName).ToList();
+        return All.Where(set.Contains).Select(s => DisplayName(s, innerName)).ToList();
     }
 
     public static HashSet<ToothSurfaceType> Normalize(IEnumerable<ToothSurfaceType> surfaces)

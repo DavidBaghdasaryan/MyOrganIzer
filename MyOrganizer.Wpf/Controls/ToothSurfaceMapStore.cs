@@ -3,8 +3,9 @@ using System.Windows.Media.Media3D;
 namespace MyOrganizer.Wpf.Controls;
 
 /// <summary>
-/// Loads the frozen per-tooth anatomical map. Overlay, hit-testing, and
-/// future procedure wiring stay shared; only the triangle assignments differ.
+/// Loads the frozen per-tooth anatomical map (triangle → clinical surface).
+/// Overlay materials, hover, Filling, and orbit stay in the shared viewer;
+/// only triangle ownership differs per tooth.
 /// </summary>
 internal static class ToothSurfaceMapStore
 {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Windows.Media;
@@ -197,16 +198,15 @@ internal static class CrownSurfaceClassifier
             var a = crown.Positions[i0];
             var b = crown.Positions[i1];
             var c = crown.Positions[i2];
-            var n = Vector3D.CrossProduct(b - a, c - a);
-            if (n.LengthSquared < 1e-18)
-                n = new Vector3D(0, 0, 1);
+            var face = Vector3D.CrossProduct(b - a, c - a);
+            if (face.LengthSquared < 1e-18)
+                face = new Vector3D(0, 0, 1);
             else
-                n.Normalize();
-            var o = n * normalEps;
+                face.Normalize();
             var baseIndex = mesh.Positions.Count;
-            mesh.Positions.Add(a + o);
-            mesh.Positions.Add(b + o);
-            mesh.Positions.Add(c + o);
+            mesh.Positions.Add(a + face * normalEps);
+            mesh.Positions.Add(b + face * normalEps);
+            mesh.Positions.Add(c + face * normalEps);
             mesh.TriangleIndices.Add(baseIndex);
             mesh.TriangleIndices.Add(baseIndex + 1);
             mesh.TriangleIndices.Add(baseIndex + 2);

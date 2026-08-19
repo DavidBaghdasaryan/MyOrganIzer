@@ -52,6 +52,8 @@ internal static class Fdi16SurfaceCurator
 
         KeepLargestAxial(labels, neighbors);
         DropTinyOcclusalIslands(labels, neighbors);
+        if (!applyFdi16TriangleOverrides)
+            ToothSurfaceTopology.CleanNormalized(crown, labels, neighbors);
 
         var counts = new int[5];
         foreach (var lab in labels)
@@ -101,9 +103,31 @@ internal static class Fdi16SurfaceCurator
     }
 
     /// <summary>
-    /// Color 0 (coral/red) is the cervical/lower-crown band, not the chewing table.
-    /// Chewing-table triangles are released to the four directional walls.
-    /// Does not run on the frozen FDI 16 Apply() path.
+    /// Frozen FDI 16 occlusal occupies only the high table: min z01 0.718, mean 0.873.
+    /// Apply that same normalized height window to other teeth. Never copies FDI 16
+    /// triangle indices or world coordinates.
+    /// </summary>
+    private static void RestrictOcclusalToGoldenFootprint(
+        ClinicalSurface[] labels, Features feat, int[] peeled)
+    {
+        const double goldenMinZ01 = 0.718;
+        for (var t = 0; t < labels.Length; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            var env = Math.Max(1e-9, feat.EnvR[t]);
+            var inner = feat.Radius[t] / env <= 0.90;
+            if (feat.Z01[t] >= goldenMinZ01 && feat.Facing[t] >= 0.36 && inner)
+                continue;
+            var wall = CrownSurfaceClassifier.AxialSurface(feat.Centroids[t], feat.Normals[t], feat.AxialCenter);
+            labels[t] = wall;
+            peeled[(int)wall]++;
+        }
+    }
+
+    /// <summary>
+    /// Color 0 (coral) as a cervical band grown from the crown–root open boundary
+    /// in this tooth's own z01 space. Used only by ApplyGeometry (not the frozen
+    /// FDI 16 Apply() path).
     /// </summary>
     private static void PlaceCervicalRedBand(
         MeshGeometry3D crown, ClinicalSurface[] labels, List<int>[] neighbors, Features feat, int[] peeled)

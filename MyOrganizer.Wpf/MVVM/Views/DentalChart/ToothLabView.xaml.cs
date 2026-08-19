@@ -170,9 +170,11 @@ public partial class ToothLabView : UserControl
         MeshView.SetFillingSurfaces(vm.FillingSurfaceNames);
         // #region agent log
         var line = "{\"sessionId\":\"ee2893\",\"runId\":\"paint-cleanup\",\"hypothesisId\":\"B\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"filling-from-clinical\",\"data\":{\"fdi\":\"" +
-                   vm.ToothNumber + "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
+                   vm.ToothNumber + "\",\"inner\":\"" + vm.InnerCameraLabel +
+                   "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
                    "\",\"pending\":\"" + string.Join(",", vm.PendingSurfaceNames) +
-                   "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                   "\",\"procedureCount\":" + vm.Clinical.Procedures.Count +
+                   "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
         try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
         catch { }
         // #endregion
