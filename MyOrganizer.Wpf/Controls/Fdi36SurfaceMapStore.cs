@@ -37,11 +37,8 @@ internal static class Fdi36SurfaceMapStore
         }
     }
 
-    public static ClinicalSurfaceMap Build(MeshGeometry3D crown)
-    {
-        return Fdi16SurfaceCurator.ApplyGeometry(
-            CrownSurfaceClassifier.Classify(crown, applyFdi16Overrides: false));
-    }
+    public static ClinicalSurfaceMap Build(MeshGeometry3D crown) =>
+        MandibularFirstMolarTemplate.Generate(crown, ToothSide.Left);
 
     public static string GenerateDefault()
     {

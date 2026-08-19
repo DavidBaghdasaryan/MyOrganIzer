@@ -37,7 +37,7 @@ internal static class ToothSurfaceTopology
             ",\"unassigned\":" + ownership.Unassigned + "}");
         if (ownership.Dup != 0 || ownership.Unassigned != 0)
             throw new InvalidDataException(
-                "FDI36SurfaceMap ownership invalid dup=" + ownership.Dup +
+                "surface-map ownership invalid dup=" + ownership.Dup +
                 " unassigned=" + ownership.Unassigned);
     }
 

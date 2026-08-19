@@ -14,6 +14,7 @@ internal static class ToothSurfaceMapStore
         {
             "16" => Fdi16SurfaceMapStore.TryLoad(crown),
             "36" => Fdi36SurfaceMapStore.TryLoad(crown),
+            "46" => Fdi46SurfaceMapStore.TryLoad(crown),
             _ => null
         };
 }

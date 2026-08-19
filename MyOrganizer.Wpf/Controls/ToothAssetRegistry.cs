@@ -67,6 +67,8 @@ public sealed class ToothAssetDefinition
     public string? SourceNote { get; init; }
 
     public bool SwapMesialDistal => MirrorX;
+    public bool MandibularContralateralMirror =>
+        MirrorX && OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile;
     public string ChewingSurfaceName =>
         ToothKind is ToothKind.Incisor or ToothKind.Canine ? "Incisal" : "Occlusal";
     public string InnerSurfaceName => Jaw == ToothJaw.Maxilla ? "Palatal" : "Lingual";
@@ -229,7 +231,10 @@ public static class ToothAssetRegistry
             ",\"fdi36Mirror\":" + (map["36"].MirrorX ? "true" : "false") +
             ",\"fdi36Map\":" + (map["36"].SurfaceMapAvailable ? "true" : "false") +
             ",\"fdi36Interact\":" + (map["36"].ClinicalInteraction ? "true" : "false") +
-            ",\"fdi46Imported\":" + (map["46"].RuntimeImported ? "true" : "false") + "}");
+            ",\"fdi46Imported\":" + (map["46"].RuntimeImported ? "true" : "false") +
+            ",\"fdi46Mirror\":" + (map["46"].MirrorX ? "true" : "false") +
+            ",\"fdi46Map\":" + (map["46"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi46Interact\":" + (map["46"].ClinicalInteraction ? "true" : "false") + "}");
         // #endregion
         return map;
     }
@@ -252,7 +257,9 @@ public static class ToothAssetRegistry
     {
         var imported16 = fdi == ApprovedFdi;
         var imported36 = fdi == "36";
-        var imported = imported16 || imported36;
+        var imported46 = fdi == "46";
+        var importedMandibularFirstMolar = imported36 || imported46;
+        var imported = imported16 || importedMandibularFirstMolar;
         return new ToothAssetDefinition
         {
             FdiNumber = fdi,
@@ -263,12 +270,20 @@ public static class ToothAssetRegistry
             DisplayName = name,
             SourceZipFileName = zip,
             InnerObjName = obj,
-            RuntimeMesh = imported16 ? "FDI16_High.obj" : imported36 ? "FDI36_High.obj" : null,
+            RuntimeMesh = imported16 ? "FDI16_High.obj"
+                : imported36 ? "FDI36_High.obj"
+                : imported46 ? "FDI46_High.obj"
+                : null,
             MirrorX = mirrorX,
-            OrientationProfile = imported16 ? "ApprovedFdi16" : imported36 ? "MandibularFirstMolar" : "Pending",
-            SurfaceMap = imported16 ? "FDI16SurfaceMap.json" : imported36 ? "FDI36SurfaceMap.json" : null,
+            OrientationProfile = imported16 ? "ApprovedFdi16"
+                : importedMandibularFirstMolar ? MandibularFirstMolarTemplate.OrientationProfile
+                : "Pending",
+            SurfaceMap = imported16 ? "FDI16SurfaceMap.json"
+                : imported36 ? "FDI36SurfaceMap.json"
+                : imported46 ? "FDI46SurfaceMap.json"
+                : null,
             RuntimeImported = imported,
-            SurfaceMapAvailable = imported16 || imported36,
+            SurfaceMapAvailable = imported,
             ClinicalInteraction = imported,
             Attribution = attr,
             SourceNote = note

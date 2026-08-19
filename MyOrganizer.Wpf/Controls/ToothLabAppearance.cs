@@ -5,14 +5,14 @@ namespace MyOrganizer.Wpf.Controls;
 
 /// <summary>
 /// Tooth-lab enamel/cementum materials. FDI 16 keeps the approved look.
-/// FDI 36 uses a closer crown/root pair so the CEJ does not read as two objects.
-/// Lighting stays shared.
+/// Mandibular first molars (36/46) share the closer crown/root/CEJ pair.
+/// Overlay colors stay in ToothSurfaceColorConvention. Lighting stays shared.
 /// </summary>
 internal static class ToothLabAppearance
 {
     public static void Apply(string fdi, GeometryModel3D crown, GeometryModel3D root, GeometryModel3D cervical)
     {
-        if (fdi == "36")
+        if (fdi is "36" or "46")
             ApplyFdi36(crown, root, cervical);
         else
             ApplyApprovedFdi16(crown, root);
@@ -75,8 +75,8 @@ internal static class ToothLabAppearance
         Enamel(diffuse, emissive, specular, power, ambient);
 
     public static string CrownDiffuseHex(string fdi) =>
-        fdi == "36" ? "#F3EFE6" : "#F8F6F1";
+        fdi is "36" or "46" ? "#F3EFE6" : "#F8F6F1";
 
     public static string RootDiffuseHex(string fdi) =>
-        fdi == "36" ? "#E7DBC4" : "#E2D4B2";
+        fdi is "36" or "46" ? "#E7DBC4" : "#E2D4B2";
 }

@@ -62,10 +62,12 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string ToothNumber => _asset.FdiNumber;
     public string Hint =>
-        "Click an FDI number to inspect it. FDI 16 is the golden segmentation reference. " +
-        "FDI 16 and FDI 36 share the same clinical workflow: hover, multi-select, Filling, " +
-        "Create Procedure, Edit, New Procedure. Terminology is tooth-aware (Palatal on 16, Lingual on 36). " +
-        "Procedure records stay isolated per tooth. Other FDI positions remain placeholders.";
+        "Click an FDI number to inspect it. FDI 16 is the golden maxillary first-molar reference. " +
+        "FDI 36 is the approved mandibular left first molar. FDI 46 is generated from the same " +
+        "mandibular first-molar template with right laterality. All three share hover, multi-select, " +
+        "Filling, Create Procedure, Edit, and New Procedure. Terminology is tooth-aware " +
+        "(Palatal on 16, Lingual on 36 and 46). Procedure records stay isolated per tooth. " +
+        "Other FDI positions remain placeholders.";
 
     public string SourceNote =>
         "Mesh: Maxillary First Molar, University of Dundee School of Dentistry (Emily McDougall; " +
@@ -84,6 +86,12 @@ public sealed class ToothLabViewModel : ObservableObject
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
                   ". Healthy anatomy is frozen. Debug overlay: Occlusal / Buccal / Lingual / Mesial / Distal. " +
                   "Clinical interaction uses FDI36SurfaceMap (Lingual, not Palatal). " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "46"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular first molar generated from MandibularFirstMolarTemplate " +
+                  "(same rules as approved FDI 36, right laterality, FDI46SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
                 : _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
                   ". Healthy anatomy only; clinical surface map not created yet. " +
@@ -144,8 +152,8 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string LabelTop => "Buccal";
     public string LabelBottom => _asset.InnerSurfaceName;
-    public string LabelLeft => "Distal";
-    public string LabelRight => "Mesial";
+    public string LabelLeft => _asset.MandibularContralateralMirror ? "Mesial" : "Distal";
+    public string LabelRight => _asset.MandibularContralateralMirror ? "Distal" : "Mesial";
 
     public double ToothSize
     {
@@ -234,6 +242,8 @@ public sealed class ToothLabViewModel : ObservableObject
         OnPropertyChanged(nameof(LabTitle));
         OnPropertyChanged(nameof(PlaceholderBody));
         OnPropertyChanged(nameof(LabelBottom));
+        OnPropertyChanged(nameof(LabelLeft));
+        OnPropertyChanged(nameof(LabelRight));
         OnPropertyChanged(nameof(Hint));
         foreach (var row in ChartRows)
         {

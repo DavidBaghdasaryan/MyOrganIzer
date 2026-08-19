@@ -308,9 +308,17 @@ public partial class ToothMeshView : UserControl
 
     public void ShowPalatal() => FrameSide(LabelPalatal.Text.Equals("Lingual", StringComparison.OrdinalIgnoreCase) ? "lingual" : "palatal", new Vector3D(0, -1, 0.16), new Vector3D(0, 0, 1));
 
-    public void ShowMesial() => FrameSide("mesial", new Vector3D(1, 0, 0.16), new Vector3D(0, 0, 1));
+    public void ShowMesial()
+    {
+        var x = MandibularMdMirrored() ? -1 : 1;
+        FrameSide("mesial", new Vector3D(x, 0, 0.16), new Vector3D(0, 0, 1));
+    }
 
-    public void ShowDistal() => FrameSide("distal", new Vector3D(-1, 0, 0.16), new Vector3D(0, 0, 1));
+    public void ShowDistal()
+    {
+        var x = MandibularMdMirrored() ? 1 : -1;
+        FrameSide("distal", new Vector3D(x, 0, 0.16), new Vector3D(0, 0, 1));
+    }
 
     public void SetSurfaceDebug(bool show, string inspect)
     {
@@ -1222,7 +1230,13 @@ public partial class ToothMeshView : UserControl
         surface == ClinicalSurface.Palatal ? LabelPalatal.Text : surface.ToString();
 
     private string MapAssetName() =>
-        _loadedFdi == "36" ? "FDI36SurfaceMap.json" : _loadedFdi == "16" ? "FDI16SurfaceMap.json" : "";
+        _loadedFdi == "46" ? "FDI46SurfaceMap.json"
+        : _loadedFdi == "36" ? "FDI36SurfaceMap.json"
+        : _loadedFdi == "16" ? "FDI16SurfaceMap.json"
+        : "";
+
+    private bool MandibularMdMirrored() =>
+        ToothAssetRegistry.TryGet(_loadedFdi, out var asset) && asset.MandibularContralateralMirror;
 
     private static bool TryParseOverlaySurface(string name, out ClinicalSurface surface)
     {

@@ -67,7 +67,7 @@ internal static class StlToothLoader
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
-        if (options.OrientationProfile == "MandibularFirstMolar")
+        if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
             ToothMeshOrient.AlignFdi36(welded, stats);
         else if (options.OrientFdi16)
             ToothMeshOrient.AlignFdi16(welded, stats);
@@ -75,6 +75,25 @@ internal static class StlToothLoader
         {
             MirrorX(welded);
             stats.Mirrored = true;
+        }
+        if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi46-mdswap\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
         }
         UniformScale(welded, stats, 2.2);
 
@@ -86,7 +105,7 @@ internal static class StlToothLoader
             ClassifyByCervix(welded, triMat);
             stats.SplitSource = "spatial-cej";
         }
-        else if (options.OrientationProfile == "MandibularFirstMolar" &&
+        else if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile &&
                  raw.TriWarm.Count == triMat.Count)
         {
             SoftenFdi36Cervix(triMat, raw.TriWarm, stats);

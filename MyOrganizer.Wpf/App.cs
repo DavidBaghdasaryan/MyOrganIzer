@@ -39,6 +39,13 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi46-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi46SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
         AppSettings.Load();
