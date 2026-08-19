@@ -34,11 +34,52 @@ internal static class Fdi16SurfaceCurator
     public static ClinicalSurfaceMap ApplyPremolarGeometry(ClinicalSurfaceMap automatic) =>
         ApplyCore(automatic, applyFdi16TriangleOverrides: false, premolarChewing: true);
 
+    /// <summary>
+    /// Canine family: color 0 is the cervical/neck band. Walls are
+    /// Buccal/Palatal/Mesial/Distal. Does not retract a premolar chewing table
+    /// (canines have a palatal fossa/cingulum, not a two-cusp table).
+    /// No premolar or molar triangle IDs.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyCanineGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: false, premolarChewing: true, retractPalatalTable: false);
+
+    /// <summary>
+    /// Incisors share the canine cervical-band / wall split: color 0 is the
+    /// neck, not the incisal table. No canine triangle IDs.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyIncisorGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCanineGeometry(automatic);
+
+    /// <summary>
+    /// Mandibular canine: same cervical color-0 role, but the collar is grown
+    /// onto the visible neck walls (including the underside seen from below).
+    /// The default CEJ-floor band sits in the groove and disappears from below.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyMandibularCanineGeometry(ClinicalSurfaceMap automatic) =>
+        ApplyCore(automatic, applyFdi16TriangleOverrides: false, premolarChewing: true, retractPalatalTable: false, mandibularCanineCollar: true);
+
+    /// <summary>
+    /// Mandibular incisors share the mandibular-canine visible cervical collar.
+    /// No canine triangle IDs.
+    /// </summary>
+    public static ClinicalSurfaceMap ApplyMandibularIncisorGeometry(ClinicalSurfaceMap automatic)
+    {
+        var map = ApplyMandibularCanineGeometry(automatic);
+        ToothSurfaceTopology.SealHighCrownWallHoles(map.SourceCrown, map.TriangleSurface);
+        map.Overrides.Clear();
+        Array.Clear(map.Counts);
+        foreach (var s in map.TriangleSurface)
+            map.Counts[(int)s]++;
+        return map;
+    }
+
     private static ClinicalSurfaceMap ApplyCore(
         ClinicalSurfaceMap automatic,
         bool applyFdi16TriangleOverrides,
         bool highCervicalBand = false,
-        bool premolarChewing = false)
+        bool premolarChewing = false,
+        bool retractPalatalTable = true,
+        bool mandibularCanineCollar = false)
     {
         var crown = automatic.SourceCrown;
         var nTri = automatic.TriangleSurface.Length;
@@ -54,6 +95,8 @@ internal static class Fdi16SurfaceCurator
             // the maxillary-molar high-z01 convention. Walls already classified
             // stay; the chewing table is recast to B/P/M/D.
             PlaceCervicalRedBand(crown, labels, neighbors, feat, peeled);
+            if (mandibularCanineCollar)
+                GrowVisibleCervicalCollar(labels, neighbors, feat);
         }
         else
         {
@@ -97,7 +140,7 @@ internal static class Fdi16SurfaceCurator
             KeepLargestAxial(labels, neighbors);
             DropTinyOcclusalIslands(labels, neighbors);
         }
-        if (premolarChewing)
+        if (premolarChewing && retractPalatalTable)
         {
             RetractPremolarPalatalTable(labels, neighbors, feat);
             KeepLargestAxial(labels, neighbors);
@@ -666,6 +709,96 @@ internal static class Fdi16SurfaceCurator
             ",\"lowCervical\":" + low +
             ",\"highTable\":" + high +
             ",\"cejSeeds\":" + CountTrue(cej) + "}");
+        // #endregion
+    }
+
+    /// <summary>
+    /// Raise the mandibular-canine coral collar onto the visible outer neck,
+    /// including downward-facing flare seen from below. The CEJ groove stays
+    /// coral; we do not reassign it (that disconnects the walls).
+    /// </summary>
+    private static void GrowVisibleCervicalCollar(
+        ClinicalSurface[] labels, List<int>[] neighbors, Features feat)
+    {
+        var nTri = labels.Length;
+        var before = 0;
+        var beforeZ = 0d;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            before++;
+            beforeZ += feat.Z01[t];
+        }
+
+        static double Outer(Features f, int t) =>
+            f.EnvR[t] < 1e-9 ? 1 : f.Radius[t] / f.EnvR[t];
+
+        // Do not strip the CEJ groove: those faces are disconnected from the
+        // walls, and reassignment breaks M/L axes. Grow the existing band onto
+        // the outer neck walls so the coral is visible from the side and from below.
+        var stripped = 0;
+
+        bool VisibleCollar(int t)
+        {
+            var z = feat.Z01[t];
+            var outer = Outer(feat, t);
+            if (outer < 0.50) return false;
+            if (z < 0.22 || z > 0.44) return false;
+            if (feat.Facing[t] <= 0.12) return true;
+            return feat.Facing[t] < 0.55;
+        }
+
+        var painted = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] == ClinicalSurface.Occlusal) continue;
+            if (!VisibleCollar(t)) continue;
+            labels[t] = ClinicalSurface.Occlusal;
+            painted++;
+        }
+
+        var band = new bool[nTri];
+        for (var t = 0; t < nTri; t++)
+            band[t] = labels[t] == ClinicalSurface.Occlusal;
+        for (var pass = 0; pass < 6; pass++)
+        {
+            var changed = 0;
+            for (var t = 0; t < nTri; t++)
+            {
+                if (band[t]) continue;
+                if (feat.Z01[t] < 0.20 || feat.Z01[t] > 0.46) continue;
+                if (feat.Facing[t] > 0.58) continue;
+                if (Outer(feat, t) < 0.48) continue;
+                var nOcc = 0;
+                foreach (var nb in neighbors[t])
+                    if (band[nb]) nOcc++;
+                if (nOcc < 2) continue;
+                band[t] = true;
+                labels[t] = ClinicalSurface.Occlusal;
+                changed++;
+            }
+            if (changed == 0) break;
+        }
+
+        var after = 0;
+        var afterZ = 0d;
+        var below = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Occlusal) continue;
+            after++;
+            afterZ += feat.Z01[t];
+            if (feat.Facing[t] < 0.08) below++;
+        }
+        // #region agent log
+        AgentLog("A", "mandibular-canine-collar",
+            "{\"before\":" + before +
+            ",\"beforeMeanZ01\":" + (before == 0 ? "0" : (beforeZ / before).ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"strippedGroove\":" + stripped +
+            ",\"paintedNeck\":" + painted +
+            ",\"after\":" + after +
+            ",\"afterMeanZ01\":" + (after == 0 ? "0" : (afterZ / after).ToString("0.000", CultureInfo.InvariantCulture)) +
+            ",\"fromBelowFacing\":" + below + "}");
         // #endregion
     }
 

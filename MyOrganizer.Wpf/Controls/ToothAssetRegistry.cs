@@ -68,9 +68,13 @@ public sealed class ToothAssetDefinition
 
     public bool SwapMesialDistal => MirrorX;
     public bool MandibularContralateralMirror =>
-        MirrorX && OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile;
+        MirrorX && (OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile
+            || OrientationProfile == MandibularSecondMolarTemplate.OrientationProfile
+            || OrientationProfile == MandibularThirdMolarTemplate.OrientationProfile);
     public bool MaxillaryContralateralMirror =>
-        MirrorX && OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
+        MirrorX && (OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile
+            || OrientationProfile == MaxillarySecondMolarTemplate.OrientationProfile
+            || OrientationProfile == MaxillaryThirdMolarTemplate.OrientationProfile);
     public bool FirstMolarContralateralMirror =>
         MandibularContralateralMirror || MaxillaryContralateralMirror;
     public bool FirstPremolarContralateralMirror =>
@@ -79,8 +83,16 @@ public sealed class ToothAssetDefinition
     public bool SecondPremolarContralateralMirror =>
         MirrorX && (OrientationProfile == MaxillarySecondPremolarTemplate.OrientationProfile
             || OrientationProfile == MandibularSecondPremolarTemplate.OrientationProfile);
+    public bool CanineContralateralMirror =>
+        MirrorX && (OrientationProfile == MaxillaryCanineTemplate.OrientationProfile
+            || OrientationProfile == MandibularCanineTemplate.OrientationProfile);
+    public bool IncisorContralateralMirror =>
+        MirrorX && (OrientationProfile == MaxillaryCentralIncisorTemplate.OrientationProfile
+            || OrientationProfile == MaxillaryLateralIncisorTemplate.OrientationProfile
+            || OrientationProfile == MandibularCentralIncisorTemplate.OrientationProfile
+            || OrientationProfile == MandibularLateralIncisorTemplate.OrientationProfile);
     public bool ContralateralCameraMirror =>
-        FirstMolarContralateralMirror || FirstPremolarContralateralMirror || SecondPremolarContralateralMirror;
+        FirstMolarContralateralMirror || FirstPremolarContralateralMirror || SecondPremolarContralateralMirror || CanineContralateralMirror || IncisorContralateralMirror;
     public string ChewingSurfaceName =>
         ToothKind is ToothKind.Incisor or ToothKind.Canine ? "Incisal" : "Occlusal";
     public string InnerSurfaceName => Jaw == ToothJaw.Maxilla ? "Palatal" : "Lingual";
@@ -278,7 +290,80 @@ public static class ToothAssetRegistry
             ",\"fdi25Profile\":\"" + map["25"].OrientationProfile + "\"" +
             ",\"fdi35Imported\":" + (map["35"].RuntimeImported ? "true" : "false") +
             ",\"fdi35Mirror\":" + (map["35"].MirrorX ? "true" : "false") +
-            ",\"fdi35Profile\":\"" + map["35"].OrientationProfile + "\"}");
+            ",\"fdi35Profile\":\"" + map["35"].OrientationProfile + "\"" +
+            ",\"fdi45Imported\":" + (map["45"].RuntimeImported ? "true" : "false") +
+            ",\"fdi45Mirror\":" + (map["45"].MirrorX ? "true" : "false") +
+            ",\"fdi45Map\":" + (map["45"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi45Interact\":" + (map["45"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi45Profile\":\"" + map["45"].OrientationProfile + "\"" +
+            ",\"fdi13Imported\":" + (map["13"].RuntimeImported ? "true" : "false") +
+            ",\"fdi13Mirror\":" + (map["13"].MirrorX ? "true" : "false") +
+            ",\"fdi13Map\":" + (map["13"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi13Profile\":\"" + map["13"].OrientationProfile + "\"" +
+            ",\"fdi23Imported\":" + (map["23"].RuntimeImported ? "true" : "false") +
+            ",\"fdi23Mirror\":" + (map["23"].MirrorX ? "true" : "false") +
+            ",\"fdi23Map\":" + (map["23"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi23Interact\":" + (map["23"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi23Profile\":\"" + map["23"].OrientationProfile + "\"" +
+            ",\"fdi33Imported\":" + (map["33"].RuntimeImported ? "true" : "false") +
+            ",\"fdi33Mirror\":" + (map["33"].MirrorX ? "true" : "false") +
+            ",\"fdi33Map\":" + (map["33"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi33Profile\":\"" + map["33"].OrientationProfile + "\"" +
+            ",\"fdi43Imported\":" + (map["43"].RuntimeImported ? "true" : "false") +
+            ",\"fdi43Mirror\":" + (map["43"].MirrorX ? "true" : "false") +
+            ",\"fdi43Map\":" + (map["43"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi43Interact\":" + (map["43"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi43Profile\":\"" + map["43"].OrientationProfile + "\"" +
+            ",\"fdi11Imported\":" + (map["11"].RuntimeImported ? "true" : "false") +
+            ",\"fdi11Mirror\":" + (map["11"].MirrorX ? "true" : "false") +
+            ",\"fdi11Map\":" + (map["11"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi11Interact\":" + (map["11"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi11Profile\":\"" + map["11"].OrientationProfile + "\"" +
+            ",\"fdi21Imported\":" + (map["21"].RuntimeImported ? "true" : "false") +
+            ",\"fdi21Mirror\":" + (map["21"].MirrorX ? "true" : "false") +
+            ",\"fdi21Map\":" + (map["21"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi21Interact\":" + (map["21"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi21Profile\":\"" + map["21"].OrientationProfile + "\"" +
+            ",\"fdi12Imported\":" + (map["12"].RuntimeImported ? "true" : "false") +
+            ",\"fdi12Mirror\":" + (map["12"].MirrorX ? "true" : "false") +
+            ",\"fdi12Map\":" + (map["12"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi12Interact\":" + (map["12"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi12Profile\":\"" + map["12"].OrientationProfile + "\"" +
+            ",\"fdi22Imported\":" + (map["22"].RuntimeImported ? "true" : "false") +
+            ",\"fdi22Mirror\":" + (map["22"].MirrorX ? "true" : "false") +
+            ",\"fdi22Map\":" + (map["22"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi22Interact\":" + (map["22"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi22Profile\":\"" + map["22"].OrientationProfile + "\"" +
+            ",\"fdi31Imported\":" + (map["31"].RuntimeImported ? "true" : "false") +
+            ",\"fdi31Mirror\":" + (map["31"].MirrorX ? "true" : "false") +
+            ",\"fdi31Map\":" + (map["31"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi31Interact\":" + (map["31"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi31Profile\":\"" + map["31"].OrientationProfile + "\"" +
+            ",\"fdi41Imported\":" + (map["41"].RuntimeImported ? "true" : "false") +
+            ",\"fdi41Mirror\":" + (map["41"].MirrorX ? "true" : "false") +
+            ",\"fdi41Map\":" + (map["41"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi41Interact\":" + (map["41"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi41Profile\":\"" + map["41"].OrientationProfile + "\"" +
+            ",\"fdi32Imported\":" + (map["32"].RuntimeImported ? "true" : "false") +
+            ",\"fdi32Mirror\":" + (map["32"].MirrorX ? "true" : "false") +
+            ",\"fdi32Map\":" + (map["32"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi32Interact\":" + (map["32"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi32Profile\":\"" + map["32"].OrientationProfile + "\"" +
+            ",\"fdi42Imported\":" + (map["42"].RuntimeImported ? "true" : "false") +
+            ",\"fdi42Mirror\":" + (map["42"].MirrorX ? "true" : "false") +
+            ",\"fdi42Map\":" + (map["42"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi42Interact\":" + (map["42"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi42Profile\":\"" + map["42"].OrientationProfile + "\"" +
+            ",\"fdi17Imported\":" + (map["17"].RuntimeImported ? "true" : "false") +
+            ",\"fdi17Mirror\":" + (map["17"].MirrorX ? "true" : "false") +
+            ",\"fdi17Map\":" + (map["17"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi17Interact\":" + (map["17"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi17Profile\":\"" + map["17"].OrientationProfile + "\"" +
+            ",\"fdi27Imported\":" + (map["27"].RuntimeImported ? "true" : "false") +
+            ",\"fdi27Mirror\":" + (map["27"].MirrorX ? "true" : "false") +
+            ",\"fdi27Map\":" + (map["27"].SurfaceMapAvailable ? "true" : "false") +
+            ",\"fdi27Interact\":" + (map["27"].ClinicalInteraction ? "true" : "false") +
+            ",\"fdi27Profile\":\"" + map["27"].OrientationProfile + "\"}");
         // #endregion
         return map;
     }
@@ -299,13 +384,34 @@ public static class ToothAssetRegistry
         ToothAssetAttribution attr,
         string? note)
     {
+        var imported13 = fdi == "13";
+        var imported11 = fdi == "11";
+        var imported12 = fdi == "12";
+        var imported22 = fdi == "22";
+        var imported31 = fdi == "31";
+        var imported41 = fdi == "41";
+        var imported32 = fdi == "32";
+        var imported42 = fdi == "42";
+        var imported17 = fdi == "17";
+        var imported27 = fdi == "27";
+        var imported37 = fdi == "37";
+        var imported47 = fdi == "47";
+        var imported18 = fdi == "18";
+        var imported28 = fdi == "28";
+        var imported38 = fdi == "38";
+        var imported48 = fdi == "48";
+        var imported21 = fdi == "21";
+        var imported23 = fdi == "23";
         var imported14 = fdi == "14";
         var imported15 = fdi == "15";
         var imported25 = fdi == "25";
         var imported24 = fdi == "24";
+        var imported33 = fdi == "33";
+        var imported43 = fdi == "43";
         var imported34 = fdi == "34";
         var imported44 = fdi == "44";
         var imported35 = fdi == "35";
+        var imported45 = fdi == "45";
         var imported16 = fdi == ApprovedFdi;
         var imported26 = fdi == "26";
         var imported36 = fdi == "36";
@@ -314,8 +420,18 @@ public static class ToothAssetRegistry
         var importedMaxillaryPremolar = imported14 || imported24;
         var importedMandibularFirstPremolar = imported34 || imported44;
         var importedMaxillarySecondPremolar = imported15 || imported25;
-        var importedMandibularSecondPremolar = imported35;
-        var imported = importedMaxillaryPremolar || importedMaxillarySecondPremolar || importedMandibularFirstPremolar || importedMandibularSecondPremolar || imported16 || imported26 || importedMandibularFirstMolar;
+        var importedMandibularSecondPremolar = imported35 || imported45;
+        var importedMaxillaryCanine = imported13 || imported23;
+        var importedMaxillaryCentralIncisor = imported11 || imported21;
+        var importedMaxillaryLateralIncisor = imported12 || imported22;
+        var importedMandibularCentralIncisor = imported31 || imported41;
+        var importedMandibularLateralIncisor = imported32 || imported42;
+        var importedMaxillarySecondMolar = imported17 || imported27;
+        var importedMandibularSecondMolar = imported37 || imported47;
+        var importedMaxillaryThirdMolar = imported18 || imported28;
+        var importedMandibularThirdMolar = imported38 || imported48;
+        var importedMandibularCanine = imported33 || imported43;
+        var imported = importedMandibularThirdMolar || importedMaxillaryThirdMolar || importedMandibularSecondMolar || importedMaxillarySecondMolar || importedMandibularLateralIncisor || importedMandibularCentralIncisor || importedMaxillaryLateralIncisor || importedMaxillaryCentralIncisor || importedMaxillaryCanine || importedMandibularCanine || importedMaxillaryPremolar || importedMaxillarySecondPremolar || importedMandibularFirstPremolar || importedMandibularSecondPremolar || imported16 || imported26 || importedMandibularFirstMolar;
         return new ToothAssetDefinition
         {
             FdiNumber = fdi,
@@ -326,20 +442,51 @@ public static class ToothAssetRegistry
             DisplayName = name,
             SourceZipFileName = zip,
             InnerObjName = obj,
-            RuntimeMesh = imported14 ? "FDI14_High.obj"
+            RuntimeMesh = imported11 ? "FDI11_High.obj"
+                : imported21 ? "FDI21_High.obj"
+                : imported12 ? "FDI12_High.obj"
+                : imported22 ? "FDI22_High.obj"
+                : imported31 ? "FDI31_High.obj"
+                : imported41 ? "FDI41_High.obj"
+                : imported32 ? "FDI32_High.obj"
+                : imported42 ? "FDI42_High.obj"
+                : imported17 ? "FDI17_High.obj"
+                : imported27 ? "FDI27_High.obj"
+                : imported37 ? "FDI37_High.obj"
+                : imported47 ? "FDI47_High.obj"
+                : imported18 ? "FDI18_High.obj"
+                : imported28 ? "FDI28_High.obj"
+                : imported38 ? "FDI38_High.obj"
+                : imported48 ? "FDI48_High.obj"
+                : imported13 ? "FDI13_High.obj"
+                : imported23 ? "FDI23_High.obj"
+                : imported33 ? "FDI33_High.obj"
+                : imported43 ? "FDI43_High.obj"
+                : imported14 ? "FDI14_High.obj"
                 : imported15 ? "FDI15_High.obj"
                 : imported25 ? "FDI25_High.obj"
                 : imported24 ? "FDI24_High.obj"
                 : imported34 ? "FDI34_High.obj"
                 : imported44 ? "FDI44_High.obj"
                 : imported35 ? "FDI35_High.obj"
+                : imported45 ? "FDI45_High.obj"
                 : imported16 ? "FDI16_High.obj"
                 : imported26 ? "FDI26_High.obj"
                 : imported36 ? "FDI36_High.obj"
                 : imported46 ? "FDI46_High.obj"
                 : null,
-            MirrorX = imported26 || mirrorX,
-            OrientationProfile = importedMaxillaryPremolar ? MaxillaryFirstPremolarTemplate.OrientationProfile
+            MirrorX = imported17 || imported18 ? false : imported27 || imported28 || imported26 || mirrorX,
+            OrientationProfile = importedMaxillaryCentralIncisor ? MaxillaryCentralIncisorTemplate.OrientationProfile
+                : importedMaxillaryLateralIncisor ? MaxillaryLateralIncisorTemplate.OrientationProfile
+                : importedMandibularCentralIncisor ? MandibularCentralIncisorTemplate.OrientationProfile
+                : importedMandibularLateralIncisor ? MandibularLateralIncisorTemplate.OrientationProfile
+                : importedMaxillarySecondMolar ? MaxillarySecondMolarTemplate.OrientationProfile
+                : importedMaxillaryThirdMolar ? MaxillaryThirdMolarTemplate.OrientationProfile
+                : importedMandibularThirdMolar ? MandibularThirdMolarTemplate.OrientationProfile
+                : importedMandibularSecondMolar ? MandibularSecondMolarTemplate.OrientationProfile
+                : importedMaxillaryCanine ? MaxillaryCanineTemplate.OrientationProfile
+                : importedMandibularCanine ? MandibularCanineTemplate.OrientationProfile
+                : importedMaxillaryPremolar ? MaxillaryFirstPremolarTemplate.OrientationProfile
                 : importedMaxillarySecondPremolar ? MaxillarySecondPremolarTemplate.OrientationProfile
                 : importedMandibularFirstPremolar ? MandibularFirstPremolarTemplate.OrientationProfile
                 : importedMandibularSecondPremolar ? MandibularSecondPremolarTemplate.OrientationProfile
@@ -347,13 +494,34 @@ public static class ToothAssetRegistry
                 : imported26 ? MaxillaryFirstMolarTemplate.OrientationProfile
                 : importedMandibularFirstMolar ? MandibularFirstMolarTemplate.OrientationProfile
                 : "Pending",
-            SurfaceMap = imported14 ? "FDI14SurfaceMap.json"
+            SurfaceMap = imported11 ? "FDI11SurfaceMap.json"
+                : imported21 ? "FDI21SurfaceMap.json"
+                : imported12 ? "FDI12SurfaceMap.json"
+                : imported22 ? "FDI22SurfaceMap.json"
+                : imported31 ? "FDI31SurfaceMap.json"
+                : imported41 ? "FDI41SurfaceMap.json"
+                : imported32 ? "FDI32SurfaceMap.json"
+                : imported42 ? "FDI42SurfaceMap.json"
+                : imported17 ? "FDI17SurfaceMap.json"
+                : imported27 ? "FDI27SurfaceMap.json"
+                : imported37 ? "FDI37SurfaceMap.json"
+                : imported47 ? "FDI47SurfaceMap.json"
+                : imported18 ? "FDI18SurfaceMap.json"
+                : imported28 ? "FDI28SurfaceMap.json"
+                : imported38 ? "FDI38SurfaceMap.json"
+                : imported48 ? "FDI48SurfaceMap.json"
+                : imported13 ? "FDI13SurfaceMap.json"
+                : imported23 ? "FDI23SurfaceMap.json"
+                : imported33 ? "FDI33SurfaceMap.json"
+                : imported43 ? "FDI43SurfaceMap.json"
+                : imported14 ? "FDI14SurfaceMap.json"
                 : imported15 ? "FDI15SurfaceMap.json"
                 : imported25 ? "FDI25SurfaceMap.json"
                 : imported24 ? "FDI24SurfaceMap.json"
                 : imported34 ? "FDI34SurfaceMap.json"
                 : imported44 ? "FDI44SurfaceMap.json"
                 : imported35 ? "FDI35SurfaceMap.json"
+                : imported45 ? "FDI45SurfaceMap.json"
                 : imported16 ? "FDI16SurfaceMap.json"
                 : imported26 ? "FDI26SurfaceMap.json"
                 : imported36 ? "FDI36SurfaceMap.json"

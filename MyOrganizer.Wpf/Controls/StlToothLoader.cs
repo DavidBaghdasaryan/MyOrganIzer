@@ -67,34 +67,103 @@ internal static class StlToothLoader
         stats.VertexCount = welded.Positions.Count;
 
         AlignCrownUp(welded, stats);
-        var maxillaryMolar = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
+        var maxillaryFirstMolar = options.OrientationProfile == MaxillaryFirstMolarTemplate.OrientationProfile;
+        var maxillarySecondMolar = options.OrientationProfile == MaxillarySecondMolarTemplate.OrientationProfile;
+        var maxillaryThirdMolar = options.OrientationProfile == MaxillaryThirdMolarTemplate.OrientationProfile;
+        var maxillaryMolar = maxillaryFirstMolar || maxillarySecondMolar || maxillaryThirdMolar;
         var maxillaryPremolar = options.OrientationProfile == MaxillaryFirstPremolarTemplate.OrientationProfile;
         var maxillarySecondPremolar = options.OrientationProfile == MaxillarySecondPremolarTemplate.OrientationProfile;
+        var maxillaryCanine = options.OrientationProfile == MaxillaryCanineTemplate.OrientationProfile;
+        var maxillaryCentralIncisor = options.OrientationProfile == MaxillaryCentralIncisorTemplate.OrientationProfile;
+        var maxillaryLateralIncisor = options.OrientationProfile == MaxillaryLateralIncisorTemplate.OrientationProfile;
+        var mandibularCanine = options.OrientationProfile == MandibularCanineTemplate.OrientationProfile;
+        var mandibularCentralIncisor = options.OrientationProfile == MandibularCentralIncisorTemplate.OrientationProfile;
+        var mandibularLateralIncisor = options.OrientationProfile == MandibularLateralIncisorTemplate.OrientationProfile;
         var mandibularPremolar = options.OrientationProfile == MandibularFirstPremolarTemplate.OrientationProfile;
         var mandibularSecondPremolar = options.OrientationProfile == MandibularSecondPremolarTemplate.OrientationProfile;
+        var mandibularSecondMolar = options.OrientationProfile == MandibularSecondMolarTemplate.OrientationProfile;
+        var mandibularThirdMolar = options.OrientationProfile == MandibularThirdMolarTemplate.OrientationProfile;
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
             ToothMeshOrient.AlignFdi36(welded, stats);
+        else if (mandibularSecondMolar)
+            ToothMeshOrient.AlignMandibularSecondMolar(welded, stats);
+        else if (mandibularThirdMolar)
+            ToothMeshOrient.AlignMandibularThirdMolar(welded, stats);
         else if (maxillaryPremolar)
             ToothMeshOrient.AlignMaxillaryFirstPremolar(welded, stats);
         else if (maxillarySecondPremolar)
             ToothMeshOrient.AlignMaxillarySecondPremolar(welded, stats);
+        else if (maxillaryCanine)
+            ToothMeshOrient.AlignMaxillaryCanine(welded, stats);
+        else if (maxillaryCentralIncisor)
+            ToothMeshOrient.AlignMaxillaryCentralIncisor(welded, stats);
+        else if (maxillaryLateralIncisor)
+            ToothMeshOrient.AlignMaxillaryLateralIncisor(welded, stats);
+        else if (mandibularCanine)
+            ToothMeshOrient.AlignMandibularCanine(welded, stats);
+        else if (mandibularCentralIncisor)
+            ToothMeshOrient.AlignMandibularCentralIncisor(welded, stats);
+        else if (mandibularLateralIncisor)
+            ToothMeshOrient.AlignMandibularLateralIncisor(welded, stats);
         else if (mandibularPremolar)
             ToothMeshOrient.AlignMandibularFirstPremolar(welded, stats);
         else if (mandibularSecondPremolar)
             ToothMeshOrient.AlignMandibularSecondPremolar(welded, stats);
-        else if (options.OrientFdi16 || maxillaryMolar)
+        else if (maxillaryThirdMolar)
+            ToothMeshOrient.AlignMaxillaryThirdMolar(welded, stats);
+        else if (maxillarySecondMolar)
+            ToothMeshOrient.AlignMaxillarySecondMolar(welded, stats);
+        else if (options.OrientFdi16 || maxillaryFirstMolar)
             ToothMeshOrient.AlignFdi16(welded, stats);
         if (options.MirrorX && (stats.RootClusters < 3 || maxillaryMolar))
         {
             MirrorX(welded);
             stats.Mirrored = true;
         }
-        if (maxillaryMolar)
+        if (maxillaryFirstMolar)
         {
             // #region agent log
             try
             {
                 var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi26-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedX\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillarySecondMolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi17-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-second-molar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedX\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillaryThirdMolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi18-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-third-molar-laterality\",\"data\":{\"mirrorX\":" +
                            (options.MirrorX ? "true" : "false") +
                            ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
                            ",\"rootClusters\":" + stats.RootClusters +
@@ -184,6 +253,158 @@ internal static class StlToothLoader
             catch { }
             // #endregion
         }
+        if (maxillaryCanine)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi13-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-canine-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"cusp\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillaryCentralIncisor)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi11-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-central-incisor-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"incisal\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (maxillaryLateralIncisor)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi12-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"maxillary-lateral-incisor-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"incisal\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularCanine)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi33-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-canine-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"cusp\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularCentralIncisor)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi31-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-central-incisor-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"incisal\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularLateralIncisor)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi32-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-lateral-incisor-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedXY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"incisal\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"cingulum\":\"" + stats.Palatal.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularSecondMolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi37-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-second-molar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
+        if (mandibularThirdMolar)
+        {
+            // #region agent log
+            try
+            {
+                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi38-template\",\"hypothesisId\":\"A\",\"location\":\"StlToothLoader.cs\",\"message\":\"mandibular-third-molar-laterality\",\"data\":{\"mirrorX\":" +
+                           (options.MirrorX ? "true" : "false") +
+                           ",\"mirrored\":" + (stats.Mirrored ? "true" : "false") +
+                           ",\"rootClusters\":" + stats.RootClusters +
+                           ",\"yawDeg\":" + stats.YawDeg.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
+                           ",\"flippedY\":" + (stats.FlippedX ? "true" : "false") +
+                           ",\"mb\":\"" + stats.Mb.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\",\"db\":\"" + stats.Db.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+            }
+            catch { }
+            // #endregion
+        }
         if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile)
         {
             // #region agent log
@@ -213,12 +434,24 @@ internal static class StlToothLoader
             ClassifyByCervix(welded, triMat);
             stats.SplitSource = "spatial-cej";
         }
-        else if (options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile &&
+        else if ((options.OrientationProfile == MandibularFirstMolarTemplate.OrientationProfile ||
+                  mandibularSecondMolar || mandibularThirdMolar) &&
                  raw.TriWarm.Count == triMat.Count)
         {
             SoftenFdi36Cervix(triMat, raw.TriWarm, stats);
         }
         stats.OcclusalRootLeakFixed = 0;
+        if (mandibularCentralIncisor || mandibularLateralIncisor)
+            stats.OcclusalRootLeakFixed = ReclaimHighCrownRootSpeckles(welded, triMat);
+        else if (mandibularThirdMolar)
+            stats.OcclusalRootLeakFixed =
+                ReclaimHighCrownSplitSpeckles(welded, triMat, 1) +
+                ReclaimHighCrownSplitSpeckles(welded, triMat, 2) +
+                ReclaimHighZCervicalToCrown(welded, triMat);
+        else if (mandibularSecondMolar)
+            stats.OcclusalRootLeakFixed =
+                ReclaimHighCrownSplitSpeckles(welded, triMat, 1) +
+                ReclaimHighCrownSplitSpeckles(welded, triMat, 2);
 
         var parts = SplitByMaterial(welded, triMat);
         stats.CrownTriangles = parts.Crown.TriangleIndices.Count / 3;
@@ -661,6 +894,175 @@ internal static class StlToothLoader
             var z = (mesh.Positions[idx[i]].Z + mesh.Positions[idx[i + 1]].Z + mesh.Positions[idx[i + 2]].Z) / 3.0;
             triMat[t] = z >= cut ? (byte)0 : (byte)1;
         }
+    }
+
+    /// <summary>
+    /// Polypaint sometimes marks a few crown-fossa triangles as root. Those
+    /// render as beige enamel holes inside the overlay. Reclaim small high-Z
+    /// root islands back to crown. Mandibular-central-incisor only.
+    /// </summary>
+    private static int ReclaimHighCrownRootSpeckles(MeshGeometry3D mesh, List<byte> triMat)
+    {
+        var idx = mesh.TriangleIndices;
+        var nTri = idx.Count / 3;
+        if (triMat.Count != nTri || nTri == 0) return 0;
+        Bounds(mesh.Positions, out var min, out var max, out _);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var z01 = new double[nTri];
+        for (var t = 0; t < nTri; t++)
+        {
+            var z = (mesh.Positions[idx[t * 3]].Z +
+                     mesh.Positions[idx[t * 3 + 1]].Z +
+                     mesh.Positions[idx[t * 3 + 2]].Z) / 3.0;
+            z01[t] = (z - min.Z) / zSpan;
+        }
+        var neighbors = CrownSurfaceClassifier.BuildNeighbors(idx, nTri);
+        var seen = new bool[nTri];
+        var reclaimed = 0;
+        var islands = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (seen[t] || triMat[t] != 1) continue;
+            var stack = new Stack<int>();
+            var comp = new List<int>();
+            stack.Push(t);
+            seen[t] = true;
+            var meanZ = 0d;
+            while (stack.Count > 0)
+            {
+                var u = stack.Pop();
+                comp.Add(u);
+                meanZ += z01[u];
+                foreach (var nb in neighbors[u])
+                {
+                    if (seen[nb] || triMat[nb] != 1) continue;
+                    seen[nb] = true;
+                    stack.Push(nb);
+                }
+            }
+            meanZ /= comp.Count;
+            if (comp.Count >= 80 || meanZ < 0.40)
+                continue;
+            foreach (var u in comp)
+                triMat[u] = 0;
+            reclaimed += comp.Count;
+            islands++;
+        }
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi31-template\",\"hypothesisId\":\"B\",\"location\":\"StlToothLoader.cs\",\"message\":\"reclaim-crown-speckles\",\"data\":{\"islands\":" +
+                       islands + ",\"reclaimed\":" + reclaimed +
+                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { }
+        // #endregion
+        return reclaimed;
+    }
+
+    /// <summary>
+    /// Mandibular second-molar only. Polypaint/cervical-soften can mark fossa
+    /// and wall triangles as root (1) or cervical (2). Those render as beige
+    /// holes inside the overlay. Reclaim small high-Z islands back to crown.
+    /// Does not run on frozen 36/46.
+    /// </summary>
+    private static int ReclaimHighCrownSplitSpeckles(MeshGeometry3D mesh, List<byte> triMat, byte mat)
+    {
+        var idx = mesh.TriangleIndices;
+        var nTri = idx.Count / 3;
+        if (triMat.Count != nTri || nTri == 0) return 0;
+        Bounds(mesh.Positions, out var min, out var max, out _);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var z01 = new double[nTri];
+        for (var t = 0; t < nTri; t++)
+        {
+            var z = (mesh.Positions[idx[t * 3]].Z +
+                     mesh.Positions[idx[t * 3 + 1]].Z +
+                     mesh.Positions[idx[t * 3 + 2]].Z) / 3.0;
+            z01[t] = (z - min.Z) / zSpan;
+        }
+        var neighbors = CrownSurfaceClassifier.BuildNeighbors(idx, nTri);
+        var seen = new bool[nTri];
+        var reclaimed = 0;
+        var islands = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (seen[t] || triMat[t] != mat) continue;
+            var stack = new Stack<int>();
+            var comp = new List<int>();
+            stack.Push(t);
+            seen[t] = true;
+            var meanZ = 0d;
+            while (stack.Count > 0)
+            {
+                var u = stack.Pop();
+                comp.Add(u);
+                meanZ += z01[u];
+                foreach (var nb in neighbors[u])
+                {
+                    if (seen[nb] || triMat[nb] != mat) continue;
+                    seen[nb] = true;
+                    stack.Push(nb);
+                }
+            }
+            meanZ /= comp.Count;
+            if (comp.Count >= 80 || meanZ < 0.32)
+                continue;
+            foreach (var u in comp)
+                triMat[u] = 0;
+            reclaimed += comp.Count;
+            islands++;
+        }
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi37-template\",\"hypothesisId\":\"B\",\"location\":\"StlToothLoader.cs\",\"message\":\"reclaim-crown-speckles\",\"data\":{\"mat\":" +
+                       mat + ",\"islands\":" + islands + ",\"reclaimed\":" + reclaimed +
+                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { }
+        // #endregion
+        return reclaimed;
+    }
+
+    /// <summary>
+    /// Mandibular third-molar only. Warmth-tagged cervical/root paint can follow
+    /// fissures from the CEJ into the fossa as one connected component, so island
+    /// reclaim misses it. Those triangles render as jagged beige additions between
+    /// the cusps. Any high-Z cervical/root triangle goes back to crown. Frozen
+    /// 36/37/47 do not call this.
+    /// </summary>
+    private static int ReclaimHighZCervicalToCrown(MeshGeometry3D mesh, List<byte> triMat)
+    {
+        var idx = mesh.TriangleIndices;
+        var nTri = idx.Count / 3;
+        if (triMat.Count != nTri || nTri == 0) return 0;
+        Bounds(mesh.Positions, out var min, out var max, out _);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var reclaimed = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (triMat[t] != 1 && triMat[t] != 2) continue;
+            var z = (mesh.Positions[idx[t * 3]].Z +
+                     mesh.Positions[idx[t * 3 + 1]].Z +
+                     mesh.Positions[idx[t * 3 + 2]].Z) / 3.0;
+            var z01 = (z - min.Z) / zSpan;
+            if (z01 < 0.62) continue;
+            triMat[t] = 0;
+            reclaimed++;
+        }
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi38-template\",\"hypothesisId\":\"B\",\"location\":\"StlToothLoader.cs\",\"message\":\"reclaim-highz-cervical\",\"data\":{\"reclaimed\":" +
+                       reclaimed + "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { }
+        // #endregion
+        return reclaimed;
     }
 
     private static ToothMeshParts SplitByMaterial(MeshGeometry3D src, List<byte> triMat)

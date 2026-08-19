@@ -10,6 +10,50 @@ namespace MyOrganizer.Wpf.Controls;
 /// </summary>
 internal static class ToothMeshOrient
 {
+    /// <summary>
+    /// Canonical maxillary second-molar axes after crown-up.
+    /// Same 3-root palatal yaw as AlignFdi16, applied to FDI17_High.obj only.
+    /// Do not copy FDI 16 triangle indices or world coordinates.
+    /// </summary>
+    public static void AlignMaxillarySecondMolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        AlignFdi16(mesh, stats);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular second-molar axes after crown-up.
+    /// Same 2-root mesial yaw as AlignFdi36, applied to FDI37_High.obj only.
+    /// Do not copy FDI 36 triangle indices or world coordinates.
+    /// </summary>
+    public static void AlignMandibularSecondMolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        AlignFdi36(mesh, stats);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular third-molar axes after crown-up.
+    /// Same 2-root mesial yaw as AlignFdi36, applied to FDI38_High.obj only.
+    /// Do not copy FDI 36/37 triangle indices or world coordinates.
+    /// </summary>
+    public static void AlignMandibularThirdMolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        AlignFdi36(mesh, stats);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical maxillary third-molar axes after crown-up.
+    /// Same 3-root palatal yaw as AlignFdi16, applied to FDI18_High.obj only.
+    /// Do not copy FDI 16/17 triangle indices or world coordinates.
+    /// </summary>
+    public static void AlignMaxillaryThirdMolar(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        AlignFdi16(mesh, stats);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
     public static void AlignFdi16(MeshGeometry3D mesh, StlMeshStats stats)
     {
         var pts = mesh.Positions;
@@ -597,6 +641,429 @@ internal static class ToothMeshOrient
 
         EnsureOutwardWinding(mesh, stats);
     }
+
+    /// <summary>
+    /// Canonical maxillary-central-incisor axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y palatal, +X mesial, −X distal.
+    /// Palatal is the cervical cingulum offset from the incisal-edge centroid;
+    /// mesial is opposite the cingulum's distal offset (fallback: shorter
+    /// incisal ridge). Right laterality is a post-align MirrorX in the loader.
+    /// </summary>
+    public static void AlignMaxillaryCentralIncisor(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count == 0 ? 1 : clusters.Count;
+
+        var incisalCut = max.Z - 0.12 * zSpan;
+        var cingLo = min.Z + 0.52 * zSpan;
+        var cingHi = min.Z + 0.72 * zSpan;
+        double edgeX = 0, edgeY = 0, edgeZ = 0;
+        var edgeN = 0;
+        double cingX = 0, cingY = 0;
+        var cingN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z >= incisalCut)
+            {
+                edgeX += p.X;
+                edgeY += p.Y;
+                edgeZ += p.Z;
+                edgeN++;
+            }
+            if (p.Z >= cingLo && p.Z <= cingHi)
+            {
+                cingX += p.X;
+                cingY += p.Y;
+                cingN++;
+            }
+        }
+        if (edgeN == 0 || cingN == 0)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+        edgeX /= edgeN;
+        edgeY /= edgeN;
+        edgeZ /= edgeN;
+        cingX /= cingN;
+        cingY /= cingN;
+        var ox = cingX - edgeX;
+        var oy = cingY - edgeY;
+        if (ox * ox + oy * oy < 1e-12)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+
+        var yaw = Math.Atan2(ox, -oy);
+        RotateZ(pts, -yaw);
+        stats.YawDeg = -yaw * 180.0 / Math.PI;
+
+        var edge = RotateVec(new Point3D(edgeX, edgeY, edgeZ), -yaw);
+        var cing = RotateVec(new Point3D(cingX, cingY, 0), -yaw);
+        if (cing.Y > edge.Y)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+            edge = new Point3D(edge.X, -edge.Y, edge.Z);
+            cing = new Point3D(cing.X, -cing.Y, cing.Z);
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var hiCut = max.Z - 0.14 * zSpan;
+        double minHiX = double.PositiveInfinity;
+        double maxHiX = double.NegativeInfinity;
+        double edgeHiX = 0;
+        var edgeHiN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < hiCut) continue;
+            minHiX = Math.Min(minHiX, p.X);
+            maxHiX = Math.Max(maxHiX, p.X);
+            edgeHiX += p.X;
+            edgeHiN++;
+        }
+        if (Math.Abs(cing.X - edge.X) > 1e-4)
+        {
+            if (cing.X > edge.X)
+            {
+                MirrorXKeepWinding(pts, mesh.TriangleIndices);
+                stats.FlippedX = true;
+            }
+        }
+        else if (edgeHiN > 0)
+        {
+            edgeHiX /= edgeHiN;
+            var mesialLen = maxHiX - edgeHiX;
+            var distalLen = edgeHiX - minHiX;
+            if (mesialLen > distalLen)
+            {
+                MirrorXKeepWinding(pts, mesh.TriangleIndices);
+                stats.FlippedX = true;
+            }
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+        stats.Palatal = Fmt(cing);
+        stats.Mb = Fmt(edge);
+        stats.Db = Fmt(edge);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical maxillary-lateral-incisor axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y palatal, +X mesial, −X distal.
+    /// Same cingulum/incisal cues as the central, on this mesh only.
+    /// Right laterality is a post-align MirrorX in the loader.
+    /// </summary>
+    public static void AlignMaxillaryLateralIncisor(MeshGeometry3D mesh, StlMeshStats stats) =>
+        AlignMaxillaryCentralIncisor(mesh, stats);
+
+    /// <summary>
+    /// Canonical maxillary-canine axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y palatal, +X mesial, −X distal.
+    /// Palatal is the cervical cingulum offset from the cusp; mesial is the
+    /// shorter incisal ridge. Right laterality is a post-align MirrorX in the
+    /// loader — not this method.
+    /// </summary>
+    public static void AlignMaxillaryCanine(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count == 0 ? 1 : clusters.Count;
+
+        var cuspCut = max.Z - 0.08 * zSpan;
+        var cingLo = min.Z + 0.58 * zSpan;
+        var cingHi = min.Z + 0.76 * zSpan;
+        double cuspX = 0, cuspY = 0, cuspZ = 0;
+        var cuspN = 0;
+        double cingX = 0, cingY = 0;
+        var cingN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z >= cuspCut)
+            {
+                cuspX += p.X;
+                cuspY += p.Y;
+                cuspZ += p.Z;
+                cuspN++;
+            }
+            if (p.Z >= cingLo && p.Z <= cingHi)
+            {
+                cingX += p.X;
+                cingY += p.Y;
+                cingN++;
+            }
+        }
+        if (cuspN == 0 || cingN == 0)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+        cuspX /= cuspN;
+        cuspY /= cuspN;
+        cuspZ /= cuspN;
+        cingX /= cingN;
+        cingY /= cingN;
+        var ox = cingX - cuspX;
+        var oy = cingY - cuspY;
+        if (ox * ox + oy * oy < 1e-12)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+
+        var yaw = Math.Atan2(ox, -oy);
+        RotateZ(pts, -yaw);
+        stats.YawDeg = -yaw * 180.0 / Math.PI;
+
+        var cusp = RotateVec(new Point3D(cuspX, cuspY, cuspZ), -yaw);
+        var cing = RotateVec(new Point3D(cingX, cingY, 0), -yaw);
+        if (cing.Y > cusp.Y)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+            cusp = new Point3D(cusp.X, -cusp.Y, cusp.Z);
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var hiCut = max.Z - 0.14 * zSpan;
+        double minHiX = double.PositiveInfinity;
+        double maxHiX = double.NegativeInfinity;
+        double cuspHiX = 0;
+        var cuspHiN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < hiCut) continue;
+            minHiX = Math.Min(minHiX, p.X);
+            maxHiX = Math.Max(maxHiX, p.X);
+            cuspHiX += p.X;
+            cuspHiN++;
+        }
+        if (cuspHiN > 0)
+        {
+            cuspHiX /= cuspHiN;
+            var mesialLen = maxHiX - cuspHiX;
+            var distalLen = cuspHiX - minHiX;
+            if (mesialLen > distalLen)
+            {
+                MirrorXKeepWinding(pts, mesh.TriangleIndices);
+                stats.FlippedX = true;
+            }
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+        stats.Palatal = Fmt(cing);
+        stats.Mb = Fmt(cusp);
+        stats.Db = Fmt(cusp);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular-canine axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Lingual is the cervical cingulum offset from the cusp; mesial is the
+    /// shorter incisal ridge. Right laterality is a post-align MirrorX in the
+    /// loader — not this method.
+    /// </summary>
+    public static void AlignMandibularCanine(MeshGeometry3D mesh, StlMeshStats stats)
+    {
+        var pts = mesh.Positions;
+        if (pts.Count == 0) return;
+
+        Bounds(pts, out var min, out var max);
+        var zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var apicalCut = min.Z + 0.18 * zSpan;
+        var apical = new List<Point3D>();
+        foreach (var p in pts)
+        {
+            if (p.Z <= apicalCut)
+                apical.Add(p);
+        }
+        var clusters = ClusterXy(apical, 2);
+        stats.RootClusters = clusters.Count == 0 ? 1 : clusters.Count;
+
+        var cuspCut = max.Z - 0.08 * zSpan;
+        var cingLo = min.Z + 0.58 * zSpan;
+        var cingHi = min.Z + 0.76 * zSpan;
+        double cuspX = 0, cuspY = 0, cuspZ = 0;
+        var cuspN = 0;
+        double cingX = 0, cingY = 0;
+        var cingN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z >= cuspCut)
+            {
+                cuspX += p.X;
+                cuspY += p.Y;
+                cuspZ += p.Z;
+                cuspN++;
+            }
+            if (p.Z >= cingLo && p.Z <= cingHi)
+            {
+                cingX += p.X;
+                cingY += p.Y;
+                cingN++;
+            }
+        }
+        if (cuspN == 0 || cingN == 0)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+        cuspX /= cuspN;
+        cuspY /= cuspN;
+        cuspZ /= cuspN;
+        cingX /= cingN;
+        cingY /= cingN;
+        var ox = cingX - cuspX;
+        var oy = cingY - cuspY;
+        if (ox * ox + oy * oy < 1e-12)
+        {
+            Recenter(pts);
+            Bounds(pts, out min, out max);
+            stats.Dx = max.X - min.X;
+            stats.Dy = max.Y - min.Y;
+            stats.Dz = max.Z - min.Z;
+            stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+            EnsureOutwardWinding(mesh, stats);
+            return;
+        }
+
+        var yaw = Math.Atan2(ox, -oy);
+        RotateZ(pts, -yaw);
+        stats.YawDeg = -yaw * 180.0 / Math.PI;
+
+        var cusp = RotateVec(new Point3D(cuspX, cuspY, cuspZ), -yaw);
+        var cing = RotateVec(new Point3D(cingX, cingY, 0), -yaw);
+        if (cing.Y > cusp.Y)
+        {
+            MirrorYKeepWinding(pts, mesh.TriangleIndices);
+            stats.FlippedX = true;
+            cusp = new Point3D(cusp.X, -cusp.Y, cusp.Z);
+        }
+
+        Bounds(pts, out min, out max);
+        zSpan = Math.Max(1e-9, max.Z - min.Z);
+        var hiCut = max.Z - 0.14 * zSpan;
+        double minHiX = double.PositiveInfinity;
+        double maxHiX = double.NegativeInfinity;
+        double cuspHiX = 0;
+        var cuspHiN = 0;
+        foreach (var p in pts)
+        {
+            if (p.Z < hiCut) continue;
+            minHiX = Math.Min(minHiX, p.X);
+            maxHiX = Math.Max(maxHiX, p.X);
+            cuspHiX += p.X;
+            cuspHiN++;
+        }
+        if (cuspHiN > 0)
+        {
+            cuspHiX /= cuspHiN;
+            var mesialLen = maxHiX - cuspHiX;
+            var distalLen = cuspHiX - minHiX;
+            if (mesialLen > distalLen)
+            {
+                MirrorXKeepWinding(pts, mesh.TriangleIndices);
+                stats.FlippedX = true;
+            }
+        }
+
+        Recenter(pts);
+        Bounds(pts, out min, out max);
+        stats.Dx = max.X - min.X;
+        stats.Dy = max.Y - min.Y;
+        stats.Dz = max.Z - min.Z;
+        stats.XyAspect = stats.Dy < 1e-9 ? 0 : stats.Dx / stats.Dy;
+        stats.Palatal = Fmt(cing);
+        stats.Mb = Fmt(cusp);
+        stats.Db = Fmt(cusp);
+        EnsureOutwardWinding(mesh, stats);
+    }
+
+    /// <summary>
+    /// Canonical mandibular-central-incisor axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Same cingulum/incisal cues as the maxillary central, on this mesh only.
+    /// Right laterality is a post-align MirrorX in the loader.
+    /// </summary>
+    public static void AlignMandibularCentralIncisor(MeshGeometry3D mesh, StlMeshStats stats) =>
+        AlignMaxillaryCentralIncisor(mesh, stats);
+
+    /// <summary>
+    /// Canonical mandibular-lateral-incisor axes after crown-up (LEFT family space):
+    /// +Z incisal, +Y buccal, −Y lingual, +X mesial, −X distal.
+    /// Same cingulum/incisal cues as the mandibular central, on this mesh only.
+    /// Right laterality is a post-align MirrorX in the loader.
+    /// </summary>
+    public static void AlignMandibularLateralIncisor(MeshGeometry3D mesh, StlMeshStats stats) =>
+        AlignMaxillaryCentralIncisor(mesh, stats);
 
     /// <summary>
     /// Canonical FDI 36 axes after crown-up:

@@ -7,7 +7,7 @@ namespace MyOrganizer.Wpf.Controls;
 /// tooth-local space after family orientation:
 /// +Z occlusal, +Y buccal, −Y lingual.
 /// Laterality.Left (FDI 35): +X mesial, −X distal; no post-align MirrorX.
-/// Laterality.Right (future FDI 45): post-align MirrorX; Mesial/Distal labels swap
+/// Laterality.Right (FDI 45): post-align MirrorX; Mesial/Distal labels swap
 /// so names stay anatomical. Never copies first-premolar or molar triangle indices.
 /// Occlusal/color 0 is the cervical neck band. The chewing table is
 /// Buccal/Lingual/Mesial/Distal. Inner surface is Lingual (enum Palatal).

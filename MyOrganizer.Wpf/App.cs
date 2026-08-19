@@ -24,6 +24,146 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi48-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi48SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi38-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi38SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi28-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi28SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi18-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi18SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi47-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi47SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi37-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi37SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi27-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi27SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi17-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi17SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi11-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi11SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi21-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi21SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi12-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi12SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi22-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi22SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi31-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi31SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi41-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi41SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi32-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi32SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi42-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi42SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi13-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi13SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi23-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi23SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi33-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi33SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi43-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi43SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi14-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi14SurfaceMapStore.GenerateDefault();
@@ -62,6 +202,13 @@ public partial class App : Application
         if (e.Args.Any(a => string.Equals(a, "--generate-fdi35-map", StringComparison.OrdinalIgnoreCase)))
         {
             Controls.Fdi35SurfaceMapStore.GenerateDefault();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--generate-fdi45-map", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi45SurfaceMapStore.GenerateDefault();
             Shutdown();
             return;
         }

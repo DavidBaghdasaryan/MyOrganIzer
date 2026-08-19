@@ -204,7 +204,8 @@ public partial class ToothMeshView : UserControl
                 {
                     MirrorX = asset.MirrorX,
                     OrientFdi16 = asset.OrientationProfile is "ApprovedFdi16"
-                        or MaxillaryFirstMolarTemplate.OrientationProfile,
+                        or MaxillaryFirstMolarTemplate.OrientationProfile
+                        or MaxillarySecondMolarTemplate.OrientationProfile,
                     OrientationProfile = asset.OrientationProfile
                 });
                 _stats.SourcePath = path ?? "";
@@ -380,7 +381,7 @@ public partial class ToothMeshView : UserControl
                     "\",\"nTri\":" + (crown.TriangleIndices.Count / 3) + "}");
                 return;
             }
-            var colors = ToothSurfaceColorConvention.Overlay;
+            var colors = OverlayColorsFor(_loadedFdi);
             var overlayVerts = 0;
             var nTri = crown.TriangleIndices.Count / 3;
             var owned = 0;
@@ -552,6 +553,16 @@ public partial class ToothMeshView : UserControl
         }
         else
             ToothLabAppearance.Apply(_loadedFdi, CrownModel, RootModel, CervicalModel);
+    }
+
+    private static Color[] OverlayColorsFor(string fdi)
+    {
+        var colors = ToothSurfaceColorConvention.Overlay;
+        if (fdi != "38" && fdi != "48")
+            return colors;
+        var copy = (Color[])colors.Clone();
+        copy[0] = Color.FromArgb(0x8C, 0xC4, 0x3A, 0x38);
+        return copy;
     }
 
     private static Material OverlayMaterial(Color c)
@@ -1244,13 +1255,34 @@ public partial class ToothMeshView : UserControl
         surface == ClinicalSurface.Palatal ? LabelPalatal.Text : surface.ToString();
 
     private string MapAssetName() =>
-        _loadedFdi == "14" ? "FDI14SurfaceMap.json"
+        _loadedFdi == "11" ? "FDI11SurfaceMap.json"
+        : _loadedFdi == "12" ? "FDI12SurfaceMap.json"
+        : _loadedFdi == "21" ? "FDI21SurfaceMap.json"
+        : _loadedFdi == "22" ? "FDI22SurfaceMap.json"
+        : _loadedFdi == "31" ? "FDI31SurfaceMap.json"
+        : _loadedFdi == "41" ? "FDI41SurfaceMap.json"
+        : _loadedFdi == "32" ? "FDI32SurfaceMap.json"
+        : _loadedFdi == "42" ? "FDI42SurfaceMap.json"
+        : _loadedFdi == "17" ? "FDI17SurfaceMap.json"
+        : _loadedFdi == "27" ? "FDI27SurfaceMap.json"
+        : _loadedFdi == "37" ? "FDI37SurfaceMap.json"
+        : _loadedFdi == "47" ? "FDI47SurfaceMap.json"
+        : _loadedFdi == "18" ? "FDI18SurfaceMap.json"
+        : _loadedFdi == "28" ? "FDI28SurfaceMap.json"
+        : _loadedFdi == "38" ? "FDI38SurfaceMap.json"
+        : _loadedFdi == "48" ? "FDI48SurfaceMap.json"
+        : _loadedFdi == "13" ? "FDI13SurfaceMap.json"
+        : _loadedFdi == "23" ? "FDI23SurfaceMap.json"
+        : _loadedFdi == "33" ? "FDI33SurfaceMap.json"
+        : _loadedFdi == "43" ? "FDI43SurfaceMap.json"
+        : _loadedFdi == "14" ? "FDI14SurfaceMap.json"
         : _loadedFdi == "15" ? "FDI15SurfaceMap.json"
         : _loadedFdi == "25" ? "FDI25SurfaceMap.json"
         : _loadedFdi == "24" ? "FDI24SurfaceMap.json"
         : _loadedFdi == "34" ? "FDI34SurfaceMap.json"
         : _loadedFdi == "44" ? "FDI44SurfaceMap.json"
         : _loadedFdi == "35" ? "FDI35SurfaceMap.json"
+        : _loadedFdi == "45" ? "FDI45SurfaceMap.json"
         : _loadedFdi == "26" ? "FDI26SurfaceMap.json"
         : _loadedFdi == "46" ? "FDI46SurfaceMap.json"
         : _loadedFdi == "36" ? "FDI36SurfaceMap.json"

@@ -111,7 +111,7 @@
                 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,10"
                             Visibility="{Binding ShowSegTools, Converter={StaticResource BoolToVis}}">
                     <CheckBox x:Name="ShowSegCheck" Content="Show Surface Segmentation"
-                              VerticalAlignment="Center"
+                              VerticalAlignment="Center" IsChecked="True"
                               Checked="OnSegChanged" Unchecked="OnSegChanged"/>
                     <TextBlock Text="Inspect" Margin="18,0,8,0" VerticalAlignment="Center"
                                Style="{StaticResource Caption}"/>

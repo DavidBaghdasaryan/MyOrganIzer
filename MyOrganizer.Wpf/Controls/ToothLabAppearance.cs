@@ -12,7 +12,7 @@ internal static class ToothLabAppearance
 {
     public static void Apply(string fdi, GeometryModel3D crown, GeometryModel3D root, GeometryModel3D cervical)
     {
-        if (fdi is "36" or "46")
+        if (fdi is "36" or "46" or "37" or "47" or "38" or "48")
             ApplyFdi36(crown, root, cervical);
         else
             ApplyApprovedFdi16(crown, root);
@@ -75,8 +75,8 @@ internal static class ToothLabAppearance
         Enamel(diffuse, emissive, specular, power, ambient);
 
     public static string CrownDiffuseHex(string fdi) =>
-        fdi is "36" or "46" ? "#F3EFE6" : "#F8F6F1";
+        fdi is "36" or "46" or "37" or "47" or "38" or "48" ? "#F3EFE6" : "#F8F6F1";
 
     public static string RootDiffuseHex(string fdi) =>
-        fdi is "36" or "46" ? "#E7DBC4" : "#E2D4B2";
+        fdi is "36" or "46" or "37" or "47" or "38" or "48" ? "#E7DBC4" : "#E2D4B2";
 }

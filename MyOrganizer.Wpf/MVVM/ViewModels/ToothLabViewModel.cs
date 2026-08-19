@@ -65,7 +65,8 @@ public sealed class ToothLabViewModel : ObservableObject
         "Click an FDI number to inspect it. FDI 16 and 26 are the approved maxillary first-molar pair. " +
         "FDI 36 and 46 are the approved mandibular first-molar pair. FDI 14 and 24 are the maxillary " +
         "first-premolar pair. FDI 34 and 44 are the mandibular first-premolar pair. FDI 15 and 25 are the maxillary " +
-        "second-premolar pair. FDI 35 is the mandibular second-premolar reference. All imported teeth share hover, multi-select, " +
+        "second-premolar pair. FDI 35 and 45 are the mandibular second-premolar pair. FDI 13 and 23 are the maxillary " +
+        "canine pair. FDI 33 is the mandibular canine reference. All imported teeth share hover, multi-select, " +
         "Filling, Create Procedure, Edit, and New Procedure. Terminology is tooth-aware " +
         "(Palatal on maxillary teeth, Lingual on mandibular). Procedure records stay isolated per tooth. " +
         "Other FDI positions remain placeholders.";
@@ -124,6 +125,132 @@ public sealed class ToothLabViewModel : ObservableObject
                   ". Left mandibular second premolar generated from MandibularSecondPremolarTemplate " +
                   "(cervical Occlusal, Lingual not Palatal, FDI35SurfaceMap). " +
                   _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "45"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular second premolar generated from MandibularSecondPremolarTemplate " +
+                  "(same rules as approved FDI 35, right laterality, FDI45SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "11"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary central incisor generated from MaxillaryCentralIncisorTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI11SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "21"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary central incisor generated from MaxillaryCentralIncisorTemplate " +
+                  "(same rules as approved FDI 11, left laterality, FDI21SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "12"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary lateral incisor generated from MaxillaryLateralIncisorTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI12SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "22"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary lateral incisor generated from MaxillaryLateralIncisorTemplate " +
+                  "(same rules as approved FDI 12, left laterality, FDI22SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "13"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary canine generated from MaxillaryCanineTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI13SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "23"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary canine generated from MaxillaryCanineTemplate " +
+                  "(same rules as approved FDI 13, left laterality, FDI23SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "33"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular canine generated from MandibularCanineTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI33SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "43"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular canine generated from MandibularCanineTemplate " +
+                  "(same rules as approved FDI 33, right laterality, FDI43SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "31"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular central incisor generated from MandibularCentralIncisorTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI31SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "41"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular central incisor generated from MandibularCentralIncisorTemplate " +
+                  "(same rules as approved FDI 31, right laterality, FDI41SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "32"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular lateral incisor generated from MandibularLateralIncisorTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI32SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "42"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular lateral incisor generated from MandibularLateralIncisorTemplate " +
+                  "(same rules as approved FDI 32, right laterality, FDI42SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "17"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary second molar generated from MaxillarySecondMolarTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI17SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "27"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary second molar generated from MaxillarySecondMolarTemplate " +
+                  "(same rules as approved FDI 17, left laterality, FDI27SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "37"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular second molar generated from MandibularSecondMolarTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI37SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "47"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular second molar generated from MandibularSecondMolarTemplate " +
+                  "(same rules as approved FDI 37, right laterality, FDI47SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "18"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right maxillary third molar generated from MaxillaryThirdMolarTemplate " +
+                  "(cervical Occlusal, Palatal not Lingual, FDI18SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "28"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left maxillary third molar generated from MaxillaryThirdMolarTemplate " +
+                  "(same rules as approved FDI 18, left laterality, FDI28SurfaceMap). " +
+                  "Palatal, not Lingual. " + _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "38"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Left mandibular third molar generated from MandibularThirdMolarTemplate " +
+                  "(cervical Occlusal, Lingual not Palatal, FDI38SurfaceMap). " +
+                  _asset.Attribution.SketchfabUrl
+            : _asset.FdiNumber == "48"
+                ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
+                  _asset.Attribution.License + "). Original file " + _asset.InnerObjName +
+                  ". Right mandibular third molar generated from MandibularThirdMolarTemplate " +
+                  "(same rules as approved FDI 38, right laterality, FDI48SurfaceMap). " +
+                  "Lingual, not Palatal. " + _asset.Attribution.SketchfabUrl
             : _asset.FdiNumber == "26"
                 ? _asset.DisplayName + ", " + _asset.Attribution.Institution + " (" +
                   _asset.Attribution.License + "). Original file " + _asset.InnerObjName +

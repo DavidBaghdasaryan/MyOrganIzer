@@ -103,6 +103,71 @@ internal static class ToothSurfaceTopology
             ",\"palatalInMesial\":" + palatalInMesial + "}");
     }
 
+    /// <summary>
+    /// Palatal (green) peninsula on the high chewing table into Distal (purple).
+    /// Maxillary second-molar family only. Does not reassign cervical Occlusal.
+    /// Frozen 16/26/36/46 generate paths do not call this.
+    /// Right: distal is −X. Left (after M/D swap): distal is +X.
+    /// </summary>
+    public static int RetractHighTablePalatalFromDistal(
+        MeshGeometry3D crown, ClinicalSurface[] labels, ToothSide laterality = ToothSide.Right)
+    {
+        var feat = Measure(crown);
+        var nTri = labels.Length;
+        var neighbors = CrownSurfaceClassifier.BuildNeighbors(crown.TriangleIndices, nTri);
+        var moved = 0;
+        for (var t = 0; t < nTri; t++)
+        {
+            if (labels[t] != ClinicalSurface.Palatal) continue;
+            if (feat.Z01[t] < 0.42) continue;
+            var ax = feat.Centroids[t].X - feat.AxialCenter.X;
+            var ay = feat.Centroids[t].Y - feat.AxialCenter.Y;
+            if (laterality == ToothSide.Left)
+                ax = -ax;
+            var distal = -ax;
+            var palatal = -ay;
+            var ang = Math.Atan2(ay, ax);
+            var sectorDistal = NearestSector(ang) == ClinicalSurface.Distal;
+            var pastDiagonal = distal > 0 && distal >= palatal * 0.78;
+            if (!sectorDistal && !pastDiagonal) continue;
+            labels[t] = ClinicalSurface.Distal;
+            moved++;
+        }
+
+        var voted = 0;
+        for (var pass = 0; pass < 10; pass++)
+        {
+            var changed = 0;
+            var next = (ClinicalSurface[])labels.Clone();
+            for (var t = 0; t < nTri; t++)
+            {
+                if (labels[t] != ClinicalSurface.Palatal) continue;
+                if (feat.Z01[t] < 0.42) continue;
+                var nP = 0;
+                var nD = 0;
+                foreach (var nb in neighbors[t])
+                {
+                    if (labels[nb] == ClinicalSurface.Palatal) nP++;
+                    else if (labels[nb] == ClinicalSurface.Distal) nD++;
+                }
+                var tongue = nP <= 1 && nD >= 1;
+                var spur = nD >= 2 && nD >= nP;
+                if (!tongue && !spur) continue;
+                next[t] = ClinicalSurface.Distal;
+                voted++;
+                changed++;
+            }
+            Array.Copy(next, labels, nTri);
+            if (changed == 0) break;
+        }
+
+        KeepLargestAxial(labels, neighbors);
+        DropIslands(labels, neighbors);
+        AgentLog("C", "palatal-distal-flank",
+            "{\"moved\":" + moved + ",\"voted\":" + voted + "}");
+        return moved + voted;
+    }
+
     private static string Analyze(ClinicalSurface[] labels, List<int>[] neighbors, Features feat)
     {
         var n = labels.Length;
@@ -388,6 +453,92 @@ internal static class ToothSurfaceTopology
                     labels[t] = surround.Value;
             }
         }
+    }
+
+    /// <summary>
+    /// Extra majority smoothing on the chewing table so B/L/M/D seams follow
+    /// neighbors instead of stair-stepping across fissures. Never reassigns
+    /// cervical Occlusal. Mandibular third-molar generate path only.
+    /// </summary>
+    public static void SmoothHighTableAxialSeams(MeshGeometry3D crown, ClinicalSurface[] labels)
+    {
+        var neighbors = CrownSurfaceClassifier.BuildNeighbors(crown.TriangleIndices, labels.Length);
+        var feat = Measure(crown);
+        RetractUnstable(labels, neighbors, feat, highTableOnly: true, passes: 12);
+        FillEnclosedHoles(labels, neighbors, 128);
+        var flipped = 0;
+        for (var pass = 0; pass < 6; pass++)
+        {
+            var changed = 0;
+            for (var t = 0; t < labels.Length; t++)
+            {
+                if (feat.Z01[t] < HighTableZ) continue;
+                if (labels[t] == ClinicalSurface.Occlusal) continue;
+                var votes = new int[5];
+                var same = 0;
+                foreach (var nb in neighbors[t])
+                {
+                    votes[(int)labels[nb]]++;
+                    if (labels[nb] == labels[t]) same++;
+                }
+                if (neighbors[t].Count < 3) continue;
+                if (same * 2 >= neighbors[t].Count) continue;
+                var target = Majority(votes, labels[t]);
+                if (target == labels[t] || target == ClinicalSurface.Occlusal) continue;
+                labels[t] = target;
+                changed++;
+            }
+            flipped += changed;
+            if (changed == 0) break;
+        }
+        FillEnclosedHoles(labels, neighbors, 96);
+        AgentLog("B", "smooth-high-table-seams",
+            "{\"flipped\":" + flipped + "}");
+    }
+
+    /// <summary>
+    /// Close 1–2 triangle holes in the high crown walls so enamel does not
+    /// show through the overlay. Never reassigns the cervical coral band.
+    /// </summary>
+    public static void SealHighCrownWallHoles(MeshGeometry3D crown, ClinicalSurface[] labels)
+    {
+        var neighbors = CrownSurfaceClassifier.BuildNeighbors(crown.TriangleIndices, labels.Length);
+        var feat = Measure(crown);
+        var absorbed = 0;
+        for (var pass = 0; pass < 8; pass++)
+        {
+            var changed = 0;
+            for (var t = 0; t < labels.Length; t++)
+            {
+                if (feat.Z01[t] < 0.42)
+                    continue;
+                var votes = new int[5];
+                var same = 0;
+                foreach (var nb in neighbors[t])
+                {
+                    votes[(int)labels[nb]]++;
+                    if (labels[nb] == labels[t])
+                        same++;
+                }
+                if (same >= 2)
+                    continue;
+                if (neighbors[t].Count < 2)
+                    continue;
+                var target = Majority(votes, labels[t]);
+                if (target == labels[t])
+                    continue;
+                if (target == ClinicalSurface.Occlusal)
+                    continue;
+                labels[t] = target;
+                changed++;
+            }
+            absorbed += changed;
+            if (changed == 0)
+                break;
+        }
+        FillEnclosedHoles(labels, neighbors, 96);
+        AgentLog("B", "seal-high-crown-holes",
+            "{\"absorbed\":" + absorbed + "}");
     }
 
     private static ClinicalSurface Majority(int[] votes, ClinicalSurface fallback)
