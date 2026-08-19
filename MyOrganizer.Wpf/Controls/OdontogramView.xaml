@@ -49,14 +49,36 @@
                             <Path Data="M 9,13 L 23,31 M 23,13 L 9,31"
                                   Stroke="#9CA3AF" StrokeThickness="1.5" StrokeStartLineCap="Round"/>
                         </Canvas>
-                        <Canvas Visibility="{Binding ShowImplant, Converter={StaticResource BoolToVis}}">
-                            <Ellipse Canvas.Left="8" Canvas.Top="3" Width="16" Height="9"
-                                     Fill="#EEF1F4" Stroke="#9AA3AD" StrokeThickness="0.9"/>
-                            <Rectangle Canvas.Left="12" Canvas.Top="11" Width="8" Height="3.5"
-                                       Fill="#8B939E"/>
-                            <Path Fill="#6B7280" Stroke="#4B5563" StrokeThickness="0.7"
-                                  Data="M 11,14.5 L 21,14.5 L 20.2,17 L 11.8,17 L 21,19.5 L 11,19.5 L 20,22 L 12,22 L 19.2,25 L 12.8,25 L 18.4,29 L 13.6,29 L 17.4,34 L 14.6,34 L 16,39 Z"/>
-                        </Canvas>
+                        <Grid Visibility="{Binding ShowImplant, Converter={StaticResource BoolToVis}}">
+                            <!-- Upper: screw up into bone, crown down toward the arch gap. -->
+                            <Grid Visibility="{Binding IsUpper, Converter={StaticResource BoolToVis}}">
+                                <Image Source="{Binding Preview}" Stretch="Uniform">
+                                    <Image.Clip>
+                                        <RectangleGeometry Rect="0,19,32,25"/>
+                                    </Image.Clip>
+                                </Image>
+                                <Canvas IsHitTestVisible="False">
+                                    <Rectangle Canvas.Left="12" Canvas.Top="19" Width="8" Height="3"
+                                               Fill="#8B939E"/>
+                                    <Path Fill="#6B7280" Stroke="#4B5563" StrokeThickness="0.7"
+                                          Data="M 11,21 L 21,21 L 20.2,18.2 L 11.8,18.2 L 21,15.4 L 11,15.4 L 20,12.6 L 12,12.6 L 19.2,9.6 L 12.8,9.6 L 18.2,6.4 L 13.8,6.4 L 17.2,3.4 L 14.8,3.4 L 16,1.2 Z"/>
+                                </Canvas>
+                            </Grid>
+                            <!-- Lower: crown up toward the arch gap, screw down into bone. -->
+                            <Grid Visibility="{Binding IsLower, Converter={StaticResource BoolToVis}}">
+                                <Image Source="{Binding Preview}" Stretch="Uniform">
+                                    <Image.Clip>
+                                        <RectangleGeometry Rect="0,0,32,25"/>
+                                    </Image.Clip>
+                                </Image>
+                                <Canvas IsHitTestVisible="False">
+                                    <Rectangle Canvas.Left="12" Canvas.Top="22" Width="8" Height="3"
+                                               Fill="#8B939E"/>
+                                    <Path Fill="#6B7280" Stroke="#4B5563" StrokeThickness="0.7"
+                                          Data="M 11,23 L 21,23 L 20.2,25.8 L 11.8,25.8 L 21,28.6 L 11,28.6 L 20,31.4 L 12,31.4 L 19.2,34.4 L 12.8,34.4 L 18.2,37.6 L 13.8,37.6 L 17.2,40.6 L 14.8,40.6 L 16,42.8 Z"/>
+                                </Canvas>
+                            </Grid>
+                        </Grid>
                         <Canvas IsHitTestVisible="False"
                                 Visibility="{Binding ShowEndodontic, Converter={StaticResource BoolToVis}}">
                             <Path Stroke="#C62828" StrokeThickness="1.7"

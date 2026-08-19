@@ -339,9 +339,13 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public ToothAssetDefinition SelectedAsset => _asset;
     public bool ShowInspector => _asset.RuntimeImported;
+    public bool IsImplantSelected =>
+        ToothOdontogramState.From(ToothNumber, Clinical.Procedures).ShowImplant;
+    public bool ShowDetailedViewer => ShowInspector && !IsImplantSelected;
+    public bool ShowEmptyImplantViewer => ShowInspector && IsImplantSelected;
     public bool ShowPlaceholder => !_asset.RuntimeImported;
     public bool ShowClinicalTools => _asset.ClinicalInteraction;
-    public bool ShowSegTools => _asset.SurfaceMapAvailable;
+    public bool ShowSegTools => _asset.SurfaceMapAvailable && !IsImplantSelected;
     public bool ShowAssetStatus => !_asset.SurfaceMapAvailable;
     public string InnerCameraLabel => _asset.InnerSurfaceName;
 
@@ -459,8 +463,8 @@ public sealed class ToothLabViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowInspector));
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(ShowClinicalTools));
-        OnPropertyChanged(nameof(ShowSegTools));
         OnPropertyChanged(nameof(ShowAssetStatus));
+        NotifyImplantPresentation();
         OnPropertyChanged(nameof(InnerCameraLabel));
         OnPropertyChanged(nameof(InspectorNote));
         OnPropertyChanged(nameof(LabTitle));
@@ -499,6 +503,8 @@ public sealed class ToothLabViewModel : ObservableObject
         if (!asset.RuntimeImported)
             Status = "FDI " + asset.FdiNumber + " placeholder · source " +
                      (asset.SourceAvailable ? "available" : "missing") + " · runtime not imported.";
+        else if (IsImplantSelected)
+            Status = "FDI " + asset.FdiNumber + " · Implant\nDetailed 3D viewer is empty for implant teeth.";
         else if (!asset.SurfaceMapAvailable)
             Status = "FDI " + asset.FdiNumber + " · " + asset.DisplayName +
                      "\nClinical surface map: Not created\nInteraction: Not available yet";
@@ -654,10 +660,19 @@ public sealed class ToothLabViewModel : ObservableObject
         }
     }
 
+    private void NotifyImplantPresentation()
+    {
+        OnPropertyChanged(nameof(IsImplantSelected));
+        OnPropertyChanged(nameof(ShowDetailedViewer));
+        OnPropertyChanged(nameof(ShowEmptyImplantViewer));
+        OnPropertyChanged(nameof(ShowSegTools));
+    }
+
     private void NotifyClinical()
     {
         OnPropertyChanged(nameof(ClinicalSummary));
         OnPropertyChanged(nameof(FillingSurfaceNames));
+        NotifyImplantPresentation();
         RefreshOdontogramClinical();
         RefreshStatus();
         ClinicalChanged?.Invoke(this, EventArgs.Empty);
@@ -712,6 +727,7 @@ public sealed class ToothLabViewModel : ObservableObject
         var a = Patients[0];
         SessionFor(a, "16").Clinical.TryCreate(DentalProcedureType.Filling, [ToothSurfaceType.Occlusal]);
         SessionFor(a, "24").Clinical.TryCreate(DentalProcedureType.Implant, []);
+        SessionFor(a, "34").Clinical.TryCreate(DentalProcedureType.Implant, []);
         SessionFor(a, "36").Clinical.TryCreate(DentalProcedureType.Endodontic, []);
         SessionFor(a, "46").Clinical.TryCreate(DentalProcedureType.Extraction, []);
     }
@@ -761,6 +777,7 @@ public sealed class ToothLabViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedSurfacesLabel));
         OnPropertyChanged(nameof(PendingSurfaceNames));
         OnPropertyChanged(nameof(ShowSurfacePicker));
+        NotifyImplantPresentation();
         ((RelayCommand)ClearSelectionCommand).RaiseCanExecuteChanged();
         ((RelayCommand)CreateProcedureCommand).RaiseCanExecuteChanged();
         ((RelayCommand)SaveProcedureCommand).RaiseCanExecuteChanged();
@@ -810,6 +827,12 @@ public sealed class ToothLabViewModel : ObservableObject
 
     private void RefreshStatus()
     {
+        if (IsImplantSelected)
+        {
+            Status = "FDI " + ToothNumber + " · Implant\nDetailed 3D viewer is empty for implant teeth.\nProcedures: " +
+                     Clinical.Procedures.Count;
+            return;
+        }
         var names = Clinical.FillingSurfaceNames(InnerCameraLabel);
         Status =
             "Hover: " + (_hoverName ?? "None") + "\n" +

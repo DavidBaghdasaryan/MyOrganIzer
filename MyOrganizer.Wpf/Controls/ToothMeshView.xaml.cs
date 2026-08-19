@@ -364,6 +364,31 @@ public partial class ToothMeshView : UserControl
         ApplyInteractionOverlays();
     }
 
+    /// <summary>
+    /// Empties the lab 3D viewport. Used for odontogram implant teeth, which
+    /// have no 3D model in this version. Does not change loaded tooth assets.
+    /// </summary>
+    public void ClearViewport()
+    {
+        _loadedFdi = "";
+        _orientationProfile = "";
+        _interactionEnabled = false;
+        _surfaceMap = null;
+        _hoverSurface = null;
+        _fillingSurfaces.Clear();
+        _selectedSurfaces.Clear();
+        _triByVerts.Clear();
+        _overlayGroup.Children.Clear();
+        CrownModel.Geometry = null;
+        RootModel.Geometry = null;
+        CervicalModel.Geometry = null;
+        SurfaceOverlayVisual.Content = null;
+        ClinicalOverlayVisual.Content = null;
+        SelectedOverlayVisual.Content = null;
+        HoverOverlayVisual.Content = null;
+        MissingOverlay.Visibility = Visibility.Collapsed;
+    }
+
     private void RebuildSurfaceOverlays(MeshGeometry3D crown)
     {
         _overlayGroup.Children.Clear();

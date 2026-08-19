@@ -90,6 +90,7 @@ public partial class ToothLabView : UserControl
     {
         if (e.PropertyName is nameof(ToothLabViewModel.ToothNumber)
             or nameof(ToothLabViewModel.ShowInspector)
+            or nameof(ToothLabViewModel.ShowDetailedViewer)
             or null)
             Dispatcher.BeginInvoke(ApplyToothPresentation, System.Windows.Threading.DispatcherPriority.Loaded);
     }
@@ -98,11 +99,13 @@ public partial class ToothLabView : UserControl
     {
         if (_vm is null || MeshView is null)
             return;
-        if (_vm.ShowInspector)
+        if (_vm.ShowDetailedViewer)
             MeshView.LoadRegisteredAsset(_vm.ToothNumber);
+        else
+            MeshView.ClearViewport();
         LogInspectorState();
         SyncInspectComboLabel();
-        if (_vm.ShowClinicalTools)
+        if (_vm.ShowDetailedViewer && _vm.ShowClinicalTools)
         {
             PushClinical(_vm);
             PushSelection(_vm);
@@ -112,7 +115,7 @@ public partial class ToothLabView : UserControl
             MeshView.SetFillingSurfaces([]);
             MeshView.SetSelectedSurfaces([]);
         }
-        if (_vm.ShowSegTools)
+        if (_vm.ShowDetailedViewer && _vm.ShowSegTools)
             ApplySurfaceDebug();
         else
             MeshView.SetSurfaceDebug(false, "All");
@@ -150,13 +153,14 @@ public partial class ToothLabView : UserControl
 
     private void OnClinicalChanged(object? sender, EventArgs e)
     {
-        if (_vm is not null)
-            PushClinical(_vm);
+        if (_vm is null)
+            return;
+        ApplyToothPresentation();
     }
 
     private void OnPendingSelectionChanged(object? sender, EventArgs e)
     {
-        if (_vm is not null)
+        if (_vm is not null && _vm.ShowDetailedViewer)
             PushSelection(_vm);
     }
 

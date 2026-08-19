@@ -36,12 +36,18 @@
                 <Border Grid.Row="1" Margin="0,8,0,16" HorizontalAlignment="Center"
                         CornerRadius="8" ClipToBounds="True"
                         Width="{Binding ToothSize}" Height="{Binding ToothSize}"
-                        Visibility="{Binding ShowInspector, Converter={StaticResource BoolToVis}}">
+                        Background="#C8CED6"
+                        Visibility="{Binding ShowEmptyImplantViewer, Converter={StaticResource BoolToVis}}"/>
+
+                <Border Grid.Row="1" Margin="0,8,0,16" HorizontalAlignment="Center"
+                        CornerRadius="8" ClipToBounds="True"
+                        Width="{Binding ToothSize}" Height="{Binding ToothSize}"
+                        Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}}">
                     <controls:ToothMeshView x:Name="MeshView"/>
                 </Border>
 
                 <WrapPanel Grid.Row="2" Margin="0,4,0,8"
-                           Visibility="{Binding ShowInspector, Converter={StaticResource BoolToVis}}">
+                           Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}}">
                     <Button Content="Occlusal View" Style="{StaticResource SecondaryButton}"
                             Margin="0,0,8,8" Padding="12,6" Click="OnOcclusal"/>
                     <Button Content="Buccal" Style="{StaticResource SecondaryButton}"
@@ -79,7 +85,7 @@
                            FontFamily="Consolas" FontSize="13"/>
 
                 <StackPanel Grid.Row="5"
-                            Visibility="{Binding ShowInspector, Converter={StaticResource BoolToVis}}">
+                            Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}}">
                     <TextBlock Text="{Binding ToothSize, StringFormat=3D viewport: {0:0} px}"
                                Style="{StaticResource Caption}" Margin="0,0,0,6"/>
                     <Slider Minimum="250" Maximum="360" Value="{Binding ToothSize}"
