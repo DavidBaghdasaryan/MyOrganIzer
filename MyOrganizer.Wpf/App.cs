@@ -46,6 +46,20 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Any(a => string.Equals(a, "--patch-fdi16-cej-red", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.Fdi16SurfaceMapStore.PatchCejRedContinuity();
+            Shutdown();
+            return;
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--diagnose-cervical-seam", StringComparison.OrdinalIgnoreCase)))
+        {
+            Controls.CervicalSeamProbe.DiagnoseFrozen36And46();
+            Shutdown();
+            return;
+        }
+
         DispatcherUnhandledException += OnDispatcherUnhandledException;
 
         AppSettings.Load();

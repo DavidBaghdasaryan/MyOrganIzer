@@ -462,6 +462,7 @@ public partial class ToothMeshView : UserControl
                 ",\"show\":" + (_showSurfaces ? "true" : "false") + "}");
             ToothSurfaceLayoutStats.Log("C", _loadedFdi, "asset", crown, _surfaceMap.TriangleSurface);
             ToothSurfaceLayoutStats.LogRedHeight("C", _loadedFdi, crown, _surfaceMap.TriangleSurface);
+            CervicalSeamProbe.Log("A", _loadedFdi, crown, _surfaceMap.TriangleSurface);
             ApplyClinicalOverlays();
             ApplyInteractionOverlays();
         }
@@ -533,8 +534,18 @@ public partial class ToothMeshView : UserControl
             return;
         if (_showSurfaces)
         {
-            CervicalModel.Material = new DiffuseMaterial(Brushes.Transparent);
-            CervicalModel.BackMaterial = null;
+            // Do not make the CEJ strip transparent: that opens a hole between
+            // the red crown overlay and the root, and the viewport grey shows
+            // through as a jagged white seam. Fill the strip with the root
+            // material so the red band meets tan. SurfaceMap is unchanged.
+            CervicalModel.Material = RootModel.Material;
+            CervicalModel.BackMaterial = RootModel.BackMaterial;
+            // #region agent log
+            AgentLog("I", "cervical-overlay",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"mode\":\"root-fill\",\"tris\":" +
+                (((MeshGeometry3D)CervicalModel.Geometry).TriangleIndices.Count / 3) + "}");
+            // #endregion
         }
         else
             ToothLabAppearance.Apply(_loadedFdi, CrownModel, RootModel, CervicalModel);

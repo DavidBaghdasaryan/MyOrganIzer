@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
 
@@ -190,8 +191,10 @@ internal static class CrownSurfaceClassifier
     {
         var mesh = new MeshGeometry3D();
         var idx = crown.TriangleIndices;
+        var nSrc = 0;
         foreach (var t in triangles)
         {
+            nSrc++;
             var i0 = idx[t * 3];
             var i1 = idx[t * 3 + 1];
             var i2 = idx[t * 3 + 2];
@@ -211,6 +214,18 @@ internal static class CrownSurfaceClassifier
             mesh.TriangleIndices.Add(baseIndex + 1);
             mesh.TriangleIndices.Add(baseIndex + 2);
         }
+        // #region agent log
+        try
+        {
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"cej-seam2\",\"hypothesisId\":\"I\",\"location\":\"CrownSurfaceClassifier.cs\",\"message\":\"overlay-mesh\",\"data\":{\"nSrc\":" +
+                       nSrc + ",\"sidewalls\":0,\"eps\":" +
+                       normalEps.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture) +
+                       ",\"lift\":\"faceNormal\"},\"timestamp\":" +
+                       DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
+        }
+        catch { }
+        // #endregion
         return mesh;
     }
 
