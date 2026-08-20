@@ -123,7 +123,7 @@
                 </Viewport3D.Camera>
                 <ModelVisual3D>
                     <ModelVisual3D.Content>
-                        <AmbientLight Color="#FFFFFFFF"/>
+                        <AmbientLight Color="#FFC8C0BC"/>
                     </ModelVisual3D.Content>
                 </ModelVisual3D>
                 <ModelVisual3D x:Name="CanalGhostVisual"/>

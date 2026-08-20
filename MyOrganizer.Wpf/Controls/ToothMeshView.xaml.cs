@@ -1299,9 +1299,10 @@ public partial class ToothMeshView : UserControl
         // #region agent log
         AgentLog("A", "canal-overlay",
             "{\"fdi\":\"" + Esc(_loadedFdi) +
-            "\",\"runId\":\"post-fix\"" +
+            "\",\"runId\":\"canal-polish\"" +
             ",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
-            "\",\"dualPass\":true,\"offset\":false" +
+            "\",\"dualPass\":true,\"offset\":false,\"glow\":false" +
+            ",\"frontArgb\":\"B0B03A3A\",\"ghostArgb\":\"30942828\"" +
             ",\"front\":" + front.Children.Count +
             ",\"ghost\":" + ghost.Children.Count +
             ",\"paths\":" + _canalPaths.Count + "}");
@@ -1311,8 +1312,7 @@ public partial class ToothMeshView : UserControl
     private static Material CanalMaterial()
     {
         var group = new MaterialGroup();
-        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0xE0, 0xC6, 0x28, 0x28))));
-        group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x40, 0xC6, 0x28, 0x28))));
+        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0xB0, 0xB0, 0x3A, 0x3A))));
         group.Freeze();
         return group;
     }
@@ -1320,8 +1320,7 @@ public partial class ToothMeshView : UserControl
     private static Material CanalGhostMaterial()
     {
         var group = new MaterialGroup();
-        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0x5A, 0xC6, 0x28, 0x28))));
-        group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x48, 0xC6, 0x28, 0x28))));
+        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0x30, 0x94, 0x28, 0x28))));
         group.Freeze();
         return group;
     }
