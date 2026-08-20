@@ -317,6 +317,266 @@ namespace MyOrganizer.Wpf.Migrations
                     b.ToTable("ProcedurePrices", (string)null);
                 });
 
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.CatalogItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UnitOfMeasureId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("UnitOfMeasureId");
+
+                    b.ToTable("CatalogItems", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Expense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("SupplierId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("SupplierId");
+
+                    b.ToTable("Expenses", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.ExpenseLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CatalogItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CatalogProcedureId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ClientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ExpenseId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("LineTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToothFdi")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("UnitOfMeasureId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("CatalogProcedureId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ExpenseId");
+
+                    b.HasIndex("UnitOfMeasureId");
+
+                    b.ToTable("ExpenseLines", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Supplier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Suppliers", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.SupplierOffering", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CatalogItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sku")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SupplierId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("SupplierPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("SupplierId", "CatalogItemId")
+                        .IsUnique();
+
+                    b.ToTable("SupplierOfferings", (string)null);
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.UnitOfMeasure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BaseUnitId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("ConversionFactor")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaseUnitId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("UnitsOfMeasure", (string)null);
+                });
+
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Technic", b =>
                 {
                     b.Property<int>("Id")
@@ -431,6 +691,94 @@ namespace MyOrganizer.Wpf.Migrations
                     b.Navigation("Procedure");
                 });
 
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.CatalogItem", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.UnitOfMeasure", "UnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("UnitOfMeasureId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("UnitOfMeasure");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Expense", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.Supplier", "Supplier")
+                        .WithMany("Expenses")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.ExpenseLine", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.CatalogItem", "CatalogItem")
+                        .WithMany()
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyOrganizer.Wpf.Entities.Procedures.Procedure", "CatalogProcedure")
+                        .WithMany()
+                        .HasForeignKey("CatalogProcedureId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyOrganizer.Wpf.Data.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyOrganizer.Wpf.Entities.Expense", "Expense")
+                        .WithMany("Lines")
+                        .HasForeignKey("ExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyOrganizer.Wpf.Entities.UnitOfMeasure", "UnitOfMeasure")
+                        .WithMany()
+                        .HasForeignKey("UnitOfMeasureId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CatalogItem");
+
+                    b.Navigation("CatalogProcedure");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Expense");
+
+                    b.Navigation("UnitOfMeasure");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.SupplierOffering", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.CatalogItem", "CatalogItem")
+                        .WithMany("SupplierOfferings")
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyOrganizer.Wpf.Entities.Supplier", "Supplier")
+                        .WithMany("Offerings")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CatalogItem");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.UnitOfMeasure", b =>
+                {
+                    b.HasOne("MyOrganizer.Wpf.Entities.UnitOfMeasure", "BaseUnit")
+                        .WithMany()
+                        .HasForeignKey("BaseUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("BaseUnit");
+                });
+
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.ToothWork", b =>
                 {
                     b.HasOne("MyOrganizer.Wpf.Data.Entities.Client", null)
@@ -450,9 +798,26 @@ namespace MyOrganizer.Wpf.Migrations
                     b.Navigation("Values");
                 });
 
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.CatalogItem", b =>
+                {
+                    b.Navigation("SupplierOfferings");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Expense", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("MyOrganizer.Wpf.Entities.Procedures.Procedure", b =>
                 {
                     b.Navigation("Prices");
+                });
+
+            modelBuilder.Entity("MyOrganizer.Wpf.Entities.Supplier", b =>
+                {
+                    b.Navigation("Expenses");
+
+                    b.Navigation("Offerings");
                 });
 #pragma warning restore 612, 618
         }

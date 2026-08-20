@@ -134,7 +134,7 @@
                         <DataGridTextColumn Header="{loc:Loc DoubleVisit}"
                                             Binding="{Binding Reminder, StringFormat=\{0:yyyy-MM-dd HH:mm\}}"
                                             Width="*"/>
-                        <DataGridTemplateColumn Width="148" CanUserResize="False">
+                        <DataGridTemplateColumn Width="180" CanUserResize="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -146,11 +146,12 @@
                                                 Padding="12,4"
                                                 Margin="0,0,4,0"
                                                 ToolTip="{loc:Loc OpenPatient}"/>
-                                        <Button Style="{StaticResource IconButton}"
-                                                Content="&#xE712;"
-                                                Width="32" Height="32"
-                                                ToolTip="{loc:Loc More}"
-                                                Click="RowMenu_Click"/>
+                                        <Button Style="{StaticResource SecondaryButton}"
+                                                Content="{loc:Loc Delete}"
+                                                Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                CommandParameter="{Binding}"
+                                                Height="28"
+                                                Padding="12,4"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

@@ -170,6 +170,14 @@
     </Style>
 
     <Style x:Key="ModernDataGrid" TargetType="DataGrid">
+        <Style.Resources>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#111827"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#111827"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#FFFFFFFF"/>
+            <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#111827"/>
+        </Style.Resources>
         <Setter Property="Background" Value="{StaticResource Brush.Surface}"/>
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
@@ -210,20 +218,27 @@
         <Setter Property="CellStyle">
             <Setter.Value>
                 <Style TargetType="DataGridCell">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
                     <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
                     <Setter Property="Padding" Value="16,0"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="DataGridCell">
-                                <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
-                                    <ContentPresenter VerticalAlignment="Center"/>
+                                <Border Padding="{TemplateBinding Padding}"
+                                        Background="{TemplateBinding Background}">
+                                    <ContentPresenter VerticalAlignment="Center"
+                                                      TextElement.Foreground="{TemplateBinding Foreground}"/>
                                 </Border>
                             </ControlTemplate>
                         </Setter.Value>
                     </Setter>
                     <Style.Triggers>
                         <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}"/>
+                            <Setter Property="BorderBrush" Value="Transparent"/>
                         </Trigger>
                     </Style.Triggers>
                 </Style>

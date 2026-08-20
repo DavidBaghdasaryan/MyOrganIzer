@@ -37,7 +37,9 @@ public sealed class ShellViewModel : ObservableObject
             new NavItemViewModel(AppSection.Dashboard, "Dashboard", "\uE80F"),
             new NavItemViewModel(AppSection.Clients, "Clients", "\uE716"),
             new NavItemViewModel(AppSection.Procedures, "Procedures", "\uE8F1"),
-            new NavItemViewModel(AppSection.Technicians, "Technicians", "\uE77B"),
+            new NavItemViewModel(AppSection.Suppliers, "Suppliers", "\uE77B"),
+            new NavItemViewModel(AppSection.Catalog, "ProductsAndServices", "\uE71D"),
+            new NavItemViewModel(AppSection.Expenses, "Expenses", "\uE8C7"),
             new NavItemViewModel(AppSection.ToothLab, "ToothLab", "\uE9F9"),
             new NavItemViewModel(AppSection.Settings, "Settings", "\uE713")
         ];
@@ -60,6 +62,7 @@ public sealed class ShellViewModel : ObservableObject
         AppSettings.LanguageChanged += OnLanguageChanged;
 
         _navigation.Navigate(AppSection.Dashboard);
+
         _ = LoadRemindersAsync(reminders);
     }
 
@@ -158,6 +161,16 @@ public sealed class ShellViewModel : ObservableObject
             workspace.Refresh();
         if (CurrentViewModel is ProceduresViewModel procedures)
             procedures.Refresh();
+        if (CurrentViewModel is PricesViewModel prices)
+            prices.Refresh();
+        if (CurrentViewModel is SuppliersViewModel suppliers)
+            suppliers.Refresh();
+        if (CurrentViewModel is SupplierWorkspaceViewModel supplierWorkspace)
+            supplierWorkspace.Refresh();
+        if (CurrentViewModel is CatalogItemsViewModel catalog)
+            catalog.Refresh();
+        if (CurrentViewModel is ExpensesViewModel expenses)
+            expenses.Refresh();
         if (CurrentViewModel is TechniciansViewModel technicians)
             technicians.Refresh();
     }
@@ -194,9 +207,12 @@ public sealed class ShellViewModel : ObservableObject
     {
         AppSection.Clients => "Clients",
         AppSection.Procedures => "Procedures",
+        AppSection.Suppliers => "Suppliers",
+        AppSection.Catalog => "ProductsAndServices",
+        AppSection.Expenses => "Expenses",
         AppSection.Technicians => "Technicians",
         AppSection.ToothLab => "ToothLab",
-        AppSection.Settings => "Settings",
+        AppSection.Settings => "SetPrices",
         _ => "Dashboard"
     };
 }

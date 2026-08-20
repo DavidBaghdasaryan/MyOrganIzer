@@ -6,6 +6,10 @@
              xmlns:cviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Clients"
              xmlns:dviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.DentalChart"
              xmlns:pviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Procedures"
+             xmlns:setviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Settings"
+             xmlns:sviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Suppliers"
+             xmlns:catviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Catalog"
+             xmlns:eviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Expenses"
              xmlns:tviews="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Technicians"
              xmlns:dlgs="clr-namespace:MyOrganizer.Wpf.MVVM.Views.Dialogs"
              xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
@@ -47,6 +51,24 @@
             <DataTemplate DataType="{x:Type vm:ProceduresViewModel}">
                 <pviews:ProceduresView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PricesViewModel}">
+                <setviews:PricesView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SuppliersViewModel}">
+                <sviews:SuppliersView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SupplierWorkspaceViewModel}">
+                <sviews:SupplierWorkspaceView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CatalogItemsViewModel}">
+                <catviews:CatalogItemsView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ExpensesViewModel}">
+                <eviews:ExpensesView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ExpenseEditorViewModel}">
+                <eviews:ExpenseEditorView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TechniciansViewModel}">
                 <tviews:TechniciansView/>
             </DataTemplate>
@@ -61,6 +83,18 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditProcedureDialogViewModel}">
                 <dlgs:EditProcedureDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditSupplierDialogViewModel}">
+                <dlgs:EditSupplierDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditCatalogItemDialogViewModel}">
+                <dlgs:EditCatalogItemDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:UnitsDialogViewModel}">
+                <dlgs:UnitsDialogView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:AssociateCatalogItemDialogViewModel}">
+                <dlgs:AssociateCatalogItemDialogView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditTechnicianDialogViewModel}">
                 <dlgs:EditTechnicianDialogView/>

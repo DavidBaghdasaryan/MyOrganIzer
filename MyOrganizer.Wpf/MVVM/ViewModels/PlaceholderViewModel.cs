@@ -35,6 +35,9 @@ public sealed class PlaceholderViewModel : ObservableObject
     {
         AppSection.Clients => "Clients",
         AppSection.Procedures => "Procedures",
+        AppSection.Suppliers => "Suppliers",
+        AppSection.Catalog => "ProductsAndServices",
+        AppSection.Expenses => "Expenses",
         AppSection.Technicians => "Technicians",
         AppSection.Settings => "Settings",
         _ => "Dashboard"

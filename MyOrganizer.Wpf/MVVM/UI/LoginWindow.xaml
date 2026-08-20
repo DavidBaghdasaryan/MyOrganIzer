@@ -1,210 +1,132 @@
 ﻿<Window x:Class="MyOrganizer.Wpf.MVVM.UI.LoginWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
         Title="{loc:Loc PasswordRequest}"
+        Width="920" Height="580"
         WindowStyle="None"
         ResizeMode="NoResize"
-        Width="641" Height="297"
-        Background="#2B6CA3"
-        AllowsTransparency="False"
+        AllowsTransparency="True"
+        Background="Transparent"
         WindowStartupLocation="CenterScreen"
         KeyDown="Window_KeyDown"
         ShowInTaskbar="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
-    <Window.Resources>
-        <!-- ModernComboBox with PART_Popup -->
-        <Style x:Key="ModernComboBox" TargetType="ComboBox">
-            <Setter Property="SnapsToDevicePixels" Value="True"/>
-            <Setter Property="OverridesDefaultStyle" Value="True"/>
-            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <Border x:Name="Border" CornerRadius="6" Padding="6"
-                                    BorderBrush="#33000000" BorderThickness="1" Background="White">
-                                <DockPanel>
-                                    <!-- Toggle button -->
-                                    <ToggleButton x:Name="ToggleButton"
-                                                  DockPanel.Dock="Right"
-                                                  Focusable="False"
-                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                                  ClickMode="Press"
-                                                  Background="Transparent"
-                                                  BorderBrush="{x:Null}"
-                                                  BorderThickness="0"
-                                                  Width="34">
-                                        <Path Data="M0,0 L6,6 L12,0"
-                                              Width="12" Height="6"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              Stroke="Black" StrokeThickness="1.4"
-                                              StrokeEndLineCap="Square"/>
-                                    </ToggleButton>
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            ResizeBorderThickness="0"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"/>
+    </shell:WindowChrome.WindowChrome>
 
-                                    <!-- Selected item -->
-                                    <ContentPresenter Margin="0,0,4,0"
-                                                      HorizontalAlignment="Left"
-                                                      VerticalAlignment="Center"
-                                                      Content="{TemplateBinding SelectionBoxItem}"/>
-                                </DockPanel>
-                            </Border>
-
-                            <!-- Drop-down (PART_Popup) -->
-                            <Popup x:Name="PART_Popup"
-                                   Placement="Bottom"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   PopupAnimation="Slide">
-                                <Border CornerRadius="6"
-                                        Background="White"
-                                        BorderBrush="#33000000" BorderThickness="1">
-                                    <ScrollViewer Margin="0" SnapsToDevicePixels="True">
-                                        <StackPanel IsItemsHost="True" />
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#66000000"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Border" Property="Opacity" Value="0.6"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-
-            <!-- Items -->
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Padding" Value="8,4"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ComboBoxItem">
-                                    <Border x:Name="ItemBorder" Background="Transparent">
-                                        <ContentPresenter Margin="6,2"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="ItemBorder" Property="Background" Value="#F2F6FF"/>
-                                        </Trigger>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="ItemBorder" Property="Background" Value="#E6F0FF"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
-
-    <Grid>
-        <!-- Blue border bars -->
-        <Rectangle Fill="#00B7FF" Height="21" VerticalAlignment="Top" Margin="21,-6,0,0"/>
-        <Rectangle Fill="#00B7FF" Width="26" HorizontalAlignment="Left" Margin="0,-6,0,0"/>
-        <Rectangle Fill="#00B7FF" Width="26" HorizontalAlignment="Right" Margin="0,2,0,0"/>
-        <Rectangle Fill="#00B7FF" Height="21" VerticalAlignment="Bottom" Margin="100,0,0,0"/>
-
-        <!-- App title -->
-        <TextBlock Text="{loc:Loc AppTitle}"
-                   FontFamily="Centaur"
-                   FontSize="22"
-                   Foreground="DarkBlue"
-                   HorizontalAlignment="Right"
-                   VerticalAlignment="Top"
-                   Margin="0,38,36,0" />
-
-        <!-- Content -->
+    <Border Margin="28"
+            CornerRadius="20"
+            BorderBrush="{StaticResource Brush.Border}"
+            BorderThickness="1"
+            Background="{StaticResource Brush.Surface}"
+            Effect="{StaticResource DropShadow}">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="65*"/>
-                <ColumnDefinition Width="356*"/>
-                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="1.05*"/>
+                <ColumnDefinition Width="1.15*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left-side image -->
-            <Image Source="/MyOrganizer.Wpf;component/Assets/login_icon.jpg"
-                   Width="100" Height="120" Stretch="UniformToFill"
-                   Margin="0,176,0,1"/>
+            <Border CornerRadius="20,0,0,20" ClipToBounds="True">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#0F172A" Offset="0"/>
+                        <GradientStop Color="#1E4D74" Offset="0.55"/>
+                        <GradientStop Color="#2B6CA3" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <Ellipse Width="280" Height="280" Fill="#333B82C4"
+                             HorizontalAlignment="Left" VerticalAlignment="Top"
+                             Margin="-90,-110,0,0"/>
+                    <Ellipse Width="180" Height="180" Fill="#2200B7FF"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                             Margin="0,0,-50,-70"/>
+                    <Ellipse Width="90" Height="90" Fill="#18FFFFFF"
+                             HorizontalAlignment="Right" VerticalAlignment="Top"
+                             Margin="0,36,-20,0"/>
 
-            <!-- Center form -->
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Grid.ColumnSpan="2">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="36">
+                        <Image Source="/MyOrganizer.Wpf;component/Assets/login_logo.png"
+                               Width="200" Height="200"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"/>
+                        <TextBlock Text="MO"
+                                   FontFamily="Segoe UI" FontWeight="Bold" FontSize="28"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center" Margin="0,24,0,0"/>
+                        <TextBlock Text="{loc:Loc AppTitle}"
+                                   FontFamily="Segoe UI" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="#E2E8F0"
+                                   HorizontalAlignment="Center" Margin="0,8,0,0"
+                                   TextAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-                <!-- Language dropdown -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" HorizontalAlignment="Right" Height="34">
-                    <TextBlock Text="{loc:Loc CurLanguage}" Foreground="White" FontWeight="ExtraBlack"
-                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="56"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Button HorizontalAlignment="Right"
+                        Style="{StaticResource WindowCloseCaptionButton}"
+                        ToolTip="{loc:Loc Close}"
+                        Click="Close_Click">
+                    <Path Data="M 1,1 L 11,11 M 11,1 L 1,11"
+                          Width="12" Height="12"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                          StrokeThickness="1.6"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                </Button>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="48,0,48,40">
+                    <TextBlock Text="{loc:Loc PasswordRequest}"
+                               Style="{StaticResource PageTitle}"
+                               FontSize="26"
+                               Margin="0,0,0,28"/>
+
+                    <TextBlock Text="{loc:Loc CurLanguage}"
+                               Style="{StaticResource Caption}"
+                               Margin="0,0,0,8"/>
                     <ComboBox x:Name="CmbLanguage"
-                              Width="121" Height="33"
+                              Height="40"
                               Style="{StaticResource ModernComboBox}"
                               SelectedValuePath="Tag"
-                              SelectionChanged="CmbLanguage_SelectionChanged">
-                        <!-- You can keep these literals, or localize them too: -->
+                              SelectionChanged="CmbLanguage_SelectionChanged"
+                              Margin="0,0,0,18">
                         <ComboBoxItem Content="{loc:Loc ArmenianAM}" Tag="hy"/>
-                        <ComboBoxItem Content="{loc:Loc RussianRU}"  Tag="ru"/>
-                        <ComboBoxItem Content="{loc:Loc EnglishEN}"  Tag="en"/>
+                        <ComboBoxItem Content="{loc:Loc RussianRU}" Tag="ru"/>
+                        <ComboBoxItem Content="{loc:Loc EnglishEN}" Tag="en"/>
                     </ComboBox>
-                </StackPanel>
 
-                <!-- Password with watermark -->
-                <Grid Width="303" Height="30" HorizontalAlignment="Left" Margin="0,0,0,10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="13*"/>
-                        <RowDefinition Height="17*"/>
-                    </Grid.RowDefinitions>
+                    <TextBlock Text="{loc:Loc Enterpassword}"
+                               Style="{StaticResource Caption}"
+                               Margin="0,0,0,8"/>
                     <PasswordBox x:Name="PasswordBox"
-                                 VerticalAlignment="Top"
-                                 Padding="8,2,8,2"
-                                 PasswordChar="*"
-                                 PreviewMouseDown="PasswordBox_PreviewMouseDown"
-                                 KeyDown="PasswordBox_KeyDown"
+                                 Height="44"
+                                 Margin="0,0,0,28"
                                  Style="{StaticResource ModernPasswordBox}"
-                                 PasswordChanged="PasswordBox_PasswordChanged" Margin="0,4,0,0" Grid.RowSpan="2"/>
-                    <TextBlock x:Name="Watermark"
-                               Text="{loc:Loc Enterpassword}"
-                               Foreground="DarkBlue"
-                               FontStyle="Normal"
-                               IsHitTestVisible="False"
-                               VerticalAlignment="Top"
-                               Opacity="0.9" HorizontalAlignment="Right" Width="293" Margin="0,6,0,0" Grid.RowSpan="2"/>
-                </Grid>
+                                 PasswordChar="*"
+                                 KeyDown="PasswordBox_KeyDown"/>
 
-                <!-- Login button -->
-                <Button x:Name="BtnEnter"
-                        Content="{loc:Loc Enter}"
-                        Width="127" Height="35"
-                        Background="#1E90FF" Foreground="White"
-                        BorderBrush="#1E90FF"
-                        FontWeight="SemiBold"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource ModernButton}"
-                        Click="BtnEnter_Click"/>
-            </StackPanel>
-
-            <!-- Close button -->
-            <Button Grid.Column="3"
-                    Content="×"
-                    FontSize="18"
-                    Width="32" Height="32"
-                    Background="Transparent"
-                    Foreground="White"
-                    BorderBrush="{x:Null}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="0,-9,1,0"
-                    Click="Close_Click"/>
+                    <Button x:Name="BtnEnter"
+                            Content="{loc:Loc Enter}"
+                            Style="{StaticResource ModernButton}"
+                            Height="44"
+                            FontSize="15"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
+                            Click="BtnEnter_Click"/>
+                </StackPanel>
+            </Grid>
         </Grid>
-    </Grid>
+    </Border>
 </Window>

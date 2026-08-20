@@ -1,4 +1,4 @@
-<UserControl x:Class="MyOrganizer.Wpf.MVVM.Views.Procedures.ProceduresView"
+<UserControl x:Class="MyOrganizer.Wpf.MVVM.Views.Catalog.CatalogItemsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization">
@@ -10,64 +10,55 @@
             <RowDefinition Height="16"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="{loc:Loc Procedures}" Style="{StaticResource PageTitle}"/>
-                <TextBlock Text="{loc:Loc ProceduresSubtitle}" Style="{StaticResource Body}" Margin="0,4,0,0"/>
+                <TextBlock Text="{loc:Loc ProductsAndServices}" Style="{StaticResource PageTitle}"/>
+                <TextBlock Text="{loc:Loc ProductsAndServicesSubtitle}" Style="{StaticResource Body}" Margin="0,4,0,0"/>
             </StackPanel>
-            <Button Grid.Column="1"
-                    Content="{loc:Loc AddProcedure}"
-                    Command="{Binding AddCommand}"
-                    Style="{StaticResource ModernButton}"
-                    MinWidth="148" Height="36"
-                    VerticalAlignment="Center"
-                    ToolTip="{loc:Loc Add}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="{loc:Loc Units}" Command="{Binding UnitsCommand}"
+                        Style="{StaticResource SecondaryButton}" MinWidth="100" Height="36" Margin="0,0,8,0"/>
+                <Button Content="{loc:Loc AddCatalogItem}" Command="{Binding AddCommand}"
+                        Style="{StaticResource ModernButton}" MinWidth="180" Height="36"/>
+            </StackPanel>
         </Grid>
-
         <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBox Height="36"
-                         Style="{StaticResource ModernTextBox}"
+                <ComboBox MinWidth="140" Height="36" Style="{StaticResource ModernComboBox}"
+                          ItemsSource="{Binding KindFilters}" DisplayMemberPath="Label"
+                          SelectedItem="{Binding KindFilter}"/>
+                <TextBox Grid.Column="1" Height="36" Margin="8,0,0,0" Style="{StaticResource ModernTextBox}"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         Tag="{loc:Loc SearchProcedures}"
-                         VerticalContentAlignment="Center"/>
-                <Button Grid.Column="1"
-                        Content="{loc:Loc Clear}"
-                        Command="{Binding ClearSearchCommand}"
-                        Style="{StaticResource SecondaryButton}"
-                        Height="36"
-                        Padding="12,6"
-                        Margin="12,0,0,0"
+                         Tag="{loc:Loc SearchCatalogItems}"/>
+                <Button Grid.Column="2" Content="{loc:Loc Clear}" Command="{Binding ClearSearchCommand}"
+                        Style="{StaticResource SecondaryButton}" Height="36" Padding="12,6" Margin="12,0,0,0"
                         Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </Border>
-
         <Border Grid.Row="4" Style="{StaticResource Card}" Padding="0">
             <Grid>
-                <DataGrid x:Name="ProceduresGrid"
-                          Style="{StaticResource ModernDataGrid}"
-                          ItemsSource="{Binding Items}"
-                          SelectedItem="{Binding SelectedRow}"
+                <DataGrid x:Name="CatalogGrid" Style="{StaticResource ModernDataGrid}"
+                          ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedRow}"
                           Visibility="{Binding ShowGrid, Converter={StaticResource BoolToVis}}"
-                          MouseDoubleClick="ProceduresGrid_MouseDoubleClick">
+                          MouseDoubleClick="CatalogGrid_MouseDoubleClick">
                     <DataGrid.InputBindings>
                         <KeyBinding Key="Delete" Command="{Binding DeleteCommand}"/>
                         <KeyBinding Key="Enter" Command="{Binding EditCommand}"/>
                     </DataGrid.InputBindings>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="{loc:Loc Name}" Binding="{Binding Name}" Width="2*"/>
-                        <DataGridTextColumn Header="{loc:Loc Tier1}" Binding="{Binding Tier1Display}" Width="0.85*"/>
-                        <DataGridTextColumn Header="{loc:Loc Tier2}" Binding="{Binding Tier2Display}" Width="0.85*"/>
-                        <DataGridTextColumn Header="{loc:Loc Tier3}" Binding="{Binding Tier3Display}" Width="0.85*"/>
+                        <DataGridTextColumn Header="{loc:Loc Kind}" Binding="{Binding KindDisplay}" Width="0.8*"/>
+                        <DataGridTextColumn Header="{loc:Loc ProductOrService}" Binding="{Binding Name}" Width="1.6*"/>
+                        <DataGridTextColumn Header="{loc:Loc Unit}" Binding="{Binding UnitDisplay}" Width="0.7*"/>
+                        <DataGridTextColumn Header="{loc:Loc Suppliers}" Binding="{Binding SuppliersDisplay}" Width="1.6*"/>
                         <DataGridTemplateColumn Width="180" CanUserResize="False">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -88,27 +79,21 @@
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
-
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="{Binding ShowEmptyDatabase, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{loc:Loc NoProceduresYet}" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{loc:Loc AddFirstProcedure}" Style="{StaticResource Body}" Margin="0,8,0,16" HorizontalAlignment="Center"/>
-                    <Button Content="{loc:Loc AddProcedure}" Command="{Binding AddCommand}"
-                            Style="{StaticResource ModernButton}" HorizontalAlignment="Center" MinWidth="148" Height="36"/>
+                    <TextBlock Text="{loc:Loc NoCatalogItemsYet}" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{loc:Loc AddFirstCatalogItem}" Style="{StaticResource Body}" Margin="0,8,0,16" HorizontalAlignment="Center"/>
+                    <Button Content="{loc:Loc AddCatalogItem}" Command="{Binding AddCommand}"
+                            Style="{StaticResource ModernButton}" HorizontalAlignment="Center" MinWidth="180" Height="36"/>
                 </StackPanel>
-
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="{Binding ShowEmptyFilter, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{loc:Loc NoProceduresFound}" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
-                    <TextBlock Text="{loc:Loc TryChangingFilters}" Style="{StaticResource Body}" Margin="0,8,0,16" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{loc:Loc NoCatalogItemsFound}" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center"/>
                     <Button Content="{loc:Loc Clear}" Command="{Binding ClearSearchCommand}"
-                            Style="{StaticResource SecondaryButton}" HorizontalAlignment="Center" Height="36" Padding="16,6"/>
+                            Style="{StaticResource SecondaryButton}" HorizontalAlignment="Center" Height="36" Margin="0,16,0,0" Padding="16,6"/>
                 </StackPanel>
-
-                <Border Background="#99FFFFFF"
-                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="…" Style="{StaticResource SectionTitle}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Border Background="#99FFFFFF" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="…" Style="{StaticResource SectionTitle}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
             </Grid>
         </Border>

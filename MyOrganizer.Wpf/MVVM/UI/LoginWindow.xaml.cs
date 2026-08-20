@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using MyOrganizer.Wpf;
 using MyOrganizer.Wpf.Config;
@@ -14,23 +15,14 @@ public partial class LoginWindow : Window
     public LoginWindow()
     {
         InitializeComponent();
-        UpdateWatermarkVisibility();
         Loaded += (_, _) =>
         {
             var lang = AppSettings.CurrentLang.ToLowerInvariant();
             var item = CmbLanguage.Items.OfType<ComboBoxItem>()
                 .FirstOrDefault(x => (x.Tag?.ToString() ?? "").ToLowerInvariant() == lang);
             CmbLanguage.SelectedItem = item ?? CmbLanguage.Items[0];
+            PasswordBox.Focus();
         };
-
-        PasswordBox.Focus();
-    }
-
-    private void UpdateWatermarkVisibility()
-    {
-        Watermark.Visibility = string.IsNullOrEmpty(PasswordBox.Password)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
     }
 
     private void BtnEnter_Click(object sender, RoutedEventArgs e) => TryLogin();
@@ -39,12 +31,6 @@ public partial class LoginWindow : Window
     {
         if (e.Key == Key.Enter)
             TryLogin();
-    }
-
-    private void PasswordBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        if (string.IsNullOrEmpty(PasswordBox.Password))
-            UpdateWatermarkVisibility();
     }
 
     private void TryLogin()
@@ -80,7 +66,6 @@ public partial class LoginWindow : Window
 
         ModernDialog.Show("Incorrectpassword".T(), "ERROR", MessageBoxButton.OK, MessageBoxImage.Error);
         PasswordBox.Password = string.Empty;
-        UpdateWatermarkVisibility();
         PasswordBox.Focus();
     }
 
@@ -116,22 +101,27 @@ public partial class LoginWindow : Window
 
     private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is DependencyObject source &&
-            (source is ComboBox || source is TextBox || source is PasswordBox || source is Button))
+        if (FindParent<Button>(e.OriginalSource as DependencyObject) is not null)
+            return;
+        if (FindParent<ComboBox>(e.OriginalSource as DependencyObject) is not null)
+            return;
+        if (FindParent<PasswordBox>(e.OriginalSource as DependencyObject) is not null)
             return;
 
         try { DragMove(); }
         catch { /* ignore invalid drag */ }
     }
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
-
-    protected override void OnActivated(EventArgs e)
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
     {
-        base.OnActivated(e);
-        UpdateWatermarkVisibility();
+        while (child is not null)
+        {
+            if (child is T match)
+                return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
     }
 
-    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e) =>
-        UpdateWatermarkVisibility();
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
 }

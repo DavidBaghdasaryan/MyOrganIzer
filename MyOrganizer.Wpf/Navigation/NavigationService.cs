@@ -83,8 +83,12 @@ public sealed class NavigationService : INavigationService
         AppSection.Dashboard => _services.GetRequiredService<DashboardViewModel>(),
         AppSection.Clients => _services.GetRequiredService<ClientsViewModel>(),
         AppSection.Procedures => _services.GetRequiredService<ProceduresViewModel>(),
+        AppSection.Suppliers => _services.GetRequiredService<SuppliersViewModel>(),
+        AppSection.Catalog => _services.GetRequiredService<CatalogItemsViewModel>(),
+        AppSection.Expenses => _services.GetRequiredService<ExpensesViewModel>(),
         AppSection.Technicians => _services.GetRequiredService<TechniciansViewModel>(),
         AppSection.ToothLab => _services.GetRequiredService<ToothLabViewModel>(),
+        AppSection.Settings => _services.GetRequiredService<PricesViewModel>(),
         _ => new PlaceholderViewModel(section, _legacy)
     };
 

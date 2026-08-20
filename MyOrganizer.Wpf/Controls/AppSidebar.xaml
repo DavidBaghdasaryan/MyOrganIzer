@@ -36,10 +36,12 @@
                                            FontFamily="Segoe MDL2 Assets"
                                            FontSize="16"
                                            VerticalAlignment="Center"
-                                           Margin="0,0,12,0"/>
+                                           Margin="0,0,12,0"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                                 <TextBlock Text="{Binding Label}"
                                            VerticalAlignment="Center"
-                                           FontSize="14"/>
+                                           FontSize="14"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                             </StackPanel>
                         </RadioButton>
                     </DataTemplate>

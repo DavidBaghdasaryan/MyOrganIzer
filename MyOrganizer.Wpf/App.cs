@@ -336,6 +336,12 @@ public partial class App : Application
                 services.AddTransient<ClientWorkspaceViewModel>();
                 services.AddTransient<DentalChartViewModel>();
                 services.AddScoped<ProceduresViewModel>();
+                services.AddScoped<PricesViewModel>();
+                services.AddScoped<SuppliersViewModel>();
+                services.AddTransient<SupplierWorkspaceViewModel>();
+                services.AddScoped<CatalogItemsViewModel>();
+                services.AddScoped<ExpensesViewModel>();
+                services.AddTransient<ExpenseEditorViewModel>();
                 services.AddScoped<TechniciansViewModel>();
                 services.AddTransient<ToothLabViewModel>();
 
@@ -343,6 +349,10 @@ public partial class App : Application
                 services.AddTransient<IToothWorkRepository, ToothWorkRepository>();
                 services.AddSingleton<IDbLocalizationService, DbLocalizationService>();
                 services.AddScoped<IProcedureService, ProcedureService>();
+                services.AddScoped<ISupplierService, SupplierService>();
+                services.AddScoped<ICatalogService, CatalogService>();
+                services.AddScoped<IUnitOfMeasureService, UnitOfMeasureService>();
+                services.AddScoped<IExpenseService, ExpenseService>();
                 services.AddMemoryCache();
             })
             .Build();
@@ -354,6 +364,8 @@ public partial class App : Application
             using var scope = HostInstance.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
+            LegacyTechnicsCopy.CopyIfNeeded(db);
+
             var procedures = scope.ServiceProvider.GetRequiredService<IProcedureService>();
             procedures.EnsureDefaultPrices();
         }
