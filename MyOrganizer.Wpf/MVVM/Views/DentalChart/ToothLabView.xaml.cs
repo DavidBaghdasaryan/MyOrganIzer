@@ -31,6 +31,17 @@ public partial class ToothLabView : UserControl
         // #region agent log
         if (DataContext is ToothLabViewModel vm)
         {
+            var selector = FindName("LabPatientSelector") as ComboBox;
+            var odontoCombos = CountComboBoxes(FindName("Odontogram") as DependencyObject);
+            var host = "{\"sessionId\":\"ee2893\",\"runId\":\"stage1\",\"hypothesisId\":\"A\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"patient-selector-host\",\"data\":{\"labSelectorPresent\":" +
+                       (selector is not null ? "true" : "false") +
+                       ",\"labSelectorItems\":" + (selector?.Items.Count ?? -1) +
+                       ",\"odontogramComboCount\":" + odontoCombos +
+                       ",\"patient\":\"" + vm.CurrentPatient.Id +
+                       "\",\"fdi\":\"" + vm.ToothNumber + "\"},\"timestamp\":" +
+                       DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+            try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", host); }
+            catch { }
             var line = "{\"sessionId\":\"ee2893\",\"runId\":\"registry-v1\",\"hypothesisId\":\"D\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"lab-loaded\",\"data\":{\"fdi\":\"" +
                        vm.ToothNumber + "\",\"imported\":" + (vm.ShowInspector ? "true" : "false") +
                        ",\"meshAsset\":\"" + MeshView.AssetName + "\"},\"timestamp\":" +
@@ -189,6 +200,21 @@ public partial class ToothLabView : UserControl
 
     private void PushSelection(ToothLabViewModel vm) =>
         MeshView.SetSelectedSurfaces(vm.PendingSurfaceNames);
+
+    // #region agent log
+    private static int CountComboBoxes(DependencyObject? root)
+    {
+        if (root is null)
+            return 0;
+        var n = root is ComboBox ? 1 : 0;
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is DependencyObject node)
+                n += CountComboBoxes(node);
+        }
+        return n;
+    }
+    // #endregion
 
     private static bool ContainsText(DependencyObject root, string text)
     {

@@ -92,20 +92,8 @@
             <StackPanel Orientation="Horizontal"/>
         </ItemsPanelTemplate>
     </UserControl.Resources>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <DockPanel LastChildFill="False" Margin="0,0,0,8" HorizontalAlignment="Left">
-            <TextBlock Text="Patient" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <ComboBox Width="168" VerticalAlignment="Center"
-                      ItemsSource="{Binding Patients}"
-                      SelectedItem="{Binding CurrentPatient, Mode=TwoWay}"
-                      DisplayMemberPath="Name"/>
-        </DockPanel>
-        <ItemsControl Grid.Row="1" ItemsSource="{Binding ChartRows}"
-                      HorizontalAlignment="Center">
+    <ItemsControl ItemsSource="{Binding ChartRows}"
+                  HorizontalAlignment="Center">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Margin="0,0,0,6" HorizontalAlignment="Center">
@@ -123,5 +111,4 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-    </Grid>
 </UserControl>

@@ -494,6 +494,10 @@ public sealed class ToothLabViewModel : ObservableObject
         RebuildCanalChoices();
         RestoreSession();
         // #region agent log
+        Stage1Log("D", "select-tooth-stage1",
+            "{\"fdi\":\"" + asset.FdiNumber +
+            "\",\"patient\":\"" + _currentPatient.Id +
+            "\",\"imported\":" + (asset.RuntimeImported ? "true" : "false") + "}");
         AgentLog("B", "select-tooth",
             "{\"fdi\":\"" + asset.FdiNumber +
             "\",\"from\":\"" + fromFdi +
@@ -789,6 +793,9 @@ public sealed class ToothLabViewModel : ObservableObject
         _session = SessionFor(ToothNumber);
         RestoreSession();
         NotifyClinical();
+        // #region agent log
+        Stage1Log("B", "switch-patient", IsolationJson());
+        // #endregion
     }
 
     private void SeedAcceptanceDemo()
@@ -812,6 +819,9 @@ public sealed class ToothLabViewModel : ObservableObject
                     ToothOdontogramState.From(slot.Fdi, clinical.Procedures));
             }
         }
+        // #region agent log
+        Stage1Log("C", "odontogram-marks", IsolationJson());
+        // #endregion
     }
 
     private void StashCurrentSession()
@@ -891,11 +901,38 @@ public sealed class ToothLabViewModel : ObservableObject
         ",\"history\":\"" + HistoryLog() +
         "\",\"derived\":\"" + string.Join(",", FillingSurfaceNames) + "\"}";
 
+    private string IsolationJson()
+    {
+        string Slot(string fdi)
+        {
+            var slot = ChartRows.SelectMany(row => row.Right.Concat(row.Left)).First(s => s.Fdi == fdi);
+            return "\"" + fdi + "\":{\"n\":" + SessionFor(fdi).Clinical.Procedures.Count +
+                   ",\"filling\":" + (slot.ShowFilling ? "true" : "false") +
+                   ",\"implant\":" + (slot.ShowImplant ? "true" : "false") +
+                   ",\"missing\":" + (slot.ShowMissing ? "true" : "false") +
+                   ",\"endo\":" + (slot.ShowEndodontic ? "true" : "false") + "}";
+        }
+
+        return "{\"patient\":\"" + _currentPatient.Id +
+               "\",\"fdi\":\"" + ToothNumber +
+               "\",\"selectedProcs\":" + Clinical.Procedures.Count +
+               "," + Slot("16") + "," + Slot("24") + "," + Slot("34") + "," + Slot("46") + "}";
+    }
+
     private string HistoryLog() =>
         string.Join(";", Clinical.Procedures.Select(p =>
             "#" + p.DisplayNumber + ":" + p.ProcedureType + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces, InnerCameraLabel) + ":" + ToothRootCanalCatalog.Join(ToothNumber, p.RootCanalIds)));
 
     // #region agent log
+    private static void Stage1Log(string hypothesisId, string message, string dataJson)
+    {
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage1\",\"hypothesisId\":\"" + hypothesisId +
+                   "\",\"location\":\"ToothLabViewModel.cs\",\"message\":\"" + message +
+                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { /* lab logging must not break the workflow */ }
+    }
+
     private static void AgentLog(string hypothesisId, string message, string dataJson)
     {
         var line = "{\"sessionId\":\"ee2893\",\"runId\":\"procedure-v1\",\"hypothesisId\":\"" + hypothesisId +
