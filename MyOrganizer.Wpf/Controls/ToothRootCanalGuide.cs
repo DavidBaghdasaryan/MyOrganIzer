@@ -143,6 +143,14 @@ internal static class ToothRootCanalGuide
         return pts;
     }
 
+    public static IReadOnlyList<Point3D> Centerline(IReadOnlyList<CanalSample> path)
+    {
+        var pts = new Point3D[path.Count];
+        for (var i = 0; i < path.Count; i++)
+            pts[i] = path[i].Point;
+        return pts;
+    }
+
     public static MeshGeometry3D Tube(IReadOnlyList<Point3D> path, double radius)
     {
         var mesh = new MeshGeometry3D();

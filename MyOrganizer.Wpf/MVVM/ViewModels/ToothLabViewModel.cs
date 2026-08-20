@@ -416,7 +416,7 @@ public sealed class ToothLabViewModel : ObservableObject
 
     public string EditorStatus =>
         _editingId is Guid id && Clinical.Find(id) is { } editing
-            ? $"Editing #{editing.DisplayNumber} {DentalProcedureTypes.DisplayName(editing.ProcedureType)}"
+            ? "Editing " + ProcedureListItem.FormatTitle(editing)
             : "New procedure · " + DentalProcedureTypes.DisplayName(SelectedProcedureType);
 
     public string SelectedSurfacesLabel
@@ -725,7 +725,18 @@ public sealed class ToothLabViewModel : ObservableObject
     {
         ProcedureItems.Clear();
         foreach (var procedure in Clinical.Procedures)
-            ProcedureItems.Add(new ProcedureListItem(this, procedure));
+        {
+            var item = new ProcedureListItem(this, procedure);
+            ProcedureItems.Add(item);
+            // #region agent log
+            AgentLog("D", "procedure-title",
+                "{\"runId\":\"post-fix\"" +
+                ",\"title\":\"" + item.Title.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                "\",\"hasHash\":" + (item.Title.Contains('#') ? "true" : "false") +
+                ",\"subtitle\":\"" + item.SurfacesDisplay.Replace("\\", "\\\\").Replace("\"", "\\\"") +
+                "\",\"type\":\"" + procedure.ProcedureType + "\"}");
+            // #endregion
+        }
         OnPropertyChanged(nameof(HasProcedures));
     }
 
@@ -1162,20 +1173,30 @@ public sealed class ProcedureListItem
     {
         Id = procedure.Id;
         DisplayNumber = procedure.DisplayNumber;
-        Title = $"#{procedure.DisplayNumber} {DentalProcedureTypes.DisplayName(procedure.ProcedureType)}";
+        Title = FormatTitle(procedure);
         SurfacesDisplay = DentalProcedureTypes.RequiresSurfaces(procedure.ProcedureType)
             ? LabSurfaces.Join(procedure.Surfaces, owner.InnerCameraLabel)
             : DentalProcedureTypes.RequiresRootCanals(procedure.ProcedureType, procedure.ToothNumber)
-                ? ToothRootCanalCatalog.Join(procedure.ToothNumber, procedure.RootCanalIds)
+                ? ""
                 : "Whole tooth";
         EditCommand = new RelayCommand(() => owner.BeginEdit(Id));
         RemoveCommand = new RelayCommand(() => owner.RemoveProcedure(Id));
+    }
+
+    public static string FormatTitle(DentalProcedure procedure)
+    {
+        var typeName = DentalProcedureTypes.DisplayName(procedure.ProcedureType);
+        if (!DentalProcedureTypes.RequiresRootCanals(procedure.ProcedureType, procedure.ToothNumber))
+            return typeName;
+        var canals = ToothRootCanalCatalog.Join(procedure.ToothNumber, procedure.RootCanalIds);
+        return string.IsNullOrEmpty(canals) ? typeName : typeName + " — " + canals;
     }
 
     public Guid Id { get; }
     public int DisplayNumber { get; }
     public string Title { get; }
     public string SurfacesDisplay { get; }
+    public bool HasDetail => !string.IsNullOrWhiteSpace(SurfacesDisplay);
     public ICommand EditCommand { get; }
     public ICommand RemoveCommand { get; }
 }

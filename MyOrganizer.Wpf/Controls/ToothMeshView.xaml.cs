@@ -40,6 +40,12 @@ public partial class ToothMeshView : UserControl
         NearPlaneDistance = 0.05,
         FarPlaneDistance = 200
     };
+    private readonly PerspectiveCamera _ghostOrbitCam = new()
+    {
+        FieldOfView = 32,
+        NearPlaneDistance = 0.05,
+        FarPlaneDistance = 200
+    };
 
     private Point _last;
     private bool _dragging;
@@ -64,6 +70,8 @@ public partial class ToothMeshView : UserControl
     private IReadOnlyDictionary<string, IReadOnlyList<CanalSample>> _canalPaths =
         new Dictionary<string, IReadOnlyList<CanalSample>>();
     private Material? _canalMaterial;
+    private Material? _canalGhostMaterial;
+    private int _orbitCanalSync;
     private Material? _fillingMaterial;
     private Material? _hoverMaterial;
     private Material? _selectedMaterial;
@@ -381,7 +389,8 @@ public partial class ToothMeshView : UserControl
             "{\"fdi\":\"" + Esc(_loadedFdi) +
             "\",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
             "\",\"pathCount\":" + _canalPaths.Count +
-            ",\"drawn\":" + ((CanalOverlayVisual.Content as Model3DGroup)?.Children.Count ?? 0) + "}");
+            ",\"drawn\":" + ((CanalOverlayVisual.Content as Model3DGroup)?.Children.Count ?? 0) +
+            ",\"ghost\":" + ((CanalGhostVisual.Content as Model3DGroup)?.Children.Count ?? 0) + "}");
         // #endregion
     }
 
@@ -408,6 +417,7 @@ public partial class ToothMeshView : UserControl
         SurfaceOverlayVisual.Content = null;
         ClinicalOverlayVisual.Content = null;
         CanalOverlayVisual.Content = null;
+        CanalGhostVisual.Content = null;
         SelectedOverlayVisual.Content = null;
         HoverOverlayVisual.Content = null;
         MissingOverlay.Visibility = Visibility.Collapsed;
@@ -651,7 +661,7 @@ public partial class ToothMeshView : UserControl
         OrthoCam.Width = Math.Max(0.8, span * 1.32);
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
-        ApplyCanalOverlays();
+        SyncCanalGhostCamera();
         LogFraming("frame-occlusal");
         CaptureViewPreview("occlusal");
     }
@@ -671,7 +681,7 @@ public partial class ToothMeshView : UserControl
         OrthoCam.Width = Math.Max(0.8, across * 1.36);
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
-        ApplyCanalOverlays();
+        SyncCanalGhostCamera();
         LogFraming("frame-" + name);
         CaptureViewPreview(name);
     }
@@ -696,7 +706,42 @@ public partial class ToothMeshView : UserControl
         _orbitCam.UpDirection = up;
         SyncLights(_orbitCam.LookDirection, _orbitCam.UpDirection);
         UpdateChrome();
-        ApplyCanalOverlays();
+        SyncCanalGhostCamera();
+        if (_rootCanalIds.Count > 0 && (++_orbitCanalSync % 12) == 0)
+        {
+            // #region agent log
+            AgentLog("A", "canal-ghost-sync",
+                "{\"fdi\":\"" + Esc(_loadedFdi) +
+                "\",\"runId\":\"post-fix\"" +
+                ",\"cam\":\"" + (View3D.Camera is OrthographicCamera ? "ortho" : "persp") +
+                "\",\"offset\":false" +
+                ",\"front\":" + ((CanalOverlayVisual.Content as Model3DGroup)?.Children.Count ?? 0) +
+                ",\"ghost\":" + ((CanalGhostVisual.Content as Model3DGroup)?.Children.Count ?? 0) + "}");
+            // #endregion
+        }
+    }
+
+    private void SyncCanalGhostCamera()
+    {
+        if (ReferenceEquals(View3D.Camera, OrthoCam))
+        {
+            CanalGhostView.Camera = GhostOrthoCam;
+            GhostOrthoCam.Position = OrthoCam.Position;
+            GhostOrthoCam.LookDirection = OrthoCam.LookDirection;
+            GhostOrthoCam.UpDirection = OrthoCam.UpDirection;
+            GhostOrthoCam.Width = OrthoCam.Width;
+            GhostOrthoCam.NearPlaneDistance = OrthoCam.NearPlaneDistance;
+            GhostOrthoCam.FarPlaneDistance = OrthoCam.FarPlaneDistance;
+            return;
+        }
+
+        CanalGhostView.Camera = _ghostOrbitCam;
+        _ghostOrbitCam.Position = _orbitCam.Position;
+        _ghostOrbitCam.LookDirection = _orbitCam.LookDirection;
+        _ghostOrbitCam.UpDirection = _orbitCam.UpDirection;
+        _ghostOrbitCam.FieldOfView = _orbitCam.FieldOfView;
+        _ghostOrbitCam.NearPlaneDistance = _orbitCam.NearPlaneDistance;
+        _ghostOrbitCam.FarPlaneDistance = _orbitCam.FarPlaneDistance;
     }
 
     /// <summary>
@@ -1217,35 +1262,48 @@ public partial class ToothMeshView : UserControl
     private void ApplyCanalOverlays(bool log = false)
     {
         _canalMaterial ??= CanalMaterial();
+        _canalGhostMaterial ??= CanalGhostMaterial();
         if (_rootCanalIds.Count == 0 || _canalPaths.Count == 0)
         {
             CanalOverlayVisual.Content = null;
+            CanalGhostVisual.Content = null;
+            SyncCanalGhostCamera();
             return;
         }
 
-        var group = new Model3DGroup();
+        var front = new Model3DGroup();
+        var ghost = new Model3DGroup();
         foreach (var id in _rootCanalIds)
         {
             if (!_canalPaths.TryGetValue(id, out var path) || path.Count < 2)
                 continue;
-            var cam = View3D.Camera as ProjectionCamera;
-            var look = cam?.LookDirection ?? new Vector3D(0, 0, -1);
-            var visible = ToothRootCanalGuide.VisibleInside(path, look);
-            group.Children.Add(new GeometryModel3D
+            var mesh = ToothRootCanalGuide.Tube(ToothRootCanalGuide.Centerline(path), 0.016);
+            front.Children.Add(new GeometryModel3D
             {
-                Geometry = ToothRootCanalGuide.Tube(visible, 0.016),
+                Geometry = mesh,
                 Material = _canalMaterial,
                 BackMaterial = _canalMaterial
             });
+            ghost.Children.Add(new GeometryModel3D
+            {
+                Geometry = mesh,
+                Material = _canalGhostMaterial,
+                BackMaterial = _canalGhostMaterial
+            });
         }
-        CanalOverlayVisual.Content = group.Children.Count == 0 ? null : group;
+        CanalOverlayVisual.Content = front.Children.Count == 0 ? null : front;
+        CanalGhostVisual.Content = ghost.Children.Count == 0 ? null : ghost;
+        SyncCanalGhostCamera();
         if (!log)
             return;
         // #region agent log
-        AgentLog("B", "canal-overlay",
+        AgentLog("A", "canal-overlay",
             "{\"fdi\":\"" + Esc(_loadedFdi) +
-            "\",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
-            "\",\"drawn\":" + group.Children.Count +
+            "\",\"runId\":\"post-fix\"" +
+            ",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
+            "\",\"dualPass\":true,\"offset\":false" +
+            ",\"front\":" + front.Children.Count +
+            ",\"ghost\":" + ghost.Children.Count +
             ",\"paths\":" + _canalPaths.Count + "}");
         // #endregion
     }
@@ -1255,6 +1313,15 @@ public partial class ToothMeshView : UserControl
         var group = new MaterialGroup();
         group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0xE0, 0xC6, 0x28, 0x28))));
         group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x40, 0xC6, 0x28, 0x28))));
+        group.Freeze();
+        return group;
+    }
+
+    private static Material CanalGhostMaterial()
+    {
+        var group = new MaterialGroup();
+        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0x5A, 0xC6, 0x28, 0x28))));
+        group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x48, 0xC6, 0x28, 0x28))));
         group.Freeze();
         return group;
     }

@@ -6,7 +6,8 @@
              SnapsToDevicePixels="False">
     <Grid Background="#C8CED6">
         <Viewbox Stretch="Fill">
-            <Viewport3D x:Name="View3D" Width="768" Height="768" IsHitTestVisible="True">
+            <Grid Width="768" Height="768">
+            <Viewport3D x:Name="View3D" IsHitTestVisible="True">
                 <Viewport3D.Camera>
                     <OrthographicCamera x:Name="OrthoCam"
                                        Width="1.8"
@@ -110,6 +111,24 @@
                 <ModelVisual3D x:Name="SelectedOverlayVisual"/>
                 <ModelVisual3D x:Name="HoverOverlayVisual"/>
             </Viewport3D>
+            <Viewport3D x:Name="CanalGhostView" IsHitTestVisible="False">
+                <Viewport3D.Camera>
+                    <OrthographicCamera x:Name="GhostOrthoCam"
+                                       Width="1.8"
+                                       NearPlaneDistance="0.05"
+                                       FarPlaneDistance="200"
+                                       LookDirection="0,0,-1"
+                                       UpDirection="0,1,0"
+                                       Position="0,0,4"/>
+                </Viewport3D.Camera>
+                <ModelVisual3D>
+                    <ModelVisual3D.Content>
+                        <AmbientLight Color="#FFFFFFFF"/>
+                    </ModelVisual3D.Content>
+                </ModelVisual3D>
+                <ModelVisual3D x:Name="CanalGhostVisual"/>
+            </Viewport3D>
+            </Grid>
         </Viewbox>
 
         <TextBlock x:Name="ModeCaption" Text="Occlusal view"
