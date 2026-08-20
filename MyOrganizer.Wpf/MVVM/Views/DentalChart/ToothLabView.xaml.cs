@@ -101,8 +101,8 @@ public partial class ToothLabView : UserControl
         if (_vm is null || InspectCombo is null) return;
         foreach (var item in InspectCombo.Items.OfType<ComboBoxItem>())
         {
-            var text = item.Content?.ToString() ?? "";
-            if (text is "Palatal" or "Lingual")
+            var tag = item.Tag?.ToString() ?? "";
+            if (tag is "Palatal" or "Lingual")
                 item.Content = _vm.InnerCameraLabel;
         }
     }
@@ -151,7 +151,9 @@ public partial class ToothLabView : UserControl
     {
         if (MeshView is null || ShowSegCheck is null || InspectCombo is null)
             return;
-        var inspect = (InspectCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+        var inspect = (InspectCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString()
+                      ?? (InspectCombo.SelectedItem as ComboBoxItem)?.Content?.ToString()
+                      ?? "All";
         MeshView.SetSurfaceDebug(ShowSegCheck.IsChecked == true, inspect);
     }
 }

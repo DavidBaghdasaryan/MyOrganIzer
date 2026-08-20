@@ -365,6 +365,7 @@ public partial class App : Application
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
             LegacyTechnicsCopy.CopyIfNeeded(db);
+            DemoSampleData.Ensure(db);
 
             var procedures = scope.ServiceProvider.GetRequiredService<IProcedureService>();
             procedures.EnsureDefaultPrices();
@@ -380,6 +381,24 @@ public partial class App : Application
         {
             var loc = HostInstance.Services.GetRequiredService<IDbLocalizationService>();
             loc.WarmUpAsync(AppSettings.CurrentLang).GetAwaiter().GetResult();
+            // #region agent log
+            try
+            {
+                var missing = loc.GetMissingKeys();
+                var payload = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    sessionId = "ee2893",
+                    runId = "post-fix",
+                    hypothesisId = "A",
+                    location = "App.OnStartup",
+                    message = "loc missing after warmup",
+                    data = new { lang = AppSettings.CurrentLang, missingCount = missing.Count, missing },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", payload + Environment.NewLine);
+            }
+            catch { }
+            // #endregion
         }
         catch (Exception ex)
         {

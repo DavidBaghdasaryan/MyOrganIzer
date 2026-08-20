@@ -64,7 +64,7 @@ public partial class LoginWindow : Window
             return;
         }
 
-        ModernDialog.Show("Incorrectpassword".T(), "ERROR", MessageBoxButton.OK, MessageBoxImage.Error);
+        ModernDialog.Show("Incorrectpassword".T(), "Error".T(), MessageBoxButton.OK, MessageBoxImage.Error);
         PasswordBox.Password = string.Empty;
         PasswordBox.Focus();
     }

@@ -41,7 +41,7 @@ public sealed class ClientsViewModel : ObservableObject, INavigationAware
         [
             new ClientSearchField("FirstName", "FirstName"),
             new ClientSearchField("LastName", "LastName"),
-            new ClientSearchField("MidlName", "MidlName"),
+            new ClientSearchField("MidlName", "MiddlName"),
             new ClientSearchField("Phone", "Phone")
         ];
         _searchField = SearchFields[0];
@@ -261,7 +261,7 @@ public sealed class ClientsViewModel : ObservableObject, INavigationAware
     {
         if (row is null)
         {
-            ModernDialog.Show("SelectClient".T(), "Info");
+            ModernDialog.Show("SelectClient".T(), "Info".T());
             return;
         }
 
@@ -286,7 +286,7 @@ public sealed class ClientsViewModel : ObservableObject, INavigationAware
     {
         if (row is null)
         {
-            ModernDialog.Show("SelectClient".T(), "Info");
+            ModernDialog.Show("SelectClient".T(), "Info".T());
             return;
         }
 
@@ -304,7 +304,7 @@ public sealed class ClientsViewModel : ObservableObject, INavigationAware
     {
         if (row is null)
         {
-            ModernDialog.Show("Selecttheclienttodelete".T(), "Info");
+            ModernDialog.Show("Selecttheclienttodelete".T(), "Info".T());
             return;
         }
 
@@ -330,7 +330,7 @@ public sealed class ClientsViewModel : ObservableObject, INavigationAware
     {
         if (row is null)
         {
-            ModernDialog.Show("SelectClient".T(), "Info");
+            ModernDialog.Show("SelectClient".T(), "Info".T());
             return;
         }
 

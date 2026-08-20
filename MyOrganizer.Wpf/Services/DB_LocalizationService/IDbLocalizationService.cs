@@ -24,5 +24,9 @@ namespace MyOrganizer.Wpf.Services.DB_LocalizationService
         /// </summary>
         Task WarmUpAsync(string lang);
 
+        /// <summary>
+        /// Keys that were requested but had no row in L10nKeys / L10nValues.
+        /// </summary>
+        IReadOnlyCollection<string> GetMissingKeys();
     }
 }

@@ -29,7 +29,7 @@ public partial class ClientsWindow : Window
             {
                 new("FirstName", "FirstName".T()),
                 new("LastName", "LastName".T()),
-                new("MidlName", "MidlName".T()),
+                new("MidlName", "MiddlName".T()),
                 new("Phone", "Phone".T())
             };
             cmbFind.SelectedIndex = 0;
@@ -162,7 +162,7 @@ public partial class ClientsWindow : Window
         var selected = GetSelected();
         if (selected is null)
         {
-            ModernDialog.Show("SelectClient".T(), "Info");
+            ModernDialog.Show("SelectClient".T(), "Info".T());
             return;
         }
 
@@ -180,7 +180,7 @@ public partial class ClientsWindow : Window
         var selected = GetSelected();
         if (selected is null)
         {
-            ModernDialog.Show("Selecttheclienttodelete".T(), "Info");
+            ModernDialog.Show("Selecttheclienttodelete".T(), "Info".T());
             return;
         }
 

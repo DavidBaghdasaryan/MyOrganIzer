@@ -3,7 +3,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:MyOrganizer.Wpf.Localization"
-        Title="{loc:Loc Procedurе}" Width="420" Height="360" WindowStartupLocation="CenterOwner">
+        Title="{loc:Loc Procedures}" Width="420" Height="360" WindowStartupLocation="CenterOwner">
   <Grid Margin="12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
