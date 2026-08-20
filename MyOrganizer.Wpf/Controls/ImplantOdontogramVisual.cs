@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -115,18 +113,8 @@ public sealed class ImplantOdontogramVisual : FrameworkElement
                 Cache[fdi] = composed;
             return composed;
         }
-        catch (Exception ex)
+        catch
         {
-            // #region agent log
-            try
-            {
-                var line = "{\"sessionId\":\"ee2893\",\"runId\":\"implant-visual\",\"hypothesisId\":\"A\",\"location\":\"ImplantOdontogramVisual.GetOrCompose\",\"message\":\"compose-crash\",\"data\":{\"fdi\":\"" + fdi +
-                           "\",\"error\":\"" + ex.GetType().Name + "\",\"msg\":\"" + ex.Message.Replace("\\", "\\\\").Replace("\"", "\\\"") +
-                           "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-                File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-            }
-            catch { }
-            // #endregion
             return null;
         }
     }
@@ -144,78 +132,34 @@ public sealed class ImplantOdontogramVisual : FrameworkElement
         var dest = new int[w * h];
         crownBmp.CopyPixels(dest, w * 4, 0);
         var upper = asset.Jaw == ToothJaw.Maxilla;
-        ShiftTowardOcclusal(dest, w, h, upper, 1);
+        var packCrown = ToothFdi.Kind(fdi) is not (ToothKind.Canine or ToothKind.Incisor);
         const int extra = 10;
-        StretchCrownTowardScrew(dest, w, h, upper, extra);
-        if (!FindCervix(dest, w, h, upper, out var cervixY, out var cx, out var cervixW, out var crownH, out var firstRowW, out var maxRowW))
+        if (packCrown)
+        {
+            ShiftTowardOcclusal(dest, w, h, upper, 1);
+            StretchCrownTowardScrew(dest, w, h, upper, extra);
+        }
+        if (!FindCervix(dest, w, h, upper, out var cervixY, out var cx, out var cervixW, out _, out _, out _))
             return crownBmp;
 
         const int overlap = 4;
         const int abutH = 10;
         const int capH = 9;
-        var screwHalf = ClampRange(cervixW * 0.32, 16.0, 18.0);
+        var screwHalf = ClampRange(cervixW * 0.32, packCrown ? 16.0 : 7.0, 18.0);
         var abutMax = Math.Max(screwHalf + 2.0, cervixW * 0.52);
         var abutWide = ClampRange(cervixW * 0.48, screwHalf + 1.8, abutMax);
         const int tipPad = 0;
-        var screwStart = cervixY + (upper ? -1 : 1) * (abutH - 2);
-        var screwTip = upper ? tipPad : h - 1 - tipPad;
-        var screwPx = Math.Abs(screwTip - screwStart);
         var crownLayer = (int[])dest.Clone();
-
-        // #region agent log
-        try
-        {
-            var inv = CultureInfo.InvariantCulture;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"implant-visual\",\"hypothesisId\":\"A\",\"location\":\"ImplantOdontogramVisual.Compose\",\"message\":\"cervix\",\"data\":{\"fdi\":\"" + fdi +
-                       "\",\"cervixY\":" + cervixY + ",\"cervixW\":" + cervixW + ",\"firstRowW\":" + firstRowW +
-                       ",\"maxRowW\":" + maxRowW + ",\"crownH\":" + crownH + ",\"screwHalf\":" + screwHalf.ToString("0.00", inv) +
-                       ",\"abutWide\":" + abutWide.ToString("0.00", inv) + ",\"abutMax\":" + abutMax.ToString("0.00", inv) +
-                       ",\"screwStart\":" + screwStart + ",\"screwTip\":" + screwTip + ",\"screwPx\":" + screwPx +
-                       ",\"extra\":" + extra + ",\"capH\":" + capH +
-                       ",\"coneTipHalf\":" + Math.Max(2.0, screwHalf * 0.14).ToString("0.00", inv) +
-                       ",\"emergeHalf\":" + screwHalf.ToString("0.00", inv) +
-                       ",\"cone\":\"full\"" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
 
         DrawScrew(dest, w, h, cx, cervixY, upper, abutH, screwHalf, tipPad, capH);
         DrawAbutment(dest, w, h, cx, cervixY, upper, overlap, abutH, abutWide, screwHalf);
         OverlayCrownBody(dest, crownLayer, w, h, cervixY, upper);
-        OverlayCrownCap(dest, crownLayer, w, h, cx, cervixY, upper, capH, screwHalf + 2.2);
+        if (packCrown)
+            OverlayCrownCap(dest, crownLayer, w, h, cx, cervixY, upper, capH, screwHalf + 2.2);
 
         var bmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
         bmp.WritePixels(new Int32Rect(0, 0, w, h), dest, w * 4, 0);
         bmp.Freeze();
-
-        // #region agent log
-        try
-        {
-            var inv = CultureInfo.InvariantCulture;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"implant-visual\",\"hypothesisId\":\"V\",\"location\":\"ImplantOdontogramVisual.Compose\",\"message\":\"compose\",\"data\":{\"fdi\":\"" + fdi +
-                       "\",\"toothType\":\"" + ToothFdi.Kind(fdi) + "\",\"jaw\":\"" + asset.Jaw +
-                       "\",\"upper\":" + (upper ? "true" : "false") + ",\"cervixY\":" + cervixY +
-                       ",\"cervixW\":" + cervixW + ",\"crownH\":" + crownH + ",\"cx\":" + cx +
-                       ",\"abutH\":" + abutH + ",\"overlap\":" + overlap +
-                       ",\"extra\":" + extra + ",\"capH\":" + capH +
-                       ",\"abutWide\":" + abutWide.ToString("0.0", inv) +
-                       ",\"screwHalf\":" + screwHalf.ToString("0.0", inv) +
-                       ",\"tuned24\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-            if (fdi is "24" or "34")
-            {
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bmp));
-                using var fs = File.Create(@"c:\Users\david\source\repos\MyOrganIzer\debug-implant-" + fdi + ".png");
-                encoder.Save(fs);
-            }
-        }
-        catch { }
-        // #endregion
-
         return bmp;
     }
 

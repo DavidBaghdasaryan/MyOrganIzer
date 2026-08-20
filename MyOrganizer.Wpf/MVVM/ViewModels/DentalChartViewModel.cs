@@ -14,7 +14,7 @@ using MyOrganizer.Wpf.Repository;
 
 namespace MyOrganizer.Wpf.MVVM.ViewModels;
 
-public sealed class DentalChartViewModel : ObservableObject
+public sealed partial class DentalChartViewModel : ObservableObject
 {
     private readonly IToothWorkRepository _repo;
     private readonly AppDbContext _db;
@@ -32,16 +32,24 @@ public sealed class DentalChartViewModel : ObservableObject
     private string? _selectedProcedureName;
     private ProcedureContextViewModel _currentProcedureContext = new ToothSummaryContextViewModel();
     private DispatcherTimer? _statusTimer;
+    private readonly PatientTreatmentChart _treatment = new();
 
     public DentalChartViewModel(IToothWorkRepository repo, AppDbContext db, IDialogService dialogs)
     {
         _repo = repo;
         _db = db;
         _dialogs = dialogs;
+        InitClinicalEditor();
         RetryCommand = new AsyncRelayCommand(() => InitializeAsync(ClientId));
+        SelectToothCommand = new RelayCommand(p => SelectTooth(p?.ToString() ?? ""));
         LegendItems = ToothClinicalVisual.Legend
             .Select(style => new ToothLegendItem(style.Fill, style.LocKey))
             .ToList();
+        ChartRows =
+        [
+            new ChartJawRow("UPPER", ["18", "17", "16", "15", "14", "13", "12", "11"], ["21", "22", "23", "24", "25", "26", "27", "28"]),
+            new ChartJawRow("LOWER", ["48", "47", "46", "45", "44", "43", "42", "41"], ["31", "32", "33", "34", "35", "36", "37", "38"])
+        ];
         ClearSelectionStatus();
     }
 
@@ -58,6 +66,8 @@ public sealed class DentalChartViewModel : ObservableObject
     public IReadOnlyList<ToothLegendItem> LegendItems { get; }
 
     public ICommand RetryCommand { get; }
+    public ICommand SelectToothCommand { get; }
+    public IReadOnlyList<ChartJawRow> ChartRows { get; }
 
     public string SelectedVisualType
     {
@@ -153,7 +163,19 @@ public sealed class DentalChartViewModel : ObservableObject
         {
             await LoadProceduresAsync();
             await LoadPriceTableAsync();
+            RebuildPriceTiers();
             await ReloadMarksAsync();
+            // #region agent log
+            Stage2Log("B", "chart-init",
+                "{\"clientId\":" + ClientId +
+                ",\"procedureCount\":" + _procedures.Count +
+                ",\"sessionCount\":" + (_treatment.Current is null ? 0 : 1) +
+                ",\"labPatients\":false}");
+            Stage3Log("A", "chart-init",
+                "{\"clientId\":" + ClientId +
+                ",\"procedureCount\":" + _procedures.Count +
+                ",\"labPatients\":false}");
+            // #endregion
         }
         catch (Exception ex)
         {
@@ -184,9 +206,37 @@ public sealed class DentalChartViewModel : ObservableObject
                 InspectorSurfaces.Select(s => ToothControl.SurfaceDisplayName(s, toothNumber).T()));
 
         if (toothChanged)
+        {
+            HighlightSelectedTooth(toothNumber);
             RebuildProcedureContext();
+        }
         else if (CurrentProcedureContext is SurfaceProcedureContextViewModel surface)
             surface.NotifySurfacesDisplay(SelectedSurfaces);
+    }
+
+    public void SelectTooth(string fdi)
+    {
+        if (string.IsNullOrWhiteSpace(fdi))
+            return;
+        UpdateSelection(fdi, [], wholeTooth: true);
+        ActivateClinicalTooth(fdi);
+        // #region agent log
+        var session = _treatment.Current;
+        Stage2Log("D", "select-tooth",
+            "{\"clientId\":" + ClientId +
+            ",\"fdi\":\"" + fdi +
+            "\",\"selected\":\"" + SelectedTooth +
+            "\",\"hasSelection\":" + (HasSelection ? "true" : "false") + "}");
+        Stage3Log("B", "select-tooth",
+            "{\"clientId\":" + ClientId +
+            ",\"fdi\":\"" + fdi +
+            "\",\"sessionFdi\":\"" + (session?.Clinical.ToothNumber ?? "") +
+            "\",\"procedureCount\":" + (session?.Clinical.Procedures.Count ?? 0) +
+            ",\"pending\":" + (session?.Pending.Count ?? 0) +
+            ",\"showDetailed\":" + (ShowDetailedViewer ? "true" : "false") +
+            ",\"implant\":" + (IsImplantSelected ? "true" : "false") +
+            ",\"labPatients\":false}");
+        // #endregion
     }
 
     public void ClearSelectionStatus()
@@ -198,6 +248,7 @@ public sealed class DentalChartViewModel : ObservableObject
         SelectedVisualType = "";
         SelectedSurfaces = "";
         InspectorSurfaces = [];
+        HighlightSelectedTooth("");
         _selectedProcedureName = null;
         OnPropertyChanged(nameof(SelectedProcedureName));
         CurrentProcedureContext = new ToothSummaryContextViewModel();
@@ -346,6 +397,8 @@ public sealed class DentalChartViewModel : ObservableObject
             CurrentStates = new Dictionary<string, ToothCurrentState>(StringComparer.Ordinal);
             OnPropertyChanged(nameof(Marks));
             OnPropertyChanged(nameof(CurrentStates));
+            _treatment.ReloadFromWorks(0, [], _procedureIdByName);
+            RefreshOdontogram();
             return;
         }
 
@@ -358,9 +411,84 @@ public sealed class DentalChartViewModel : ObservableObject
         CurrentStates = ToothCurrentStateCalculator.FromHistory(works, _procedureIdByName);
         OnPropertyChanged(nameof(Marks));
         OnPropertyChanged(nameof(CurrentStates));
+        _treatment.ReloadFromWorks(ClientId, works, _procedureIdByName);
+        RefreshOdontogram();
         if (HasSelection && !string.IsNullOrEmpty(SelectedTooth))
+        {
             RebuildConditions(SelectedTooth);
+            RestoreClinicalEditor();
+            NotifyPresentation();
+            ClinicalChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
+
+    private void RefreshOdontogram()
+    {
+        OdontogramThumbStore.Warm();
+        foreach (var row in ChartRows)
+        {
+            foreach (var slot in row.Right.Concat(row.Left))
+            {
+                var state = _treatment.OdontogramFor(slot.Fdi);
+                slot.ApplyPresentation(OdontogramThumbStore.Get(slot.Fdi), state);
+                slot.SetSelected(slot.Fdi == SelectedTooth);
+            }
+        }
+        // #region agent log
+        Stage2Log("C", "odontogram-marks", IsolationJson());
+        Stage3Log("C", "odontogram-from-sessions", _treatment.IsolationJson());
+        // #endregion
+    }
+
+    private void HighlightSelectedTooth(string fdi)
+    {
+        foreach (var row in ChartRows)
+        {
+            foreach (var slot in row.Right.Concat(row.Left))
+                slot.SetSelected(slot.Fdi == fdi);
+        }
+    }
+
+    // #region agent log
+    private string IsolationJson()
+    {
+        string Slot(string fdi)
+        {
+            var slot = ChartRows.SelectMany(row => row.Right.Concat(row.Left)).First(s => s.Fdi == fdi);
+            var n = _treatment.SessionFor(fdi).Clinical.Procedures.Count;
+            return "\"" + fdi + "\":{\"n\":" + n +
+                   ",\"filling\":" + (slot.ShowFilling ? "true" : "false") +
+                   ",\"implant\":" + (slot.ShowImplant ? "true" : "false") +
+                   ",\"missing\":" + (slot.ShowMissing ? "true" : "false") +
+                   ",\"endo\":" + (slot.ShowEndodontic ? "true" : "false") + "}";
+        }
+
+        var workCount = Marks.Values.Sum(list => list.Count);
+        return "{\"clientId\":" + ClientId +
+               ",\"workCount\":" + workCount +
+               ",\"labPatients\":false" +
+               ",\"fdi\":\"" + SelectedTooth + "\"," +
+               Slot("16") + "," + Slot("24") + "," + Slot("34") + "," + Slot("46") + "}";
+    }
+
+    private static void Stage2Log(string hypothesisId, string message, string dataJson)
+    {
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage2\",\"hypothesisId\":\"" + hypothesisId +
+                   "\",\"location\":\"DentalChartViewModel.cs\",\"message\":\"" + message +
+                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { /* chart logging must not break the workflow */ }
+    }
+
+    private static void Stage3Log(string hypothesisId, string message, string dataJson)
+    {
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage3\",\"hypothesisId\":\"" + hypothesisId +
+                   "\",\"location\":\"DentalChartViewModel.cs\",\"message\":\"" + message +
+                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { /* chart logging must not break the workflow */ }
+    }
+    // #endregion
 
     private void RebuildConditions(string toothNumber)
     {

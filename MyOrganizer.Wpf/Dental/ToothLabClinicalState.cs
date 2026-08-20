@@ -53,6 +53,16 @@ public sealed class DentalProcedure
     public DentalProcedureType ProcedureType { get; }
     public IReadOnlyCollection<ToothSurfaceType> Surfaces => _surfaces;
     public IReadOnlyCollection<string> RootCanalIds => _rootCanalIds;
+    public string CatalogName { get; private set; } = "";
+    public string Tier { get; private set; } = "";
+    public int Price { get; private set; }
+
+    internal void SetBilling(string catalogName, string? tier, int price)
+    {
+        CatalogName = catalogName ?? "";
+        Tier = tier ?? "";
+        Price = price;
+    }
 
     internal bool ReplaceSurfaces(IEnumerable<ToothSurfaceType> surfaces)
     {

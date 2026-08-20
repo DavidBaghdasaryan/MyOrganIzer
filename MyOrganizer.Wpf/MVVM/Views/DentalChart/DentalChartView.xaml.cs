@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using MyOrganizer.Wpf.Controls;
-using MyOrganizer.Wpf.Dental;
 using MyOrganizer.Wpf.MVVM.ViewModels;
 
 namespace MyOrganizer.Wpf.MVVM.Views.DentalChart;
@@ -12,16 +11,7 @@ public partial class DentalChartView : UserControl
     private const double SideBySideWide = 1180;
     private const double SideBySideMin = 980;
 
-    private static readonly string[] UpperFdi =
-        ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28"];
-
-    private static readonly string[] LowerFdi =
-        ["48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
-
-    private readonly Dictionary<string, ToothControl> _teeth = new(StringComparer.Ordinal);
     private DentalChartViewModel? _vm;
-    private ToothControl? _activeTooth;
-    private bool _built;
 
     public DentalChartView()
     {
@@ -33,26 +23,24 @@ public partial class DentalChartView : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (!_built)
-        {
-            BuildChart(ChartUpper, UpperFdi);
-            BuildChart(ChartLower, LowerFdi);
-            _built = true;
-        }
-
+        if (MeshView is not null)
+            MeshView.InteractionChanged += OnInteraction;
         HookVm(DataContext as DentalChartViewModel);
-        ApplyCurrentStates();
         ArrangeInspector(ActualWidth);
+        // #region agent log
+        LogHost();
+        // #endregion
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs e) => UnhookVm();
-
-    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        HookVm(e.NewValue as DentalChartViewModel);
-        if (_built)
-            ApplyCurrentStates();
+        if (MeshView is not null)
+            MeshView.InteractionChanged -= OnInteraction;
+        UnhookVm();
     }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e) =>
+        HookVm(e.NewValue as DentalChartViewModel);
 
     private void OnChartSizeChanged(object sender, SizeChangedEventArgs e) =>
         ArrangeInspector(e.NewSize.Width);
@@ -64,7 +52,7 @@ public partial class DentalChartView : UserControl
 
         if (width >= SideBySideMin)
         {
-            InspectorCol.Width = new GridLength(width >= SideBySideWide ? 268 : 220);
+            InspectorCol.Width = new GridLength(width >= SideBySideWide ? 300 : 240);
             InspectorRow.Height = new GridLength(0);
             Grid.SetRow(InspectorHost, 1);
             Grid.SetColumn(InspectorHost, 1);
@@ -85,155 +73,158 @@ public partial class DentalChartView : UserControl
     private void HookVm(DentalChartViewModel? vm)
     {
         if (ReferenceEquals(_vm, vm))
+        {
+            if (_vm is not null && MeshView is not null)
+            {
+                PushClinical(_vm);
+                PushSelection(_vm);
+            }
             return;
+        }
         UnhookVm();
         _vm = vm;
-        if (_vm is not null)
-            _vm.PropertyChanged += OnVmPropertyChanged;
+        if (_vm is null)
+            return;
+        _vm.ClinicalChanged += OnClinicalChanged;
+        _vm.PendingSelectionChanged += OnPendingSelectionChanged;
+        _vm.PropertyChanged += OnVmPropertyChanged;
+        if (MeshView is not null)
+        {
+            PushClinical(_vm);
+            PushSelection(_vm);
+        }
     }
 
     private void UnhookVm()
     {
         if (_vm is null)
             return;
+        _vm.ClinicalChanged -= OnClinicalChanged;
+        _vm.PendingSelectionChanged -= OnPendingSelectionChanged;
         _vm.PropertyChanged -= OnVmPropertyChanged;
         _vm = null;
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DentalChartViewModel.CurrentStates)
-            or nameof(DentalChartViewModel.Marks)
-            or nameof(DentalChartViewModel.IsBusy))
-            ApplyCurrentStates();
+        if (e.PropertyName is nameof(DentalChartViewModel.ToothNumber)
+            or nameof(DentalChartViewModel.ShowDetailedViewer)
+            or nameof(DentalChartViewModel.ShowInspector)
+            or null)
+            Dispatcher.BeginInvoke(ApplyToothPresentation, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
-    private void BuildChart(Grid host, IReadOnlyList<string> fdis)
+    private void ApplyToothPresentation()
     {
-        host.Children.Clear();
-        host.ColumnDefinitions.Clear();
-
-        for (var i = 0; i < 8; i++)
-            host.ColumnDefinitions.Add(Star(fdis[i]));
-        host.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        for (var i = 8; i < fdis.Count; i++)
-            host.ColumnDefinitions.Add(Star(fdis[i]));
-
-        for (var i = 0; i < fdis.Count; i++)
+        if (_vm is null || MeshView is null)
+            return;
+        if (_vm.ShowDetailedViewer)
+            MeshView.LoadRegisteredAsset(_vm.ToothNumber);
+        else
+            MeshView.ClearViewport();
+        if (_vm.ShowDetailedViewer && _vm.ShowClinicalTools)
         {
-            var tooth = new ToothControl
-            {
-                ToothNumber = fdis[i],
-                Margin = new Thickness(1, 2, 1, 2),
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-            tooth.ToothClicked += Tooth_Clicked;
-            tooth.ContextMenuOpening += Tooth_ContextMenu;
-            tooth.ContextMenu = null;
-            Grid.SetColumn(tooth, i < 8 ? i : i + 1);
-            _teeth[fdis[i]] = tooth;
-            host.Children.Add(tooth);
+            PushClinical(_vm);
+            PushSelection(_vm);
         }
-    }
-
-    private static ColumnDefinition Star(string fdi) =>
-        new() { Width = new GridLength(ToothFdi.ColumnWeight(fdi), GridUnitType.Star) };
-
-    private void FocusTooth(ToothControl current)
-    {
-        _activeTooth = current;
-        foreach (var tooth in _teeth.Values)
+        else
         {
-            if (ReferenceEquals(tooth, current))
-                continue;
-            tooth.ClearSurfaceSelection();
-            tooth.IsToothSelected = false;
+            MeshView.SetFillingSurfaces([]);
+            MeshView.SetSelectedSurfaces([]);
+            MeshView.SetRootCanals([]);
         }
+        MeshView.SetSurfaceDebug(false, "All");
+        // #region agent log
+        LogMesh();
+        // #endregion
     }
 
-    private IReadOnlyList<ToothSurfaceType> InspectorSurfaces() =>
-        _vm?.InspectorSurfaces.ToList() ?? [];
-
-    private void SyncInspector(ToothControl tooth)
-    {
-        var surfaces = InspectorSurfaces();
-        _vm?.UpdateSelection(tooth.ToothNumber, surfaces, surfaces.Count == 0);
-    }
-
-    private void Tooth_Clicked(object? sender, ToothSurfaceEventArgs e)
-    {
-        if (sender is not ToothControl current)
-            return;
-
-        FocusTooth(current);
-        if (!current.IsToothSelected)
-        {
-            _activeTooth = null;
-            _vm?.ClearSelectionStatus();
-            return;
-        }
-
-        _vm?.UpdateSelection(e.ToothNumber, [], wholeTooth: true);
-    }
-
-    private void Tooth_ContextMenu(object sender, ContextMenuEventArgs e)
-    {
-        e.Handled = true;
-        if (sender is not ToothControl tooth)
-            return;
-
-        tooth.IsToothSelected = true;
-        FocusTooth(tooth);
-        SyncInspector(tooth);
-        _ = OpenApplyDialogAsync(tooth);
-    }
-
-    private async void ApplyProcedure_Click(object sender, RoutedEventArgs e)
-    {
-        if (_activeTooth is null)
-            return;
-        await OpenApplyDialogAsync(_activeTooth);
-    }
-
-    private async Task OpenApplyDialogAsync(ToothControl tooth)
+    private void OnClinicalChanged(object? sender, EventArgs e)
     {
         if (_vm is null)
             return;
-
-        var surfaces = InspectorSurfaces();
-        var applied = await _vm.OpenApplyDialogAsync(tooth.ToothNumber, surfaces, surfaces.Count == 0);
-        if (!applied)
-            return;
-
-        SyncInspector(tooth);
+        ApplyToothPresentation();
     }
 
-    private async void ClearSurfaces_Click(object sender, RoutedEventArgs e)
+    private void OnPendingSelectionChanged(object? sender, EventArgs e)
     {
-        if (_vm is null || _activeTooth is null || !_vm.HasSurfaceSelection)
-            return;
-        var names = _vm.InspectorSurfaces.Select(s => s.ToString()).ToList();
-        await _vm.ClearSurfacesAsync(_activeTooth.ToothNumber, names);
-        _activeTooth.IsToothSelected = true;
-        _vm.UpdateSelection(_activeTooth.ToothNumber, [], wholeTooth: true);
+        if (_vm is not null && _vm.ShowDetailedViewer)
+            PushSelection(_vm);
     }
 
-    private async void ClearTooth_Click(object sender, RoutedEventArgs e)
+    private void OnInteraction(object? sender, ToothLabHitEventArgs e) =>
+        _vm?.SetInteraction(e.Hover, e.SelectedSurfaces);
+
+    private void PushClinical(DentalChartViewModel vm)
     {
-        if (_vm is null || _activeTooth is null)
-            return;
-        await _vm.ClearToothAsync(_activeTooth.ToothNumber);
-        _activeTooth.IsToothSelected = true;
-        SyncInspector(_activeTooth);
+        MeshView.SetFillingSurfaces(vm.FillingSurfaceNames);
+        MeshView.SetRootCanals(vm.TreatedRootCanalIds);
+        // #region agent log
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"C\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"filling-from-clinical\",\"data\":{\"clientId\":" +
+                   vm.ClientId + ",\"fdi\":\"" + vm.ToothNumber +
+                   "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
+                   "\",\"canals\":\"" + string.Join(",", vm.TreatedRootCanalIds) +
+                   "\",\"procedureCount\":" + vm.Clinical.Procedures.Count +
+                   ",\"labPatients\":false},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
+        // #endregion
     }
 
-    private void ApplyCurrentStates()
+    private void PushSelection(DentalChartViewModel vm) =>
+        MeshView.SetSelectedSurfaces(vm.PendingSurfaceNames);
+
+    private void OnOcclusal(object sender, RoutedEventArgs e) => MeshView.ResetToOcclusal();
+    private void OnBuccal(object sender, RoutedEventArgs e) => MeshView.ShowBuccal();
+    private void OnPalatal(object sender, RoutedEventArgs e) => MeshView.ShowPalatal();
+    private void OnMesial(object sender, RoutedEventArgs e) => MeshView.ShowMesial();
+    private void OnDistal(object sender, RoutedEventArgs e) => MeshView.ShowDistal();
+
+    // #region agent log
+    private void LogHost()
     {
-        if (_vm is null || !_built)
-            return;
-
-        foreach (var (fdi, tooth) in _teeth)
-            tooth.SetCurrentState(ToothCurrentStateCalculator.ForTooth(fdi, _vm.CurrentStates));
+        var odontogram = FindName("ProductionOdontogram") as OdontogramView;
+        var mesh = FindName("MeshView") as ToothMeshView;
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"A\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"production-lab-host\",\"data\":{\"odontogramPresent\":" +
+                   (odontogram is not null ? "true" : "false") +
+                   ",\"meshPresent\":" + (mesh is not null ? "true" : "false") +
+                   ",\"meshVisible\":" + (mesh?.IsVisible == true ? "true" : "false") +
+                   ",\"showDetailed\":" + (_vm?.ShowDetailedViewer == true ? "true" : "false") +
+                   ",\"labSelectorPresent\":" + (FindName("LabPatientSelector") is not null ? "true" : "false") +
+                   ",\"createButton\":" + ContainsText(this, "Create Procedure") +
+                   ",\"clientId\":" + (_vm?.ClientId ?? 0) +
+                   "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
     }
+
+    private void LogMesh()
+    {
+        if (_vm is null || MeshView is null)
+            return;
+        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"B\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"mesh-presentation\",\"data\":{\"clientId\":" +
+                   _vm.ClientId + ",\"fdi\":\"" + _vm.ToothNumber +
+                   "\",\"meshAsset\":\"" + MeshView.AssetName +
+                   "\",\"showDetailed\":" + (_vm.ShowDetailedViewer ? "true" : "false") +
+                   ",\"implant\":" + (_vm.IsImplantSelected ? "true" : "false") +
+                   ",\"clinical\":" + (_vm.ShowClinicalTools ? "true" : "false") +
+                   ",\"labPatients\":false},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
+        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
+        catch { }
+    }
+
+    private static bool ContainsText(DependencyObject root, string text)
+    {
+        if (root is TextBlock block && string.Equals(block.Text, text, StringComparison.Ordinal))
+            return true;
+        if (root is Button button && string.Equals(button.Content?.ToString(), text, StringComparison.Ordinal))
+            return true;
+        foreach (var child in LogicalTreeHelper.GetChildren(root))
+        {
+            if (child is DependencyObject node && ContainsText(node, text))
+                return true;
+        }
+        return false;
+    }
+    // #endregion
 }

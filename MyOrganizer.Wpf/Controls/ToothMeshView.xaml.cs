@@ -103,7 +103,7 @@ public partial class ToothMeshView : UserControl
     public ToothMeshView()
     {
         InitializeComponent();
-        Loaded += (_, _) => LoadMesh();
+        Loaded += OnFirstLoad;
         IsVisibleChanged += OnVisibleChanged;
         PreviewMouseLeftButtonDown += OnDragStart;
         PreviewMouseLeftButtonUp += OnDragEnd;
@@ -115,6 +115,19 @@ public partial class ToothMeshView : UserControl
         MouseDoubleClick += (_, _) => ResetToOcclusal();
     }
 
+    private void OnFirstLoad(object sender, RoutedEventArgs e)
+    {
+        if (!IsVisible)
+        {
+            // #region agent log
+            AgentLog("A", "mesh-defer",
+                "{\"visible\":false,\"asset\":\"" + Esc(AssetName) + "\",\"loaded\":false}");
+            // #endregion
+            return;
+        }
+        LoadMesh();
+    }
+
     public string AssetName
     {
         get => (string)GetValue(AssetNameProperty);
@@ -123,7 +136,7 @@ public partial class ToothMeshView : UserControl
 
     private static void OnAssetChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is ToothMeshView view && view.IsLoaded)
+        if (d is ToothMeshView view && view.IsLoaded && view.IsVisible)
             view.LoadMesh();
     }
 
@@ -140,7 +153,11 @@ public partial class ToothMeshView : UserControl
 
     private void OnVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (IsVisible && IsLoaded && CrownModel.Geometry is not null && !_pressing && !_dragging)
+        if (!IsVisible || !IsLoaded || CrownModel.Geometry is null || _pressing || _dragging)
+            return;
+        if (ActualWidth < 8)
+            Dispatcher.BeginInvoke(FrameOcclusal, System.Windows.Threading.DispatcherPriority.Loaded);
+        else
             FrameOcclusal();
     }
 

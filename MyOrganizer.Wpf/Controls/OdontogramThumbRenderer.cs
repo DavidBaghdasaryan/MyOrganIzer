@@ -52,6 +52,8 @@ internal static class OdontogramThumbRenderer
     /// </summary>
     internal static BitmapSource? RenderImplantCrown(ToothAssetDefinition asset)
     {
+        if (asset.ToothKind is ToothKind.Canine or ToothKind.Incisor)
+            return CropNaturalCrown(asset);
         if (string.IsNullOrWhiteSpace(asset.RuntimeMesh))
             return null;
         using var stream = OpenMesh(asset.RuntimeMesh);
@@ -59,6 +61,90 @@ internal static class OdontogramThumbRenderer
             return null;
         var parts = StlToothLoader.LoadAlignedParts(stream, out _, LoadOptions(asset));
         return RasterizeImplantCrown(asset, parts);
+    }
+
+    /// <summary>
+    /// Canine/incisor crown+root material split leaves a disconnected stub.
+    /// Crop the approved odontogram thumbnail so the implant crown matches
+    /// the natural cell; do not change 3D meshes.
+    /// </summary>
+    private static BitmapSource? CropNaturalCrown(ToothAssetDefinition asset)
+    {
+        var src = OdontogramThumbStore.Get(asset.FdiNumber) as BitmapSource ?? Render(asset);
+        if (src is null)
+            return null;
+        var w = src.PixelWidth;
+        var h = src.PixelHeight;
+        var px = new int[w * h];
+        var copy = src;
+        if (copy.Format != PixelFormats.Bgra32)
+            copy = new FormatConvertedBitmap(copy, PixelFormats.Bgra32, null, 0);
+        copy.CopyPixels(px, w * 4, 0);
+        var upper = asset.Jaw == ToothJaw.Maxilla;
+        if (!FindThumbCervix(px, w, h, upper, out var cej))
+            return src;
+        if (upper)
+        {
+            for (var y = 0; y <= cej; y++)
+                Array.Clear(px, y * w, w);
+        }
+        else
+        {
+            for (var y = cej; y < h; y++)
+                Array.Clear(px, y * w, w);
+        }
+        var bmp = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+        bmp.WritePixels(new Int32Rect(0, 0, w, h), px, w * 4, 0);
+        bmp.Freeze();
+        return bmp;
+    }
+
+    private static bool FindThumbCervix(int[] px, int w, int h, bool upper, out int cej)
+    {
+        cej = upper ? 0 : h - 1;
+        var start = upper ? h - 1 : 0;
+        var dir = upper ? -1 : 1;
+        var seenCrown = false;
+        for (var i = 0; i < h; i++)
+        {
+            var y = start + dir * i;
+            if ((uint)y >= (uint)h)
+                break;
+            CrownRootCounts(px, w, y, out var crown, out var root);
+            if (crown > 6)
+                seenCrown = true;
+            if (!seenCrown)
+                continue;
+            if (root > crown && root > 6)
+            {
+                cej = y;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void CrownRootCounts(int[] px, int w, int y, out int crown, out int root)
+    {
+        crown = 0;
+        root = 0;
+        var row = y * w;
+        for (var x = 0; x < w; x++)
+        {
+            var p = px[row + x];
+            var a = (p >> 24) & 255;
+            if (a < 40)
+                continue;
+            var r = (p >> 16) & 255;
+            var g = (p >> 8) & 255;
+            var b = p & 255;
+            var lum = (r + g + b) / 3;
+            var chroma = ((r + g) / 2) - b;
+            if (lum > 198 && chroma < 22)
+                crown++;
+            else if (chroma > 12 && lum is > 130 and < 205)
+                root++;
+        }
     }
 
     private static BitmapSource RasterizeImplantCrown(ToothAssetDefinition asset, ToothMeshParts parts)
