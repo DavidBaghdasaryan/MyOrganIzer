@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Media.Media3D;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -91,15 +90,6 @@ internal static class ToothSurfaceLayoutStats
                ",\"distal\":" + One(4) + "}";
     }
 
-    public static void Log(string hypothesisId, string fdi, string pipeline, MeshGeometry3D crown, ClinicalSurface[] labels)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"ToothSurfaceLayoutStats.cs\",\"message\":\"layout\"" +
-                   ",\"data\":" + Json(fdi, pipeline, crown, labels) +
-                   ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
 
     public readonly record struct RedHeight(int Count, double Min, double Mean, double Max, double PctLow, double PctHigh)
     {
@@ -157,16 +147,6 @@ internal static class ToothSurfaceLayoutStats
             count == 0 ? 0 : 100.0 * high / count);
     }
 
-    public static void LogRedHeight(string hypothesisId, string fdi, MeshGeometry3D crown, ClinicalSurface[] labels)
-    {
-        var red = RedHeightOf(crown, labels);
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"ToothSurfaceLayoutStats.cs\",\"message\":\"red-height\"" +
-                   ",\"data\":" + red.Json(fdi) +
-                   ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
 
     private static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 }

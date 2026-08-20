@@ -52,9 +52,7 @@ internal static class Fdi16SurfaceMapStore
         });
         var map = Read(parts.Crown, File.OpenRead(json))
                   ?? throw new InvalidDataException("FDI16SurfaceMap.json could not be read.");
-        ToothSurfaceLayoutStats.Log("C", "16", "golden-asset", parts.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("C", "16", "golden-asset", parts.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("C", "16", parts.Crown, map.TriangleSurface);
+        _ = map;
     }
 
     public static string PatchCejRedContinuity()
@@ -162,52 +160,6 @@ internal static class Fdi16SurfaceMapStore
             nCej++;
             cejHist[(int)labels[t]]++;
         }
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-cej\",\"hypothesisId\":\"F\",\"location\":\"Fdi16SurfaceMapStore.cs\",\"message\":\"cej-zone\",\"data\":{" +
-                       "\"nCej\":" + nCej +
-                       ",\"cejO\":" + cejHist[0] +
-                       ",\"cejB\":" + cejHist[1] +
-                       ",\"cejL\":" + cejHist[2] +
-                       ",\"cejM\":" + cejHist[3] +
-                       ",\"cejD\":" + cejHist[4] +
-                       ",\"nOpenLow\":" + nOpenLow +
-                       ",\"openLowO\":" + openLowHist[0] +
-                       ",\"openLowB\":" + openLowHist[1] +
-                       ",\"openLowL\":" + openLowHist[2] +
-                       ",\"openLowM\":" + openLowHist[3] +
-                       ",\"openLowD\":" + openLowHist[4] +
-                       ",\"nOpenHigh\":" + nOpenHigh +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-cej\",\"hypothesisId\":\"A\",\"location\":\"Fdi16SurfaceMapStore.cs\",\"message\":\"cej-red-scan\",\"data\":{" +
-                       "\"nBorderRed\":" + nBorderRed +
-                       ",\"nBorderGap\":" + nBorderGap +
-                       ",\"gapB\":" + fromHist[1] +
-                       ",\"gapL\":" + fromHist[2] +
-                       ",\"gapM\":" + fromHist[3] +
-                       ",\"gapD\":" + fromHist[4] +
-                       ",\"gapMinZ01\":" + skipMin.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"gapMaxZ01\":" + skipMax.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"borderRedMinZ01\":" + borderRedMin.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"borderRedMaxZ01\":" + borderRedMax.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"occMinZ01\":" + occMin.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"occMaxZ01\":" + occMax.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"nOcc\":" + nOcc +
-                       ",\"nGapNextToRed\":" + nGapNextToRed +
-                       ",\"nLowSkirtNonRed\":" + nSkirt +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         Console.WriteLine("FDI16 CEJ scan gaps=" + nBorderGap + " nextToRed=" + nGapNextToRed + " cejO=" + cejHist[0]);
         var flipped = 0;
         var fromD = 0;
@@ -246,22 +198,6 @@ internal static class Fdi16SurfaceMapStore
             highNbMin = Math.Min(highNbMin, z01);
             highNbMax = Math.Max(highNbMax, z01);
         }
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-cej-v4\",\"hypothesisId\":\"K\",\"location\":\"Fdi16SurfaceMapStore.cs\",\"message\":\"high-skirt\",\"data\":{" +
-                       "\"nHighNb\":" + nHighNb +
-                       ",\"nbB\":" + highNb[1] +
-                       ",\"nbL\":" + highNb[2] +
-                       ",\"nbM\":" + highNb[3] +
-                       ",\"nbD\":" + highNb[4] +
-                       ",\"minZ01\":" + highNbMin.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"maxZ01\":" + highNbMax.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
 
         var dilated = 0;
         var dilD = 0;
@@ -306,25 +242,6 @@ internal static class Fdi16SurfaceMapStore
             if (z01 < 0.35) nLowOcc++;
             if (z01 >= 0.70) nHighOcc++;
         }
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-cej-v4\",\"hypothesisId\":\"K\",\"location\":\"Fdi16SurfaceMapStore.cs\",\"message\":\"cej-dilate\",\"data\":{" +
-                       "\"borderFlipped\":" + flipped +
-                       ",\"dilated\":" + dilated +
-                       ",\"dilD\":" + dilD +
-                       ",\"occMinAfter\":" + occMinAfter.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"nLowOcc\":" + nLowOcc +
-                       ",\"nHighOcc\":" + nHighOcc +
-                       ",\"occlusal\":" + map.Counts[0] +
-                       ",\"distal\":" + map.Counts[4] +
-                       ",\"dup\":" + own.Dup +
-                       ",\"unassigned\":" + own.Unassigned +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         if (own.Dup != 0 || own.Unassigned != 0)
             throw new InvalidDataException("ownership dup=" + own.Dup + " unassigned=" + own.Unassigned);
         if (nLowOcc != 0)

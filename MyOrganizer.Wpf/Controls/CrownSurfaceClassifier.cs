@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
@@ -97,10 +96,9 @@ internal static class CrownSurfaceClassifier
         var axialCenter = AxialCenter(centroids, z01);
         var neighbors = BuildNeighbors(idx, nTri);
         Point3D tableOrigin;
-        double envMin, envMax, envMean;
         var envelope = premolarTable
-            ? BuildPremolarEnvelope(centroids, z01, out tableOrigin, out envMin, out envMax, out envMean)
-            : BuildOcclusalEnvelope(centroids, z01, facing, out tableOrigin, out envMin, out envMax, out envMean);
+            ? BuildPremolarEnvelope(centroids, z01, out tableOrigin, out _, out _, out _)
+            : BuildOcclusalEnvelope(centroids, z01, facing, out tableOrigin, out _, out _, out _);
         var radius = new double[nTri];
         var envR = new double[nTri];
         for (var t = 0; t < nTri; t++)
@@ -112,7 +110,6 @@ internal static class CrownSurfaceClassifier
         }
 
         var occlusal = new bool[nTri];
-        var seedCount = 0;
         for (var t = 0; t < nTri; t++)
         {
             if (premolarTable)
@@ -123,46 +120,24 @@ internal static class CrownSurfaceClassifier
             else if (!IsOcclusalSeed(z01[t], facing[t], radius[t], envR[t]))
                 continue;
             occlusal[t] = true;
-            seedCount++;
         }
         GrowOcclusal(occlusal, neighbors, z01, facing, radius, envR, premolarTable);
-        var occlusalGrown = 0;
         for (var t = 0; t < nTri; t++)
         {
             if (occlusal[t])
-            {
                 labels[t] = ClinicalSurface.Occlusal;
-                occlusalGrown++;
-            }
             else
-            {
                 labels[t] = AxialSurface(centroids[t], normals[t], axialCenter);
-            }
         }
 
-        var islandsBefore = CountIslands(labels, neighbors, IslandSize);
-        var leftoverBefore = Leftover(labels, neighbors);
         Cleanup(labels, neighbors, z01, facing);
-        var greenInPink = RetractPalatalFromDistal(labels, neighbors, centroids, axialCenter);
+        RetractPalatalFromDistal(labels, neighbors, centroids, axialCenter);
         if (applyFdi16Overrides)
             ApplyManualOverrides(labels);
-        var islandsAfter = CountIslands(labels, neighbors, IslandSize);
 
         var counts = new int[5];
         foreach (var lab in labels)
             counts[(int)lab]++;
-        var largest = LargestComponents(labels, neighbors);
-        var leftoverAfter = Leftover(labels, neighbors);
-        var occZ = 0d;
-        var occLowFace = 0;
-        var occN = 0;
-        for (var t = 0; t < nTri; t++)
-        {
-            if (labels[t] != ClinicalSurface.Occlusal) continue;
-            occZ += z01[t];
-            occN++;
-            if (facing[t] < 0.15) occLowFace++;
-        }
 
         var map = new ClinicalSurfaceMap
         {
@@ -180,29 +155,6 @@ internal static class CrownSurfaceClassifier
             }
         }
 
-        // #region agent log
-        AgentLog("B", "classified",
-            "{\"nTri\":" + nTri +
-            ",\"occlusalDir\":\"" + F(occlusalDir.X) + "," + F(occlusalDir.Y) + "," + F(occlusalDir.Z) + "\"" +
-            ",\"minAlong\":" + F(minAlong) + ",\"maxAlong\":" + F(maxAlong) +
-            ",\"seed\":" + seedCount + ",\"occlusalGrown\":" + occlusalGrown +
-            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
-            ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
-            ",\"sum\":" + (counts[0] + counts[1] + counts[2] + counts[3] + counts[4]) +
-            ",\"apply16ov\":" + (applyFdi16Overrides ? "true" : "false") +
-            ",\"overrides\":" + (applyFdi16Overrides ? Fdi16ManualOverrides.Triangles.Count : 0) +
-            ",\"greenInPink\":" + greenInPink + "}");
-        AgentLog("G", "cleanup",
-            "{\"islandsBefore\":" + islandsBefore + ",\"islandsAfter\":" + islandsAfter +
-            ",\"largestO\":" + largest[0] + ",\"largestB\":" + largest[1] +
-            ",\"largestP\":" + largest[2] + ",\"largestM\":" + largest[3] + ",\"largestD\":" + largest[4] +
-            ",\"leftB0\":" + leftoverBefore[1] + ",\"leftD0\":" + leftoverBefore[4] +
-            ",\"leftO\":" + leftoverAfter[0] + ",\"leftB\":" + leftoverAfter[1] +
-            ",\"leftP\":" + leftoverAfter[2] + ",\"leftM\":" + leftoverAfter[3] + ",\"leftD\":" + leftoverAfter[4] +
-            ",\"occMeanZ\":" + F(occN == 0 ? 0 : occZ / occN) + ",\"occLowFace\":" + occLowFace +
-            ",\"envMin\":" + F(envMin) + ",\"envMax\":" + F(envMax) + ",\"envMean\":" + F(envMean) +
-            ",\"envAsym\":" + F(envMax - envMin) + "}");
-        // #endregion
 
         return map;
     }
@@ -234,18 +186,6 @@ internal static class CrownSurfaceClassifier
             mesh.TriangleIndices.Add(baseIndex + 1);
             mesh.TriangleIndices.Add(baseIndex + 2);
         }
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"cej-seam2\",\"hypothesisId\":\"I\",\"location\":\"CrownSurfaceClassifier.cs\",\"message\":\"overlay-mesh\",\"data\":{\"nSrc\":" +
-                       nSrc + ",\"sidewalls\":0,\"eps\":" +
-                       normalEps.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture) +
-                       ",\"lift\":\"faceNormal\"},\"timestamp\":" +
-                       DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return mesh;
     }
 
@@ -871,16 +811,4 @@ internal static class CrownSurfaceClassifier
         }
     }
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"post-fix\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"CrownSurfaceClassifier.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* lab logging must not break rendering */ }
-    }
-
-    private static string F(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);
-    // #endregion
 }

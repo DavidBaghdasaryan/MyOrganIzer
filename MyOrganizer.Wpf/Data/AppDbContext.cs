@@ -91,6 +91,8 @@ namespace MyOrganizer.Wpf.Data
                 e.Property(x => x.ProcedureName).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.Tier).IsRequired().HasMaxLength(2000);
                 e.Property(x => x.Surface).HasMaxLength(20).HasDefaultValue("");
+                e.Property(x => x.ProcedureId);
+                e.Property(x => x.RootCanalIds).HasMaxLength(400).HasDefaultValue("");
 
                 e.HasIndex(x => x.ClientId);
                 e.HasOne<Client>()

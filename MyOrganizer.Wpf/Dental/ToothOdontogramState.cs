@@ -87,6 +87,9 @@ public sealed class ToothOdontogramState
                     foreach (var surface in procedure.Surfaces)
                         filling.Add(surface);
                     break;
+                case DentalProcedureType.Crown:
+                case DentalProcedureType.Denture:
+                    break;
             }
         }
 
@@ -122,7 +125,9 @@ public static class DentalProcedureTypes
         DentalProcedureType.Filling,
         DentalProcedureType.Implant,
         DentalProcedureType.Endodontic,
-        DentalProcedureType.Extraction
+        DentalProcedureType.Extraction,
+        DentalProcedureType.Crown,
+        DentalProcedureType.Denture
     ];
 
     public static bool RequiresSurfaces(DentalProcedureType type) =>
@@ -137,6 +142,8 @@ public static class DentalProcedureTypes
         DentalProcedureType.Implant => "Implant",
         DentalProcedureType.Endodontic => "Endodontic / Root Canal",
         DentalProcedureType.Extraction => "Extraction / Missing",
+        DentalProcedureType.Crown => "Crown",
+        DentalProcedureType.Denture => "Denture",
         _ => type.ToString()
     };
 }

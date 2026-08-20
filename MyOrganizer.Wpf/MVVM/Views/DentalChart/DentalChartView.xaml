@@ -9,7 +9,6 @@
     <Grid>
         <Grid x:Name="WorkspaceGrid" Visibility="{Binding HasError, Converter={StaticResource InverseBoolToVis}}">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition x:Name="InspectorRow" Height="0"/>
             </Grid.RowDefinitions>
@@ -18,83 +17,81 @@
                 <ColumnDefinition x:Name="InspectorCol" Width="300"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.ColumnSpan="2"
-                       Text="{loc:Loc ToothChartHint}"
-                       Style="{StaticResource Caption}"
-                       Opacity="0.85"
-                       Margin="0,0,0,6"
-                       TextWrapping="Wrap"/>
-
-            <Border Grid.Row="1"
-                    Margin="0,0,10,0"
+            <Border Margin="0,0,10,0"
                     Background="{StaticResource Brush.Surface}"
                     BorderBrush="{StaticResource Brush.Border}"
                     BorderThickness="1"
                     CornerRadius="10"
-                    Padding="8,4"
-                    ClipToBounds="False">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <controls:OdontogramView x:Name="ProductionOdontogram"
-                                                 HorizontalAlignment="Stretch"/>
+                    Padding="8,6"
+                    ClipToBounds="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
+                    <Viewbox Stretch="Uniform"
+                             HorizontalAlignment="Stretch"
+                             Margin="8,0,8,22">
+                        <controls:OdontogramView x:Name="ProductionOdontogram"/>
+                    </Viewbox>
+
+                    <StackPanel Grid.Row="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                    <Grid Width="480" Height="480"
+                          Margin="0,0,0,4">
                         <TextBlock Text="{Binding Status}"
                                    Style="{StaticResource Caption}"
-                                   Margin="0,10,0,8"
-                                   TextWrapping="Wrap"/>
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   Margin="16"
+                                   Opacity="0.85"
+                                   Visibility="{Binding ShowViewportIdle, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
 
-                        <Border Margin="0,0,0,8" Padding="16" HorizontalAlignment="Stretch"
+                        <Border Padding="16"
                                 Visibility="{Binding ShowPlaceholder, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <TextBlock Text="This FDI is not imported yet."
-                                       Style="{StaticResource Body}" TextWrapping="Wrap"/>
+                                       Style="{StaticResource Body}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap"/>
                         </Border>
 
-                        <Border Margin="0,0,0,8"
-                                HorizontalAlignment="Center"
-                                CornerRadius="8" ClipToBounds="True"
-                                Width="{Binding ToothSize}" Height="{Binding ToothSize}"
+                        <Border CornerRadius="8" ClipToBounds="True"
                                 Background="#C8CED6"
                                 Visibility="{Binding ShowEmptyImplantViewer, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
 
-                        <Border Margin="0,0,0,8"
-                                HorizontalAlignment="Center"
-                                CornerRadius="8" ClipToBounds="True"
-                                Width="{Binding ToothSize}" Height="{Binding ToothSize}"
+                        <Border CornerRadius="8" ClipToBounds="True"
                                 Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <controls:ToothMeshView x:Name="MeshView"/>
                         </Border>
+                    </Grid>
 
-                        <WrapPanel Margin="0,0,0,8"
-                                   HorizontalAlignment="Center"
-                                   Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <Button Content="Occlusal View" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnOcclusal"/>
-                            <Button Content="Buccal" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnBuccal"/>
-                            <Button Content="{Binding InnerCameraLabel}" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnPalatal"/>
-                            <Button Content="Mesial" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnMesial"/>
-                            <Button Content="Distal" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnDistal"/>
-                            <Button Content="Reset View" Style="{StaticResource SecondaryButton}"
-                                    Margin="0,0,8,8" Padding="12,6" Click="OnOcclusal"/>
-                        </WrapPanel>
-
-                        <StackPanel Margin="0,0,0,8"
-                                    Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                            <TextBlock Text="{Binding ToothSize, StringFormat=3D viewport: {0:0} px}"
-                                       Style="{StaticResource Caption}" Margin="0,0,0,6"/>
-                            <Slider Minimum="220" Maximum="360" Value="{Binding ToothSize}"
-                                    TickFrequency="10" IsSnapToTickEnabled="False"
-                                    SmallChange="2" LargeChange="20"/>
-                        </StackPanel>
+                    <WrapPanel Margin="0,6,0,0"
+                               HorizontalAlignment="Center"
+                               Visibility="{Binding ShowDetailedViewer, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                        <Button Content="Occlusal View" Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" Padding="10,5" Click="OnOcclusal"/>
+                        <Button Content="Buccal" Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" Padding="10,5" Click="OnBuccal"/>
+                        <Button Content="{Binding InnerCameraLabel}" Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" Padding="10,5" Click="OnPalatal"/>
+                        <Button Content="Mesial" Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" Padding="10,5" Click="OnMesial"/>
+                        <Button Content="Distal" Style="{StaticResource SecondaryButton}"
+                                Margin="0,0,6,0" Padding="10,5" Click="OnDistal"/>
+                        <Button Content="Reset View" Style="{StaticResource SecondaryButton}"
+                                Margin="0" Padding="10,5" Click="OnOcclusal"/>
+                    </WrapPanel>
                     </StackPanel>
-                </ScrollViewer>
+                </Grid>
             </Border>
 
             <Border x:Name="InspectorHost"
-                    Grid.Row="1"
+                    Grid.Row="0"
                     Grid.Column="1"
                     Background="{StaticResource Brush.SurfaceSecondary}"
                     BorderBrush="{StaticResource Brush.Border}"
@@ -122,6 +119,10 @@
                                        Style="{StaticResource Body}"
                                        Opacity="0.9"
                                        Margin="0,0,0,10"/>
+                            <TextBlock Text="{Binding StatusMessage}"
+                                       Style="{StaticResource Caption}"
+                                       Margin="0,0,0,8"
+                                       Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding ShowClinicalTools, Converter={StaticResource BoolToVis}}">
@@ -224,6 +225,10 @@
                                                            Style="{StaticResource Caption}"
                                                            TextWrapping="Wrap" Margin="0,2,0,0"
                                                            Visibility="{Binding HasDetail, Converter={StaticResource BoolToVis}}"/>
+                                                <TextBlock Text="{Binding PriceDisplay}"
+                                                           Style="{StaticResource Caption}"
+                                                           TextWrapping="Wrap" Margin="0,2,0,0"
+                                                           Visibility="{Binding HasPrice, Converter={StaticResource BoolToVis}}"/>
                                             </StackPanel>
                                         </DockPanel>
                                     </DataTemplate>

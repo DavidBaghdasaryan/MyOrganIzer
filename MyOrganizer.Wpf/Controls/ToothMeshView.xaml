@@ -5,7 +5,7 @@
              Focusable="True"
              SnapsToDevicePixels="False">
     <Grid Background="#C8CED6">
-        <Viewbox Stretch="Fill">
+        <Viewbox Stretch="Uniform">
             <Grid Width="768" Height="768">
             <Viewport3D x:Name="View3D" IsHitTestVisible="True">
                 <Viewport3D.Camera>

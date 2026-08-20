@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -118,21 +117,6 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
         _drawn = traces.Count;
         if (traces.Count > 0)
             _canals = BuildCanalGeometry(traces);
-        // #region agent log
-        try
-        {
-            var xs = string.Join(";", traces.Select(t =>
-                t[0].X.ToString("0.0") + "-" + t[^1].X.ToString("0.0")));
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"canal-all-fdi\",\"hypothesisId\":\"B\"" +
-                       ",\"location\":\"EndodonticOdontogramVisual.Rebuild\",\"message\":\"selected-canals\"" +
-                       ",\"data\":{\"fdi\":\"" + _fdi + "\",\"ids\":\"" + string.Join(",", selected) +
-                       "\",\"drawn\":" + _drawn + ",\"lenPx\":" + ((tipY - startY) * dir) +
-                       ",\"axes\":\"" + xs + "\"}" +
-                       ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         InvalidateVisual();
     }
 

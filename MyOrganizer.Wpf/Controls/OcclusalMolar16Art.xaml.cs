@@ -108,13 +108,6 @@ public partial class OcclusalMolar16Art : UserControl
         Add(Intersect(outline, new EllipseGeometry(new Point(58, 44), 5, 4)), TipLight, null, 0);
         Add(Intersect(outline, new EllipseGeometry(new Point(136, 148), 8, 6)), TipLight, null, 0);
 
-        // #region agent log
-        AgentLog("A", "outline", Metrics(outline));
-        AgentLog("B", "anatomy",
-            "{\"ridge\":" + F(ridge.GetArea()) +
-            ",\"fossa\":" + F(centralFossa.GetArea()) +
-            ",\"mpRidge\":" + F(mpRidge.GetArea()) + "}");
-        // #endregion
     }
 
     private void Add(Geometry data, Brush fill, Brush? stroke, double thickness)
@@ -207,48 +200,4 @@ public partial class OcclusalMolar16Art : UserControl
         return brush;
     }
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"occlusal-static\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"OcclusalMolar16Art.xaml.cs:Paint\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* debug ingest must not affect the tooth */ }
-    }
-
-    private static string Metrics(Geometry geometry)
-    {
-        var b = geometry.Bounds;
-        var pts = new List<Point>();
-        foreach (var fig in geometry.GetFlattenedPathGeometry().Figures)
-        {
-            pts.Add(fig.StartPoint);
-            foreach (var seg in fig.Segments)
-            {
-                if (seg is PolyLineSegment poly)
-                    pts.AddRange(poly.Points);
-                else if (seg is LineSegment line)
-                    pts.Add(line.Point);
-            }
-        }
-
-        double cv = 0;
-        if (pts.Count >= 4)
-        {
-            var cx = pts.Average(p => p.X);
-            var cy = pts.Average(p => p.Y);
-            var radii = pts.Select(p => Math.Sqrt((p.X - cx) * (p.X - cx) + (p.Y - cy) * (p.Y - cy))).ToList();
-            var mean = radii.Average();
-            var sd = Math.Sqrt(radii.Average(r => (r - mean) * (r - mean)));
-            cv = mean < 0.001 ? 0 : sd / mean;
-        }
-
-        return "{\"w\":" + F(b.Width) + ",\"h\":" + F(b.Height) +
-               ",\"aspect\":" + F(b.Height < 0.001 ? 0 : b.Width / b.Height) +
-               ",\"radiusCv\":" + F(cv) + "}";
-    }
-
-    private static string F(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
-    // #endregion
 }

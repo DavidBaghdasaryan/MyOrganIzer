@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
 using MyOrganizer.Wpf.Controls;
@@ -309,7 +308,9 @@ public sealed class ToothLabViewModel : ObservableObject
         new(DentalProcedureType.Filling, DentalProcedureTypes.DisplayName(DentalProcedureType.Filling)),
         new(DentalProcedureType.Implant, DentalProcedureTypes.DisplayName(DentalProcedureType.Implant)),
         new(DentalProcedureType.Endodontic, DentalProcedureTypes.DisplayName(DentalProcedureType.Endodontic)),
-        new(DentalProcedureType.Extraction, DentalProcedureTypes.DisplayName(DentalProcedureType.Extraction))
+        new(DentalProcedureType.Extraction, DentalProcedureTypes.DisplayName(DentalProcedureType.Extraction)),
+        new(DentalProcedureType.Crown, DentalProcedureTypes.DisplayName(DentalProcedureType.Crown)),
+        new(DentalProcedureType.Denture, DentalProcedureTypes.DisplayName(DentalProcedureType.Denture))
     ];
 
     public LabPatient CurrentPatient
@@ -493,29 +494,6 @@ public sealed class ToothLabViewModel : ObservableObject
         }
         RebuildCanalChoices();
         RestoreSession();
-        // #region agent log
-        Stage1Log("D", "select-tooth-stage1",
-            "{\"fdi\":\"" + asset.FdiNumber +
-            "\",\"patient\":\"" + _currentPatient.Id +
-            "\",\"imported\":" + (asset.RuntimeImported ? "true" : "false") + "}");
-        AgentLog("B", "select-tooth",
-            "{\"fdi\":\"" + asset.FdiNumber +
-            "\",\"from\":\"" + fromFdi +
-            "\",\"source\":\"" + asset.SourceKind +
-            "\",\"mirrorX\":" + (asset.MirrorX ? "true" : "false") +
-            ",\"imported\":" + (asset.RuntimeImported ? "true" : "false") +
-            ",\"sourceAvailable\":" + (asset.SourceAvailable ? "true" : "false") +
-            ",\"map\":" + (asset.SurfaceMapAvailable ? "true" : "false") +
-            ",\"interaction\":" + (asset.ClinicalInteraction ? "true" : "false") +
-            ",\"inner\":\"" + asset.InnerSurfaceName +
-            "\",\"mapAsset\":\"" + (asset.SurfaceMap ?? "") +
-            "\",\"fromProcs\":" + fromProcs +
-            ",\"toProcs\":" + Clinical.Procedures.Count +
-            ",\"fromPending\":\"" + fromPending +
-            "\",\"toPending\":\"" + string.Join(",", PendingDisplayNames()) +
-            "\",\"toDerived\":\"" + string.Join(",", FillingSurfaceNames) +
-            "\",\"contra\":\"" + asset.ContralateralFdi + "\"}");
-        // #endregion
         if (!asset.RuntimeImported)
             Status = "FDI " + asset.FdiNumber + " placeholder · source " +
                      (asset.SourceAvailable ? "available" : "missing") + " · runtime not imported.";
@@ -586,9 +564,6 @@ public sealed class ToothLabViewModel : ObservableObject
         if (IsEditing)
             return;
         var created = Clinical.TryCreate(SelectedProcedureType, PendingDomain(), PendingCanalIds());
-        // #region agent log
-        AgentLog("A", "procedure-commit", ProcedureLog("create", created, created is not null));
-        // #endregion
         if (created is null)
             return;
         RebuildProcedureItems();
@@ -633,9 +608,6 @@ public sealed class ToothLabViewModel : ObservableObject
             changed = Clinical.TryUpdateSurfaces(id, PendingDomain());
         else if (DentalProcedureTypes.RequiresRootCanals(saved.ProcedureType, ToothNumber))
             changed = Clinical.TryUpdateRootCanals(id, PendingCanalIds());
-        // #region agent log
-        AgentLog("C", "procedure-commit", ProcedureLog("save", saved, changed));
-        // #endregion
         RebuildProcedureItems();
         StartNewProcedure();
         if (changed || !DentalProcedureTypes.RequiresSurfaces(saved.ProcedureType))
@@ -686,17 +658,6 @@ public sealed class ToothLabViewModel : ObservableObject
         ((RelayCommand)CreateProcedureCommand).RaiseCanExecuteChanged();
         ((RelayCommand)SaveProcedureCommand).RaiseCanExecuteChanged();
         PendingSelectionChanged?.Invoke(this, EventArgs.Empty);
-        if (log)
-        {
-            // #region agent log
-            AgentLog("E", "pending-selection",
-                "{\"fdi\":\"" + ToothNumber +
-                "\",\"selected\":\"" + string.Join(",", PendingDisplayNames()) +
-                "\",\"canals\":\"" + string.Join(",", PendingCanalIds()) +
-                "\",\"procedureCount\":" + Clinical.Procedures.Count +
-                ",\"editing\":" + (_editingId.HasValue ? "true" : "false") + "}");
-            // #endregion
-        }
     }
 
     private void NotifyImplantPresentation()
@@ -716,13 +677,6 @@ public sealed class ToothLabViewModel : ObservableObject
         RefreshOdontogramClinical();
         RefreshStatus();
         ClinicalChanged?.Invoke(this, EventArgs.Empty);
-        // #region agent log
-        AgentLog("B", "procedure-project",
-            "{\"fdi\":\"" + ToothNumber +
-            "\",\"procedureCount\":" + Clinical.Procedures.Count +
-            ",\"history\":\"" + HistoryLog() +
-            "\",\"derived\":\"" + string.Join(",", FillingSurfaceNames) + "\"}");
-        // #endregion
     }
 
     private void RebuildProcedureItems()
@@ -732,14 +686,6 @@ public sealed class ToothLabViewModel : ObservableObject
         {
             var item = new ProcedureListItem(this, procedure);
             ProcedureItems.Add(item);
-            // #region agent log
-            AgentLog("D", "procedure-title",
-                "{\"runId\":\"post-fix\"" +
-                ",\"title\":\"" + item.Title.Replace("\\", "\\\\").Replace("\"", "\\\"") +
-                "\",\"hasHash\":" + (item.Title.Contains('#') ? "true" : "false") +
-                ",\"subtitle\":\"" + item.SurfacesDisplay.Replace("\\", "\\\\").Replace("\"", "\\\"") +
-                "\",\"type\":\"" + procedure.ProcedureType + "\"}");
-            // #endregion
         }
         OnPropertyChanged(nameof(HasProcedures));
     }
@@ -793,9 +739,6 @@ public sealed class ToothLabViewModel : ObservableObject
         _session = SessionFor(ToothNumber);
         RestoreSession();
         NotifyClinical();
-        // #region agent log
-        Stage1Log("B", "switch-patient", IsolationJson());
-        // #endregion
     }
 
     private void SeedAcceptanceDemo()
@@ -819,9 +762,6 @@ public sealed class ToothLabViewModel : ObservableObject
                     ToothOdontogramState.From(slot.Fdi, clinical.Procedures));
             }
         }
-        // #region agent log
-        Stage1Log("C", "odontogram-marks", IsolationJson());
-        // #endregion
     }
 
     private void StashCurrentSession()
@@ -886,62 +826,9 @@ public sealed class ToothLabViewModel : ObservableObject
         return set;
     }
 
-    private string ProcedureLog(string mode, DentalProcedure? procedure, bool changed) =>
-        "{\"fdi\":\"" + ToothNumber +
-        "\",\"mode\":\"" + mode +
-        "\",\"changed\":" + (changed ? "true" : "false") +
-        ",\"id\":\"" + (procedure?.Id.ToString() ?? "") +
-        "\",\"n\":" + (procedure?.DisplayNumber ?? 0) +
-        ",\"surfaces\":\"" + (procedure is null ? "" : LabSurfaces.Join(procedure.Surfaces, InnerCameraLabel)) +
-        "\",\"canals\":\"" + (procedure is null ? "" : ToothRootCanalCatalog.Join(ToothNumber, procedure.RootCanalIds)) +
-        "\",\"type\":\"" + (procedure?.ProcedureType.ToString() ?? "") +
-        "\",\"surfaceCount\":" + (procedure?.Surfaces.Count ?? 0) +
-        ",\"canalCount\":" + (procedure?.RootCanalIds.Count ?? 0) +
-        ",\"procedureCount\":" + Clinical.Procedures.Count +
-        ",\"history\":\"" + HistoryLog() +
-        "\",\"derived\":\"" + string.Join(",", FillingSurfaceNames) + "\"}";
 
-    private string IsolationJson()
-    {
-        string Slot(string fdi)
-        {
-            var slot = ChartRows.SelectMany(row => row.Right.Concat(row.Left)).First(s => s.Fdi == fdi);
-            return "\"" + fdi + "\":{\"n\":" + SessionFor(fdi).Clinical.Procedures.Count +
-                   ",\"filling\":" + (slot.ShowFilling ? "true" : "false") +
-                   ",\"implant\":" + (slot.ShowImplant ? "true" : "false") +
-                   ",\"missing\":" + (slot.ShowMissing ? "true" : "false") +
-                   ",\"endo\":" + (slot.ShowEndodontic ? "true" : "false") + "}";
-        }
 
-        return "{\"patient\":\"" + _currentPatient.Id +
-               "\",\"fdi\":\"" + ToothNumber +
-               "\",\"selectedProcs\":" + Clinical.Procedures.Count +
-               "," + Slot("16") + "," + Slot("24") + "," + Slot("34") + "," + Slot("46") + "}";
-    }
 
-    private string HistoryLog() =>
-        string.Join(";", Clinical.Procedures.Select(p =>
-            "#" + p.DisplayNumber + ":" + p.ProcedureType + ":" + p.Id.ToString("N")[..8] + ":" + LabSurfaces.Join(p.Surfaces, InnerCameraLabel) + ":" + ToothRootCanalCatalog.Join(ToothNumber, p.RootCanalIds)));
-
-    // #region agent log
-    private static void Stage1Log(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage1\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"ToothLabViewModel.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* lab logging must not break the workflow */ }
-    }
-
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"procedure-v1\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"ToothLabViewModel.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* lab logging must not break the workflow */ }
-    }
-    // #endregion
 
     private void RefreshStatus()
     {

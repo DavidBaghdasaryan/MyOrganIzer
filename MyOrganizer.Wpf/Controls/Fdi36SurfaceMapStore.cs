@@ -56,16 +56,11 @@ internal static class Fdi36SurfaceMapStore
             var oldLabels = ReadLabelsFromFile(json, parts.Crown.TriangleIndices.Count / 3);
             if (oldLabels is not null)
             {
-                ToothSurfaceLayoutStats.Log("A", "36", "before-topology", parts.Crown, oldLabels);
-                ToothSurfaceTopology.LogAnalyze("A", "36", "before-topology", parts.Crown, oldLabels);
             }
         }
         var map = Build(parts.Crown);
         Save(map, json);
         DumpMeans(parts.Crown, map);
-        ToothSurfaceLayoutStats.Log("A", "36", "cervical-red", parts.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("A", "36", "cervical-red", parts.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "36", parts.Crown, map.TriangleSurface);
         var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
         if (own.Dup != 0 || own.Unassigned != 0)
             throw new InvalidDataException("ownership dup=" + own.Dup + " unassigned=" + own.Unassigned);
@@ -145,19 +140,6 @@ internal static class Fdi36SurfaceMapStore
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"A\",\"location\":\"Fdi36SurfaceMapStore.cs\",\"message\":\"saved\",\"data\":{\"path\":\"" +
-                       path.Replace("\\", "\\\\") + "\",\"n\":" + n +
-                       ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"lingual\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"curated\":" + map.Overrides.Count +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurfaceMap? Read(MeshGeometry3D crown, Stream stream)

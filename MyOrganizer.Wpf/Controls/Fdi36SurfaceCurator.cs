@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows.Media.Media3D;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -56,16 +55,6 @@ internal static class Fdi36SurfaceCurator
                 map.Overrides[t] = labels[t];
         }
 
-        // #region agent log
-        AgentLog("K", "fdi36-curated",
-            "{\"peeledB\":" + peeled[1] + ",\"peeledL\":" + peeled[2] +
-            ",\"peeledM\":" + peeled[3] + ",\"peeledD\":" + peeled[4] +
-            ",\"overrides\":" + map.Overrides.Count +
-            ",\"manual\":" + Fdi36ManualOverrides.Triangles.Count +
-            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
-            ",\"lingual\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
-            ",\"occLowFace\":" + CountLowFace(feat, labels) + "}");
-        // #endregion
         return map;
     }
 
@@ -507,14 +496,6 @@ internal static class Fdi36SurfaceCurator
         Point3D AxialCenter,
         Point3D TableOrigin);
 
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi36-map-v1\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"Fdi36SurfaceCurator.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
 }
 
 internal static class Fdi36ManualOverrides

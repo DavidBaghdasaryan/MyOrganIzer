@@ -55,9 +55,6 @@ internal static class Fdi37SurfaceMapStore
                 fs, out stats37, MandibularSecondMolarTemplate.LoadOptions(ToothSide.Left));
         var map = Build(parts37.Crown);
         DumpMeans(parts37.Crown, map);
-        ToothSurfaceLayoutStats.Log("A", "37", "template-left", parts37.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("A", "37", "template-left", parts37.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "37", parts37.Crown, map.TriangleSurface);
         var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
         var red = ToothSurfaceLayoutStats.RedHeightOf(parts37.Crown, map.TriangleSurface);
         var layout = ToothSurfaceLayoutStats.Json("37", "template-left", parts37.Crown, map.TriangleSurface);
@@ -190,20 +187,6 @@ internal static class Fdi37SurfaceMapStore
             HashOf("Assets/Teeth/Source/FDI46_High.obj"),
             HashOf("Assets/Teeth/Source/FDI17_High.obj"),
             HashOf("Assets/Teeth/Source/FDI27_High.obj"));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi37-template\",\"hypothesisId\":\"C\",\"location\":\"Fdi37SurfaceMapStore.cs\",\"message\":\"frozen-hashes\",\"data\":{\"when\":\"" +
-                       when +
-                       "\",\"map17\":\"" + hashes.Map17 +
-                       "\",\"map27\":\"" + hashes.Map27 +
-                       "\",\"map36\":\"" + hashes.Map36 +
-                       "\",\"obj36\":\"" + hashes.Obj36 +
-                       "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return hashes;
     }
 
@@ -228,38 +211,6 @@ internal static class Fdi37SurfaceMapStore
         var p = MeanY(layout, "inner");
         var ok = m > 0 && d < 0 && b > 0 && p < 0;
         var cervical = red.Mean <= 0.40 && red.PctHigh <= 15;
-        // #region agent log
-        try
-        {
-            var nTri = crown.TriangleIndices.Count / 3;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi37-template\",\"hypothesisId\":\"A\",\"location\":\"Fdi37SurfaceMapStore.cs\",\"message\":\"laterality\",\"data\":{" +
-                       "\"mirrored\":" + (stats37.Mirrored ? "true" : "false") +
-                       ",\"yawDeg\":" + stats37.YawDeg.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dx\":" + stats37.Dx.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dy\":" + stats37.Dy.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dz\":" + stats37.Dz.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootClusters\":" + stats37.RootClusters +
-                       ",\"crownMeanZ\":" + stats37.CrownMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootMeanZ\":" + stats37.RootMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownUp\":" + (stats37.CrownMeanZ > stats37.RootMeanZ ? "true" : "false") +
-                       ",\"nTri\":" + nTri +
-                       ",\"m37\":" + m.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d37\":" + d.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b37\":" + b.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"l37\":" + p.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"canonicalAxesOk\":" + (ok ? "true" : "false") +
-                       ",\"copiedFdi36TriangleIds\":false" +
-                       ",\"dup\":" + own.Dup +
-                       ",\"unassigned\":" + own.Unassigned +
-                       ",\"occMeanZ01\":" + red.Mean.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctLow\":" + red.PctLow.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctHigh\":" + red.PctHigh.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"cervicalNeck\":" + (cervical ? "true" : "false") +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         if (!ok)
             throw new InvalidDataException(
                 "FDI37 axes failed m=" + m + " d=" + d + " b=" + b + " l=" + p);
@@ -314,19 +265,6 @@ internal static class Fdi37SurfaceMapStore
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi37-template\",\"hypothesisId\":\"D\",\"location\":\"Fdi37SurfaceMapStore.cs\",\"message\":\"saved\",\"data\":{\"n\":" +
-                       n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"lingual\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"curated\":" + map.Overrides.Count +
-                       ",\"mesh\":\"FDI37_High.obj\",\"copiedFdi36TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurfaceMap? Read(MeshGeometry3D crown, Stream stream)

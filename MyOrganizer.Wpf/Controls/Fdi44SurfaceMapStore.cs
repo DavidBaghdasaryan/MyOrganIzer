@@ -60,8 +60,6 @@ internal static class Fdi44SurfaceMapStore
         if (frozen34 is null)
             throw new InvalidDataException("frozen FDI34SurfaceMap.json could not be read for laterality compare.");
         var layout34 = ToothSurfaceLayoutStats.Json("34", "frozen-readonly", parts34.Crown, frozen34);
-        ToothSurfaceLayoutStats.Log("A", "34", "frozen-readonly", parts34.Crown, frozen34);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "34", parts34.Crown, frozen34);
 
         ToothMeshParts parts44;
         StlMeshStats stats44;
@@ -70,9 +68,6 @@ internal static class Fdi44SurfaceMapStore
                 fs, out stats44, MandibularFirstPremolarTemplate.LoadOptions(ToothSide.Right));
         var map = Build(parts44.Crown);
         DumpMeans(parts44.Crown, map);
-        ToothSurfaceLayoutStats.Log("A", "44", "template-right", parts44.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("A", "44", "template-right", parts44.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "44", parts44.Crown, map.TriangleSurface);
         var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
         var red = ToothSurfaceLayoutStats.RedHeightOf(parts44.Crown, map.TriangleSurface);
         var layout44 = ToothSurfaceLayoutStats.Json("44", "template-right", parts44.Crown, map.TriangleSurface);
@@ -140,22 +135,6 @@ internal static class Fdi44SurfaceMapStore
             HashOf("Assets/Teeth/Source/FDI26_High.obj"),
             HashOf("Assets/Teeth/Source/FDI36_High.obj"),
             HashOf("Assets/Teeth/Source/FDI46_High.obj"));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi44-template\",\"hypothesisId\":\"C\",\"location\":\"Fdi44SurfaceMapStore.cs\",\"message\":\"frozen-hashes\",\"data\":{\"when\":\"" +
-                       when +
-                       "\",\"map34\":\"" + hashes.Map34 +
-                       "\",\"map14\":\"" + hashes.Map14 +
-                       "\",\"map24\":\"" + hashes.Map24 +
-                       "\",\"map16\":\"" + hashes.Map16 +
-                       "\",\"map36\":\"" + hashes.Map36 +
-                       "\",\"obj34\":\"" + hashes.Obj34 +
-                       "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return hashes;
     }
 
@@ -187,43 +166,6 @@ internal static class Fdi44SurfaceMapStore
         var ok = ok34 && ok44;
         var cancelled = Math.Abs(m44 - m34) < 0.05 && Math.Abs(d44 - d34) < 0.05;
         var cervical = red.Mean <= 0.40 && red.PctHigh <= 15;
-        // #region agent log
-        try
-        {
-            var nTri = crown.TriangleIndices.Count / 3;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi44-template\",\"hypothesisId\":\"A\",\"location\":\"Fdi44SurfaceMapStore.cs\",\"message\":\"laterality\",\"data\":{" +
-                       "\"mirrored34\":" + (stats34.Mirrored ? "true" : "false") +
-                       ",\"mirrored44\":" + (stats44.Mirrored ? "true" : "false") +
-                       ",\"yawDeg\":" + stats44.YawDeg.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dx\":" + stats44.Dx.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dy\":" + stats44.Dy.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dz\":" + stats44.Dz.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownMeanZ\":" + stats44.CrownMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootMeanZ\":" + stats44.RootMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownUp\":" + (stats44.CrownMeanZ > stats44.RootMeanZ ? "true" : "false") +
-                       ",\"nTri\":" + nTri +
-                       ",\"m34\":" + m34.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d34\":" + d34.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b34\":" + b34.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"l34\":" + l34.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"m44\":" + m44.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d44\":" + d44.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b44\":" + b44.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"l44\":" + l44.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"canonicalAxesOk\":" + (ok ? "true" : "false") +
-                       ",\"lateralityCancelled\":" + (cancelled ? "true" : "false") +
-                       ",\"copiedFdi34TriangleIds\":false" +
-                       ",\"dup\":" + own.Dup +
-                       ",\"unassigned\":" + own.Unassigned +
-                       ",\"occMeanZ01\":" + red.Mean.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctLow\":" + red.PctLow.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctHigh\":" + red.PctHigh.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"cervicalNeck\":" + (cervical ? "true" : "false") +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         if (cancelled)
             throw new InvalidDataException("FDI 44 laterality cancelled: mesial/distal match FDI 34.");
         if (!ok)
@@ -299,19 +241,6 @@ internal static class Fdi44SurfaceMapStore
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi44-template\",\"hypothesisId\":\"D\",\"location\":\"Fdi44SurfaceMapStore.cs\",\"message\":\"saved\",\"data\":{\"n\":" +
-                       n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"lingual\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"curated\":" + map.Overrides.Count +
-                       ",\"mesh\":\"FDI44_High.obj\",\"copiedFdi34TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurfaceMap? Read(MeshGeometry3D crown, Stream stream)

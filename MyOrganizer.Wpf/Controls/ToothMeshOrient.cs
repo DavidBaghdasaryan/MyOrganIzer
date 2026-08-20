@@ -1308,26 +1308,11 @@ internal static class ToothMeshOrient
             else
                 inward++;
         }
-        var reversed = false;
         if (inward > outward)
         {
             for (var i = 0; i + 2 < idx.Count; i += 3)
                 (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);
-            reversed = true;
-            (outward, inward) = (inward, outward);
         }
-        _ = stats;
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"post-fix\",\"hypothesisId\":\"B\",\"location\":\"ToothMeshOrient.cs\",\"message\":\"premolar-winding\",\"data\":{\"nTri\":" +
-                       nTri + ",\"outward\":" + outward + ",\"inward\":" + inward +
-                       ",\"reversed\":" + (reversed ? "true" : "false") +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static void MirrorXKeepWinding(Point3DCollection pts, Int32Collection idx)

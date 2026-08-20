@@ -359,10 +359,20 @@ namespace MyOrganizer.Wpf.Migrations
                     b.Property<int>("Price")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid?>("ProcedureId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ProcedureName")
                         .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("RootCanalIds")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
 
                     b.Property<string>("Surface")
                         .IsRequired()

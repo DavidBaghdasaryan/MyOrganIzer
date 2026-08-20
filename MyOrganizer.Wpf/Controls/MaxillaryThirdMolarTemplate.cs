@@ -30,33 +30,14 @@ internal static class MaxillaryThirdMolarTemplate
     {
         var map = Fdi16SurfaceCurator.ApplyGeometry(
             CrownSurfaceClassifier.Classify(crown, applyFdi16Overrides: false));
-        var swapped = false;
         if (laterality == ToothSide.Left)
-        {
             SwapMesialDistal(map);
-            swapped = true;
-        }
         ToothSurfaceTopology.RetractHighTablePalatalFromDistal(
             map.SourceCrown, map.TriangleSurface, laterality);
         map.Overrides.Clear();
         Array.Clear(map.Counts);
         foreach (var s in map.TriangleSurface)
             map.Counts[(int)s]++;
-        // #region agent log
-        try
-        {
-            var n = map.TriangleSurface.Length;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi18-template\",\"hypothesisId\":\"D\",\"location\":\"MaxillaryThirdMolarTemplate.cs\",\"message\":\"generated\",\"data\":{\"laterality\":\"" +
-                       laterality + "\",\"mdSwapped\":" + (swapped ? "true" : "false") +
-                       ",\"nTri\":" + n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"palatal\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"overrides\":" + map.Overrides.Count +
-                       ",\"copied16TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return map;
     }
 

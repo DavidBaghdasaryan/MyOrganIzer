@@ -28,27 +28,8 @@ internal static class MaxillaryFirstMolarTemplate
     {
         var map = Fdi16SurfaceCurator.ApplyMaxillaryGeometry(
             CrownSurfaceClassifier.Classify(crown, applyFdi16Overrides: false));
-        var swapped = false;
         if (laterality == ToothSide.Left)
-        {
             SwapMesialDistal(map);
-            swapped = true;
-        }
-        // #region agent log
-        try
-        {
-            var n = map.TriangleSurface.Length;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi26-template\",\"hypothesisId\":\"D\",\"location\":\"MaxillaryFirstMolarTemplate.cs\",\"message\":\"generated\",\"data\":{\"laterality\":\"" +
-                       laterality + "\",\"mdSwapped\":" + (swapped ? "true" : "false") +
-                       ",\"nTri\":" + n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"palatal\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"overrides\":" + map.Overrides.Count +
-                       ",\"copied16TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return map;
     }
 

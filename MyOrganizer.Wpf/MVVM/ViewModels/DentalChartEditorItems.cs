@@ -98,6 +98,9 @@ public sealed class ChartProcedureItem
             : DentalProcedureTypes.RequiresRootCanals(procedure.ProcedureType, procedure.ToothNumber)
                 ? ""
                 : "Whole tooth";
+        PriceDisplay = string.IsNullOrWhiteSpace(procedure.Tier)
+            ? ""
+            : procedure.Tier + "  —  " + procedure.Price.ToString("N0");
         EditCommand = new RelayCommand(() => owner.BeginEdit(Id));
         RemoveCommand = new AsyncRelayCommand(() => owner.RemoveProcedureAsync(Id));
     }
@@ -114,7 +117,9 @@ public sealed class ChartProcedureItem
     public Guid Id { get; }
     public string Title { get; }
     public string SurfacesDisplay { get; }
+    public string PriceDisplay { get; }
     public bool HasDetail => !string.IsNullOrWhiteSpace(SurfacesDisplay);
+    public bool HasPrice => !string.IsNullOrWhiteSpace(PriceDisplay);
     public ICommand EditCommand { get; }
     public ICommand RemoveCommand { get; }
 }

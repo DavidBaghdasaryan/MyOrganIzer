@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows.Media.Media3D;
 using MyOrganizer.Wpf.Dental;
 
@@ -64,32 +63,6 @@ internal static class ToothRootCanalGuide
                 result[ids[i]] = path;
         }
 
-        // #region agent log
-        try
-        {
-            var seedXs = string.Join(";", seeds.Select(s => F(s.X) + "," + F(s.Y)));
-            var counts = string.Join(";", ids.Select(id =>
-            {
-                result.TryGetValue(id, out var p);
-                var a = p is { Count: > 0 } ? F(p[0].Point.Z) : "";
-                var b = p is { Count: > 0 } ? F(p[^1].Point.Z) : "";
-                return id + ":" + (p?.Count ?? 0) + ":" + a + ">" + b;
-            }));
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"canal-apex-v3\",\"hypothesisId\":\"C\"" +
-                       ",\"location\":\"ToothRootCanalGuide.PathsFromRoot\",\"message\":\"canal-seeds\"" +
-                       ",\"data\":{\"fdi\":\"" + fdi + "\",\"n\":" + ids.Length +
-                       ",\"mesialSign\":" + mesialSign + ",\"mirrored\":" + (mirrored ? "true" : "false") +
-                       ",\"apexMax\":" + (apexIsMaxZ ? "true" : "false") +
-                       ",\"crownZ\":" + F(crownMeanZ) + ",\"rootZ\":" + F(rootMeanZ) +
-                       ",\"fusedBp\":" + (fusedBp ? "true" : "false") +
-                       ",\"seeds\":\"" + seedXs + "\",\"counts\":\"" + counts +
-                       "\",\"z0\":" + F(z0) + ",\"z1\":" + F(z1) +
-                       ",\"minZ\":" + F(minZ) + ",\"maxZ\":" + F(maxZ) + "}" +
-                       ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return result;
     }
 

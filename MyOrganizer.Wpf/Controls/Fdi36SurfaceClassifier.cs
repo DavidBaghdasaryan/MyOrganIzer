@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Media.Media3D;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -109,15 +108,6 @@ internal static class Fdi36SurfaceClassifier
         foreach (var lab in labels)
             counts[(int)lab]++;
 
-        // #region agent log
-        AgentLog("J", "fdi36-classified",
-            "{\"nTri\":" + nTri +
-            ",\"seed\":" + seedCount + ",\"grown\":" + grown +
-            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
-            ",\"lingual\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] +
-            ",\"islandsBefore\":" + islandsBefore + ",\"islandsAfter\":" + islandsAfter +
-            ",\"mean\":{" + MeanJson(labels, centroids) + "}}");
-        // #endregion
 
         return new ClinicalSurfaceMap
         {
@@ -463,12 +453,4 @@ internal static class Fdi36SurfaceClassifier
 
     private static string F(double v) => v.ToString("0.####", CultureInfo.InvariantCulture);
 
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi36-map-v1\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"Fdi36SurfaceClassifier.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
 }

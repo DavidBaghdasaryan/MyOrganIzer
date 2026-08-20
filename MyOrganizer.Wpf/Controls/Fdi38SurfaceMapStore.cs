@@ -55,9 +55,6 @@ internal static class Fdi38SurfaceMapStore
                 fs, out stats38, MandibularThirdMolarTemplate.LoadOptions(ToothSide.Left));
         var map = Build(parts38.Crown);
         DumpMeans(parts38.Crown, map);
-        ToothSurfaceLayoutStats.Log("A", "38", "template-left", parts38.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("A", "38", "template-left", parts38.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "38", parts38.Crown, map.TriangleSurface);
         var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
         var red = ToothSurfaceLayoutStats.RedHeightOf(parts38.Crown, map.TriangleSurface);
         var layout = ToothSurfaceLayoutStats.Json("38", "template-left", parts38.Crown, map.TriangleSurface);
@@ -204,24 +201,6 @@ internal static class Fdi38SurfaceMapStore
             HashOf("Assets/Teeth/Source/FDI47_High.obj"),
             HashOf("Assets/Teeth/Source/FDI18_High.obj"),
             HashOf("Assets/Teeth/Source/FDI28_High.obj"));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi38-template\",\"hypothesisId\":\"C\",\"location\":\"Fdi38SurfaceMapStore.cs\",\"message\":\"frozen-hashes\",\"data\":{\"when\":\"" +
-                       when +
-                       "\",\"map18\":\"" + hashes.Map18 +
-                       "\",\"map28\":\"" + hashes.Map28 +
-                       "\",\"map37\":\"" + hashes.Map37 +
-                       "\",\"map47\":\"" + hashes.Map47 +
-                       "\",\"obj18\":\"" + hashes.Obj18 +
-                       "\",\"obj28\":\"" + hashes.Obj28 +
-                       "\",\"obj37\":\"" + hashes.Obj37 +
-                       "\",\"obj47\":\"" + hashes.Obj47 +
-                       "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return hashes;
     }
 
@@ -246,39 +225,6 @@ internal static class Fdi38SurfaceMapStore
         var p = MeanY(layout, "inner");
         var ok = m > 0 && d < 0 && b > 0 && p < 0;
         var cervical = red.Mean <= 0.40 && red.PctHigh <= 15;
-        // #region agent log
-        try
-        {
-            var nTri = crown.TriangleIndices.Count / 3;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi38-template\",\"hypothesisId\":\"A\",\"location\":\"Fdi38SurfaceMapStore.cs\",\"message\":\"laterality\",\"data\":{" +
-                       "\"mirrored\":" + (stats38.Mirrored ? "true" : "false") +
-                       ",\"yawDeg\":" + stats38.YawDeg.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dx\":" + stats38.Dx.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dy\":" + stats38.Dy.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dz\":" + stats38.Dz.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootClusters\":" + stats38.RootClusters +
-                       ",\"crownMeanZ\":" + stats38.CrownMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootMeanZ\":" + stats38.RootMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownUp\":" + (stats38.CrownMeanZ > stats38.RootMeanZ ? "true" : "false") +
-                       ",\"nTri\":" + nTri +
-                       ",\"m38\":" + m.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d38\":" + d.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b38\":" + b.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"l38\":" + p.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"canonicalAxesOk\":" + (ok ? "true" : "false") +
-                       ",\"copiedFdi36TriangleIds\":false" +
-                       ",\"copiedFdi37TriangleIds\":false" +
-                       ",\"dup\":" + own.Dup +
-                       ",\"unassigned\":" + own.Unassigned +
-                       ",\"occMeanZ01\":" + red.Mean.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctLow\":" + red.PctLow.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctHigh\":" + red.PctHigh.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"cervicalNeck\":" + (cervical ? "true" : "false") +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         if (!ok)
             throw new InvalidDataException(
                 "FDI38 axes failed m=" + m + " d=" + d + " b=" + b + " l=" + p);
@@ -333,19 +279,6 @@ internal static class Fdi38SurfaceMapStore
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi38-template\",\"hypothesisId\":\"D\",\"location\":\"Fdi38SurfaceMapStore.cs\",\"message\":\"saved\",\"data\":{\"n\":" +
-                       n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"lingual\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"curated\":" + map.Overrides.Count +
-                       ",\"mesh\":\"FDI38_High.obj\",\"copiedFdi36TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurfaceMap? Read(MeshGeometry3D crown, Stream stream)

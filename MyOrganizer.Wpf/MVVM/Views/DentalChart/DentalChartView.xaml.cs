@@ -12,6 +12,7 @@ public partial class DentalChartView : UserControl
     private const double SideBySideMin = 980;
 
     private DentalChartViewModel? _vm;
+    private bool _presentQueued;
 
     public DentalChartView()
     {
@@ -27,9 +28,6 @@ public partial class DentalChartView : UserControl
             MeshView.InteractionChanged += OnInteraction;
         HookVm(DataContext as DentalChartViewModel);
         ArrangeInspector(ActualWidth);
-        // #region agent log
-        LogHost();
-        // #endregion
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -54,7 +52,7 @@ public partial class DentalChartView : UserControl
         {
             InspectorCol.Width = new GridLength(width >= SideBySideWide ? 300 : 240);
             InspectorRow.Height = new GridLength(0);
-            Grid.SetRow(InspectorHost, 1);
+            Grid.SetRow(InspectorHost, 0);
             Grid.SetColumn(InspectorHost, 1);
             InspectorHost.Margin = new Thickness(0);
             InspectorHost.MinHeight = 0;
@@ -63,7 +61,7 @@ public partial class DentalChartView : UserControl
         {
             InspectorCol.Width = new GridLength(0);
             InspectorRow.Height = GridLength.Auto;
-            Grid.SetRow(InspectorHost, 2);
+            Grid.SetRow(InspectorHost, 1);
             Grid.SetColumn(InspectorHost, 0);
             InspectorHost.Margin = new Thickness(0, 10, 0, 0);
             InspectorHost.MinHeight = 168;
@@ -74,11 +72,7 @@ public partial class DentalChartView : UserControl
     {
         if (ReferenceEquals(_vm, vm))
         {
-            if (_vm is not null && MeshView is not null)
-            {
-                PushClinical(_vm);
-                PushSelection(_vm);
-            }
+            QueuePresentation();
             return;
         }
         UnhookVm();
@@ -88,11 +82,7 @@ public partial class DentalChartView : UserControl
         _vm.ClinicalChanged += OnClinicalChanged;
         _vm.PendingSelectionChanged += OnPendingSelectionChanged;
         _vm.PropertyChanged += OnVmPropertyChanged;
-        if (MeshView is not null)
-        {
-            PushClinical(_vm);
-            PushSelection(_vm);
-        }
+        QueuePresentation();
     }
 
     private void UnhookVm()
@@ -111,18 +101,31 @@ public partial class DentalChartView : UserControl
             or nameof(DentalChartViewModel.ShowDetailedViewer)
             or nameof(DentalChartViewModel.ShowInspector)
             or null)
-            Dispatcher.BeginInvoke(ApplyToothPresentation, System.Windows.Threading.DispatcherPriority.Loaded);
+            QueuePresentation();
+    }
+
+    private void QueuePresentation()
+    {
+        if (_presentQueued)
+            return;
+        _presentQueued = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _presentQueued = false;
+            ApplyToothPresentation();
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private void ApplyToothPresentation()
     {
         if (_vm is null || MeshView is null)
             return;
+        var push = _vm.ShowDetailedViewer && _vm.ShowClinicalTools;
         if (_vm.ShowDetailedViewer)
             MeshView.LoadRegisteredAsset(_vm.ToothNumber);
         else
             MeshView.ClearViewport();
-        if (_vm.ShowDetailedViewer && _vm.ShowClinicalTools)
+        if (push)
         {
             PushClinical(_vm);
             PushSelection(_vm);
@@ -134,17 +137,9 @@ public partial class DentalChartView : UserControl
             MeshView.SetRootCanals([]);
         }
         MeshView.SetSurfaceDebug(false, "All");
-        // #region agent log
-        LogMesh();
-        // #endregion
     }
 
-    private void OnClinicalChanged(object? sender, EventArgs e)
-    {
-        if (_vm is null)
-            return;
-        ApplyToothPresentation();
-    }
+    private void OnClinicalChanged(object? sender, EventArgs e) => QueuePresentation();
 
     private void OnPendingSelectionChanged(object? sender, EventArgs e)
     {
@@ -159,16 +154,6 @@ public partial class DentalChartView : UserControl
     {
         MeshView.SetFillingSurfaces(vm.FillingSurfaceNames);
         MeshView.SetRootCanals(vm.TreatedRootCanalIds);
-        // #region agent log
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"C\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"filling-from-clinical\",\"data\":{\"clientId\":" +
-                   vm.ClientId + ",\"fdi\":\"" + vm.ToothNumber +
-                   "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
-                   "\",\"canals\":\"" + string.Join(",", vm.TreatedRootCanalIds) +
-                   "\",\"procedureCount\":" + vm.Clinical.Procedures.Count +
-                   ",\"labPatients\":false},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-        // #endregion
     }
 
     private void PushSelection(DentalChartViewModel vm) =>
@@ -180,51 +165,4 @@ public partial class DentalChartView : UserControl
     private void OnMesial(object sender, RoutedEventArgs e) => MeshView.ShowMesial();
     private void OnDistal(object sender, RoutedEventArgs e) => MeshView.ShowDistal();
 
-    // #region agent log
-    private void LogHost()
-    {
-        var odontogram = FindName("ProductionOdontogram") as OdontogramView;
-        var mesh = FindName("MeshView") as ToothMeshView;
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"A\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"production-lab-host\",\"data\":{\"odontogramPresent\":" +
-                   (odontogram is not null ? "true" : "false") +
-                   ",\"meshPresent\":" + (mesh is not null ? "true" : "false") +
-                   ",\"meshVisible\":" + (mesh?.IsVisible == true ? "true" : "false") +
-                   ",\"showDetailed\":" + (_vm?.ShowDetailedViewer == true ? "true" : "false") +
-                   ",\"labSelectorPresent\":" + (FindName("LabPatientSelector") is not null ? "true" : "false") +
-                   ",\"createButton\":" + ContainsText(this, "Create Procedure") +
-                   ",\"clientId\":" + (_vm?.ClientId ?? 0) +
-                   "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
-
-    private void LogMesh()
-    {
-        if (_vm is null || MeshView is null)
-            return;
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage4\",\"hypothesisId\":\"B\",\"location\":\"DentalChartView.xaml.cs\",\"message\":\"mesh-presentation\",\"data\":{\"clientId\":" +
-                   _vm.ClientId + ",\"fdi\":\"" + _vm.ToothNumber +
-                   "\",\"meshAsset\":\"" + MeshView.AssetName +
-                   "\",\"showDetailed\":" + (_vm.ShowDetailedViewer ? "true" : "false") +
-                   ",\"implant\":" + (_vm.IsImplantSelected ? "true" : "false") +
-                   ",\"clinical\":" + (_vm.ShowClinicalTools ? "true" : "false") +
-                   ",\"labPatients\":false},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { System.IO.File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
-
-    private static bool ContainsText(DependencyObject root, string text)
-    {
-        if (root is TextBlock block && string.Equals(block.Text, text, StringComparison.Ordinal))
-            return true;
-        if (root is Button button && string.Equals(button.Content?.ToString(), text, StringComparison.Ordinal))
-            return true;
-        foreach (var child in LogicalTreeHelper.GetChildren(root))
-        {
-            if (child is DependencyObject node && ContainsText(node, text))
-                return true;
-        }
-        return false;
-    }
-    // #endregion
 }

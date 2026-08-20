@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Media;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -117,25 +116,6 @@ internal static class FacialMolar16Geometry
         var crownH = crown.Bounds.Height;
         var rootH = CejY - Math.Min(palatalRoot.Bounds.Top, Math.Min(mesialRoot.Bounds.Top, distalRoot.Bounds.Top));
 
-        // #region agent log
-        AgentLog("R1", "FacialMolar16Geometry.cs:Build", "atlas proportions",
-            "{\"view\":\"buccal\",\"rootsUp\":true" +
-            ",\"crownH\":" + F(crownH) +
-            ",\"rootH\":" + F(rootH) +
-            ",\"crownRootRatio\":" + F(rootH < 0.001 ? 0 : crownH / rootH) +
-            ",\"expectCrownRoot\":" + F(7.5 / 12.0) +
-            ",\"occlusalW\":" + F(occlusalW) +
-            ",\"cervixW\":" + F(cervixW) +
-            ",\"cervixOcclusalRatio\":" + F(occlusalW < 0.001 ? 0 : cervixW / occlusalW) +
-            ",\"expectCervixOcclusal\":0.7" +
-            ",\"crownTop\":" + F(crown.Bounds.Top) +
-            ",\"rootTop\":" + F(Math.Min(palatalRoot.Bounds.Top, Math.Min(mesialRoot.Bounds.Top, distalRoot.Bounds.Top))) +
-            ",\"occlusalArea\":" + F(occlusal.GetArea()) +
-            ",\"buccalArea\":" + F(buccal.GetArea()) +
-            ",\"lingualArea\":" + F(lingual.GetArea()) +
-            ",\"mesialArea\":" + F(mesial.GetArea()) +
-            ",\"distalArea\":" + F(distal.GetArea()) + "}");
-        // #endregion
 
         return new Set(crown, trunk, palatalRoot, mesialRoot, distalRoot, occlusal, buccal, lingual, mesial, distal, highlight, fissure, cervix);
     }
@@ -154,16 +134,4 @@ internal static class FacialMolar16Geometry
         return g;
     }
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string location, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"refit\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"" + location + "\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* debug ingest must not affect the tooth */ }
-    }
-
-    private static string F(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
-    // #endregion
 }

@@ -18,7 +18,6 @@ internal static class ToothSurfaceTopology
     public static void CleanNormalized(MeshGeometry3D crown, ClinicalSurface[] labels, List<int>[] neighbors)
     {
         var feat = Measure(crown);
-        var before = Analyze(labels, neighbors, feat);
         RetractUnstable(labels, neighbors, feat, highTableOnly: false, passes: 4);
         FillEnclosedHoles(labels, neighbors, 64);
         AssignUpperCrownWalls(labels, feat);
@@ -28,13 +27,7 @@ internal static class ToothSurfaceTopology
         DropIslands(labels, neighbors);
         RetractUnstable(labels, neighbors, feat, highTableOnly: false, passes: 4);
         KeepLargestAxial(labels, neighbors);
-        var after = Analyze(labels, neighbors, feat);
         var ownership = ValidateOwnership(labels);
-        AgentLog("A", "topology-clean",
-            "{\"before\":" + before +
-            ",\"after\":" + after +
-            ",\"dup\":" + ownership.Dup +
-            ",\"unassigned\":" + ownership.Unassigned + "}");
         if (ownership.Dup != 0 || ownership.Unassigned != 0)
             throw new InvalidDataException(
                 "surface-map ownership invalid dup=" + ownership.Dup +
@@ -48,12 +41,6 @@ internal static class ToothSurfaceTopology
         return Analyze(labels, neighbors, Measure(crown));
     }
 
-    public static void LogAnalyze(string hypothesisId, string fdi, string pipeline, MeshGeometry3D crown, ClinicalSurface[] labels)
-    {
-        var json = AnalyzeJson(crown, labels);
-        AgentLog(hypothesisId, "topology",
-            "{\"fdi\":\"" + fdi + "\",\"pipeline\":\"" + pipeline + "\",\"stats\":" + json + "}");
-    }
 
     public static (int Dup, int Unassigned) ValidateOwnership(ClinicalSurface[] labels)
     {
@@ -78,29 +65,12 @@ internal static class ToothSurfaceTopology
     {
         var feat = Measure(crown);
         var hyster = HysteresisDeg * Math.PI / 180.0;
-        var palatalInDistal = 0;
-        var palatalInMesial = 0;
-        var moved = 0;
-        var table = 0;
         for (var t = 0; t < labels.Length; t++)
         {
             if (labels[t] == ClinicalSurface.Occlusal) continue;
             if (feat.Z01[t] >= HighTableZ) continue;
-            table++;
-            var next = SectorOf(feat.Centroids[t], feat.AxialCenter, labels[t], hyster);
-            if (labels[t] == ClinicalSurface.Palatal && next == ClinicalSurface.Distal)
-                palatalInDistal++;
-            if (labels[t] == ClinicalSurface.Palatal && next == ClinicalSurface.Mesial)
-                palatalInMesial++;
-            if (next != labels[t])
-                moved++;
-            labels[t] = next;
+            labels[t] = SectorOf(feat.Centroids[t], feat.AxialCenter, labels[t], hyster);
         }
-        AgentLog("C", "table-sectors",
-            "{\"table\":" + table +
-            ",\"moved\":" + moved +
-            ",\"palatalInDistal\":" + palatalInDistal +
-            ",\"palatalInMesial\":" + palatalInMesial + "}");
     }
 
     /// <summary>
@@ -163,8 +133,6 @@ internal static class ToothSurfaceTopology
 
         KeepLargestAxial(labels, neighbors);
         DropIslands(labels, neighbors);
-        AgentLog("C", "palatal-distal-flank",
-            "{\"moved\":" + moved + ",\"voted\":" + voted + "}");
         return moved + voted;
     }
 
@@ -466,7 +434,6 @@ internal static class ToothSurfaceTopology
         var feat = Measure(crown);
         RetractUnstable(labels, neighbors, feat, highTableOnly: true, passes: 12);
         FillEnclosedHoles(labels, neighbors, 128);
-        var flipped = 0;
         for (var pass = 0; pass < 6; pass++)
         {
             var changed = 0;
@@ -488,12 +455,9 @@ internal static class ToothSurfaceTopology
                 labels[t] = target;
                 changed++;
             }
-            flipped += changed;
             if (changed == 0) break;
         }
         FillEnclosedHoles(labels, neighbors, 96);
-        AgentLog("B", "smooth-high-table-seams",
-            "{\"flipped\":" + flipped + "}");
     }
 
     /// <summary>
@@ -504,7 +468,6 @@ internal static class ToothSurfaceTopology
     {
         var neighbors = CrownSurfaceClassifier.BuildNeighbors(crown.TriangleIndices, labels.Length);
         var feat = Measure(crown);
-        var absorbed = 0;
         for (var pass = 0; pass < 8; pass++)
         {
             var changed = 0;
@@ -532,13 +495,10 @@ internal static class ToothSurfaceTopology
                 labels[t] = target;
                 changed++;
             }
-            absorbed += changed;
             if (changed == 0)
                 break;
         }
         FillEnclosedHoles(labels, neighbors, 96);
-        AgentLog("B", "seal-high-crown-holes",
-            "{\"absorbed\":" + absorbed + "}");
     }
 
     private static ClinicalSurface Majority(int[] votes, ClinicalSurface fallback)
@@ -636,14 +596,4 @@ internal static class ToothSurfaceTopology
 
     private sealed record Features(Point3D[] Centroids, double[] Z01, double[] Facing, Point3D AxialCenter);
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"ToothSurfaceTopology.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
-    // #endregion
 }

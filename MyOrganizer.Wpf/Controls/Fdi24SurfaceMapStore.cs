@@ -60,8 +60,6 @@ internal static class Fdi24SurfaceMapStore
         if (frozen14 is null)
             throw new InvalidDataException("frozen FDI14SurfaceMap.json could not be read for laterality compare.");
         var layout14 = ToothSurfaceLayoutStats.Json("14", "frozen-readonly", parts14.Crown, frozen14);
-        ToothSurfaceLayoutStats.Log("A", "14", "frozen-readonly", parts14.Crown, frozen14);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "14", parts14.Crown, frozen14);
 
         ToothMeshParts parts24;
         StlMeshStats stats24;
@@ -70,9 +68,6 @@ internal static class Fdi24SurfaceMapStore
                 fs, out stats24, MaxillaryFirstPremolarTemplate.LoadOptions(ToothSide.Left));
         var map = Build(parts24.Crown);
         DumpMeans(parts24.Crown, map);
-        ToothSurfaceLayoutStats.Log("A", "24", "template-left", parts24.Crown, map.TriangleSurface);
-        ToothSurfaceTopology.LogAnalyze("A", "24", "template-left", parts24.Crown, map.TriangleSurface);
-        ToothSurfaceLayoutStats.LogRedHeight("A", "24", parts24.Crown, map.TriangleSurface);
         var own = ToothSurfaceTopology.ValidateOwnership(map.TriangleSurface);
         var red = ToothSurfaceLayoutStats.RedHeightOf(parts24.Crown, map.TriangleSurface);
         var layout24 = ToothSurfaceLayoutStats.Json("24", "template-left", parts24.Crown, map.TriangleSurface);
@@ -134,22 +129,6 @@ internal static class Fdi24SurfaceMapStore
             HashOf("Assets/Teeth/Source/FDI26_High.obj"),
             HashOf("Assets/Teeth/Source/FDI36_High.obj"),
             HashOf("Assets/Teeth/Source/FDI46_High.obj"));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi24-template\",\"hypothesisId\":\"C\",\"location\":\"Fdi24SurfaceMapStore.cs\",\"message\":\"frozen-hashes\",\"data\":{\"when\":\"" +
-                       when +
-                       "\",\"map14\":\"" + hashes.Map14 +
-                       "\",\"map16\":\"" + hashes.Map16 +
-                       "\",\"map26\":\"" + hashes.Map26 +
-                       "\",\"map36\":\"" + hashes.Map36 +
-                       "\",\"map46\":\"" + hashes.Map46 +
-                       "\",\"obj14\":\"" + hashes.Obj14 +
-                       "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         return hashes;
     }
 
@@ -181,61 +160,11 @@ internal static class Fdi24SurfaceMapStore
         var ok = ok14 && ok24;
         var cancelled = Math.Abs(m24 - m14) < 0.05 && Math.Abs(d24 - d14) < 0.05;
         var cervical = red.Mean <= 0.40 && red.PctHigh <= 15;
-        // #region agent log
-        try
-        {
-            var nTri = crown.TriangleIndices.Count / 3;
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi24-template\",\"hypothesisId\":\"A\",\"location\":\"Fdi24SurfaceMapStore.cs\",\"message\":\"laterality\",\"data\":{" +
-                       "\"mirrored14\":" + (stats14.Mirrored ? "true" : "false") +
-                       ",\"mirrored24\":" + (stats24.Mirrored ? "true" : "false") +
-                       ",\"yawDeg\":" + stats24.YawDeg.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dx\":" + stats24.Dx.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dy\":" + stats24.Dy.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"dz\":" + stats24.Dz.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownMeanZ\":" + stats24.CrownMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"rootMeanZ\":" + stats24.RootMeanZ.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"crownUp\":" + (stats24.CrownMeanZ > stats24.RootMeanZ ? "true" : "false") +
-                       ",\"nTri\":" + nTri +
-                       ",\"m14\":" + m14.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d14\":" + d14.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b14\":" + b14.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"p14\":" + p14.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"m24\":" + m24.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"d24\":" + d24.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"b24\":" + b24.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"p24\":" + p24.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"canonicalAxesOk\":" + (ok ? "true" : "false") +
-                       ",\"lateralityCancelled\":" + (cancelled ? "true" : "false") +
-                       ",\"copiedFdi14TriangleIds\":false" +
-                       ",\"dup\":" + own.Dup +
-                       ",\"unassigned\":" + own.Unassigned +
-                       ",\"occMeanZ01\":" + red.Mean.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctLow\":" + red.PctLow.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"occPctHigh\":" + red.PctHigh.ToString("0.###", CultureInfo.InvariantCulture) +
-                       ",\"cervicalNeck\":" + (cervical ? "true" : "false") +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
         if (cancelled)
             throw new InvalidDataException("FDI 24 laterality cancelled: mesial/distal match FDI 14.");
         if (!ok)
             throw new InvalidDataException(
                 "laterality axes failed m14=" + m14 + " d14=" + d14 + " m24=" + m24 + " d24=" + d24);
-        // #region agent log
-        try
-        {
-            var lineB = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi24-template\",\"hypothesisId\":\"B\",\"location\":\"Fdi24SurfaceMapStore.cs\",\"message\":\"cervical\",\"data\":{" +
-                        "\"meanZ01\":" + red.Mean.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ",\"pctHigh\":" + red.PctHigh.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ",\"pctLow\":" + red.PctLow.ToString("0.###", CultureInfo.InvariantCulture) +
-                        ",\"cervicalNeck\":" + (cervical ? "true" : "false") +
-                        "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", lineB);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurface[]? ReadLabelsFromFile(string path, int nTri)
@@ -306,19 +235,6 @@ internal static class Fdi24SurfaceMapStore
         };
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOpts));
-        // #region agent log
-        try
-        {
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi24-template\",\"hypothesisId\":\"D\",\"location\":\"Fdi24SurfaceMapStore.cs\",\"message\":\"saved\",\"data\":{\"n\":" +
-                       n + ",\"occlusal\":" + map.Counts[0] + ",\"buccal\":" + map.Counts[1] +
-                       ",\"palatal\":" + map.Counts[2] + ",\"mesial\":" + map.Counts[3] +
-                       ",\"distal\":" + map.Counts[4] + ",\"curated\":" + map.Overrides.Count +
-                       ",\"mesh\":\"FDI24_High.obj\",\"copiedFdi14TriangleIds\":false" +
-                       "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-            File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
-        }
-        catch { }
-        // #endregion
     }
 
     private static ClinicalSurfaceMap? Read(MeshGeometry3D crown, Stream stream)

@@ -75,7 +75,6 @@ public partial class SvgToothView : UserControl
             var svg = LoadSvg(AssetName, stats);
             if (svg is null)
             {
-                AgentLog("D", "svg-load-failed", stats.ToJson());
                 return;
             }
 
@@ -99,19 +98,16 @@ public partial class SvgToothView : UserControl
             if (root is null)
             {
                 stats.MissingGroup = IncludeGroupId;
-                AgentLog("C", "include-group-missing", stats.ToJson());
                 return;
             }
 
             Walk(root, brushes, stats);
             stats.Union = UnionBounds();
             stats.ChildCount = PartCanvas.Children.Count;
-            AgentLog("E", "svg-wpf-render", stats.ToJson());
         }
         catch (Exception ex)
         {
             stats.Error = ex.GetType().Name + ": " + ex.Message;
-            AgentLog("A", "svg-wpf-exception", stats.ToJson());
         }
     }
 
@@ -321,8 +317,6 @@ public partial class SvgToothView : UserControl
             {
                 stats.ParseFail++;
                 stats.LastParseError = ex.Message;
-                AgentLog("A", "path-parse-fail",
-                    "{\"id\":\"" + Esc(el.GetAttribute("id")) + "\",\"error\":\"" + Esc(ex.Message) + "\"}");
                 return;
             }
         }
@@ -407,11 +401,6 @@ public partial class SvgToothView : UserControl
         if (id is "background-cusp" or "tooth-base")
         {
             var b = geometry.Bounds;
-            AgentLog("D", "primary-contour",
-                "{\"id\":\"" + id + "\",\"x\":" + F(b.X) + ",\"y\":" + F(b.Y) +
-                ",\"w\":" + F(b.Width) + ",\"h\":" + F(b.Height) +
-                ",\"aspect\":" + F(b.Height < 0.001 ? 0 : b.Width / b.Height) +
-                ",\"fillKind\":\"" + (fill?.GetType().Name ?? "null") + "\"}");
         }
     }
 
@@ -440,7 +429,6 @@ public partial class SvgToothView : UserControl
                 return g;
             }
             stats.UrlFillMiss++;
-            AgentLog("B", "gradient-miss", "{\"id\":\"" + Esc(id) + "\"}");
             return Frozen(Color.FromRgb(0xE8, 0xDC, 0xD0));
         }
 
@@ -598,20 +586,8 @@ public partial class SvgToothView : UserControl
         return Math.Sqrt(dx * dx + dy * dy);
     }
 
-    private static string F(double v) => v.ToString("0.###", CultureInfo.InvariantCulture);
 
-    private static string Esc(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"zoli-svg\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"SvgToothView.xaml.cs:Paint\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* debug ingest must not affect the tooth */ }
-    }
-    // #endregion
 
     private sealed class RenderStats
     {
@@ -633,28 +609,5 @@ public partial class SvgToothView : UserControl
         public string? LastParseError;
         public Rect Union;
 
-        public string ToJson() =>
-            "{" +
-            "\"packUri\":\"" + Esc(PackUri) + "\"," +
-            "\"loadFailed\":" + (LoadFailed ? "true" : "false") + "," +
-            "\"missingGroup\":\"" + Esc(MissingGroup ?? "") + "\"," +
-            "\"error\":\"" + Esc(Error ?? "") + "\"," +
-            "\"viewBoxW\":" + F(ViewBoxW) + "," +
-            "\"viewBoxH\":" + F(ViewBoxH) + "," +
-            "\"gradientCount\":" + GradientCount + "," +
-            "\"linearOk\":" + LinearOk + "," +
-            "\"radialOk\":" + RadialOk + "," +
-            "\"pathOk\":" + PathOk + "," +
-            "\"parseFail\":" + ParseFail + "," +
-            "\"skippedHidden\":" + SkippedHidden + "," +
-            "\"urlFillOk\":" + UrlFillOk + "," +
-            "\"urlFillMiss\":" + UrlFillMiss + "," +
-            "\"childCount\":" + ChildCount + "," +
-            "\"lastParseError\":\"" + Esc(LastParseError ?? "") + "\"," +
-            "\"unionX\":" + F(Union.IsEmpty ? 0 : Union.X) + "," +
-            "\"unionY\":" + F(Union.IsEmpty ? 0 : Union.Y) + "," +
-            "\"unionW\":" + F(Union.IsEmpty ? 0 : Union.Width) + "," +
-            "\"unionH\":" + F(Union.IsEmpty ? 0 : Union.Height) +
-            "}";
     }
 }

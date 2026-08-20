@@ -12,7 +12,9 @@ public enum DentalProcedureType
     Filling,
     Implant,
     Endodontic,
-    Extraction
+    Extraction,
+    Crown,
+    Denture
 }
 
 /// <summary>
@@ -130,6 +132,48 @@ public sealed class ToothLabClinicalState
             return null;
         var procedure = new DentalProcedure(
             Guid.NewGuid(),
+            _nextDisplayNumber++,
+            ToothNumber,
+            type,
+            set,
+            canals);
+        _procedures.Add(procedure);
+        return procedure;
+    }
+
+    /// <summary>
+    /// Rebuilds a record from storage using its saved identity. Lab create/edit
+    /// still goes through <see cref="TryCreate"/> and never calls this.
+    /// </summary>
+    internal DentalProcedure? Restore(
+        Guid id,
+        DentalProcedureType type,
+        IEnumerable<ToothSurfaceType> surfaces,
+        IEnumerable<string>? rootCanalIds = null)
+    {
+        if (id == Guid.Empty)
+            return TryCreate(type, surfaces, rootCanalIds);
+
+        var existing = Find(id);
+        if (existing is not null)
+        {
+            if (type == DentalProcedureType.Filling)
+                TryUpdateSurfaces(id, existing.Surfaces.Concat(surfaces));
+            else if (type == DentalProcedureType.Endodontic)
+                TryUpdateRootCanals(id, existing.RootCanalIds.Concat(rootCanalIds ?? []));
+            return existing;
+        }
+
+        var set = type == DentalProcedureType.Filling ? LabSurfaces.Normalize(surfaces) : [];
+        if (DentalProcedureTypes.RequiresSurfaces(type) && set.Count == 0)
+            return null;
+        var canals = type == DentalProcedureType.Endodontic
+            ? ToothRootCanalCatalog.Normalize(ToothNumber, rootCanalIds)
+            : [];
+        if (DentalProcedureTypes.RequiresRootCanals(type, ToothNumber) && canals.Count == 0)
+            return null;
+        var procedure = new DentalProcedure(
+            id,
             _nextDisplayNumber++,
             ToothNumber,
             type,

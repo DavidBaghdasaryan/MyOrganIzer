@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Media.Media3D;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -163,17 +162,6 @@ internal static class Fdi16SurfaceCurator
                 map.Overrides[t] = labels[t];
         }
 
-        // #region agent log
-        AgentLog("A", "curated",
-            "{\"apply16ov\":" + (applyFdi16TriangleOverrides ? "true" : "false") +
-            ",\"highCervicalBand\":" + (highCervicalBand ? "true" : "false") +
-            ",\"premolarChewing\":" + (premolarChewing ? "true" : "false") +
-            ",\"peeledB\":" + peeled[1] + ",\"peeledP\":" + peeled[2] +
-            ",\"peeledM\":" + peeled[3] + ",\"peeledD\":" + peeled[4] +
-            ",\"overrides\":" + map.Overrides.Count +
-            ",\"occlusal\":" + counts[0] + ",\"buccal\":" + counts[1] +
-            ",\"palatal\":" + counts[2] + ",\"mesial\":" + counts[3] + ",\"distal\":" + counts[4] + "}");
-        // #endregion
         return map;
     }
 
@@ -259,14 +247,6 @@ internal static class Fdi16SurfaceCurator
             labels[t] = wall;
             peeled[(int)wall]++;
         }
-        // #region agent log
-        AgentLog("D", "premolar-peel",
-            "{\"nOcc\":" + nOcc +
-            ",\"kept\":" + kept +
-            ",\"nHi\":" + nHi +
-            ",\"meanRatio\":" + (nOcc == 0 ? "0" : (ratioSum / nOcc).ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"r70\":" + b70 + ",\"r78\":" + b78 + ",\"r86\":" + b86 + ",\"r94\":" + b94 + ",\"rOver\":" + bOver + "}");
-        // #endregion
     }
 
     /// <summary>
@@ -394,16 +374,6 @@ internal static class Fdi16SurfaceCurator
             if (feat.Centroids[t].X - feat.AxialCenter.X < -0.08)
                 remainPalNegX++;
         }
-        // #region agent log
-        AgentLog("D", "premolar-palatal-table",
-            "{\"seen\":" + seen +
-            ",\"movedM\":" + movedM +
-            ",\"movedD\":" + movedD +
-            ",\"voteM\":" + voteM +
-            ",\"voteD\":" + voteD +
-            ",\"remainPalNegX\":" + remainPalNegX +
-            ",\"nHi\":" + nHi + "}");
-        // #endregion
     }
 
     private static bool IsChewingSurface(Features f, int t)
@@ -557,18 +527,6 @@ internal static class Fdi16SurfaceCurator
             if (feat.Z01[t] >= 0.70) high++;
             if (feat.Z01[t] < 0.35) low++;
         }
-        // #region agent log
-        AgentLog("A", "high-cervical-band",
-            "{\"flipped\":" + flipped +
-            ",\"dilated\":" + dilated +
-            ",\"occ\":" + occ +
-            ",\"meanZ01\":" + (occ == 0 ? "0" : (occZ / occ).ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"minZ01\":" + (occ == 0 ? "0" : occMin.ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"lowTable\":" + low +
-            ",\"highNeck\":" + high +
-            ",\"usedLowBand\":false" +
-            ",\"bfsFloor\":0.70}");
-        // #endregion
     }
 
     /// <summary>
@@ -701,15 +659,6 @@ internal static class Fdi16SurfaceCurator
             if (feat.Z01[t] >= 0.70) high++;
             if (feat.Z01[t] < 0.35) low++;
         }
-        // #region agent log
-        AgentLog("A", "cervical-band",
-            "{\"occ\":" + occ +
-            ",\"pct\":" + (nTri == 0 ? "0" : (100.0 * occ / nTri).ToString("0.0", CultureInfo.InvariantCulture)) +
-            ",\"meanZ01\":" + (occ == 0 ? "0" : (occZ / occ).ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"lowCervical\":" + low +
-            ",\"highTable\":" + high +
-            ",\"cejSeeds\":" + CountTrue(cej) + "}");
-        // #endregion
     }
 
     /// <summary>
@@ -736,7 +685,6 @@ internal static class Fdi16SurfaceCurator
         // Do not strip the CEJ groove: those faces are disconnected from the
         // walls, and reassignment breaks M/L axes. Grow the existing band onto
         // the outer neck walls so the coral is visible from the side and from below.
-        var stripped = 0;
 
         bool VisibleCollar(int t)
         {
@@ -790,16 +738,6 @@ internal static class Fdi16SurfaceCurator
             afterZ += feat.Z01[t];
             if (feat.Facing[t] < 0.08) below++;
         }
-        // #region agent log
-        AgentLog("A", "mandibular-canine-collar",
-            "{\"before\":" + before +
-            ",\"beforeMeanZ01\":" + (before == 0 ? "0" : (beforeZ / before).ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"strippedGroove\":" + stripped +
-            ",\"paintedNeck\":" + painted +
-            ",\"after\":" + after +
-            ",\"afterMeanZ01\":" + (after == 0 ? "0" : (afterZ / after).ToString("0.000", CultureInfo.InvariantCulture)) +
-            ",\"fromBelowFacing\":" + below + "}");
-        // #endregion
     }
 
     private static int CountTrue(bool[] flags)
@@ -1103,14 +1041,4 @@ internal static class Fdi16SurfaceCurator
         double[] EnvR,
         Point3D AxialCenter);
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"curated-occlusal\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"Fdi16SurfaceCurator.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* lab logging must not break rendering */ }
-    }
-    // #endregion
 }

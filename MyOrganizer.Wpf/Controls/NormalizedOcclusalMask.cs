@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.IO;
 using System.Windows.Media.Media3D;
 
 namespace MyOrganizer.Wpf.Controls;
@@ -140,23 +139,6 @@ internal static class NormalizedOcclusalMask
             released++;
         }
 
-        AgentLog("A", "applied-occlusal-mask",
-            "{\"candidates\":" + candidates.Count +
-            ",\"budget\":" + budget +
-            ",\"taken\":" + taken +
-            ",\"released\":" + released +
-            ",\"goldenFrac\":" + GoldenFraction.ToString("0.####", CultureInfo.InvariantCulture) +
-            ",\"minZ01\":" + GoldenMinZ01.ToString("0.###", CultureInfo.InvariantCulture) + "}");
     }
 
-    // #region agent log
-    private static void AgentLog(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"fdi16-template\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"NormalizedOcclusalMask.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { }
-    }
-    // #endregion
 }

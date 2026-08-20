@@ -1,4 +1,3 @@
-using System.IO;
 using MyOrganizer.Wpf.Controls;
 using MyOrganizer.Wpf.Entities;
 
@@ -134,9 +133,6 @@ internal sealed class PatientTreatmentChart
             ToothWorkOdontogramProjection.FillClinical(SessionFor(group.Key).Clinical, group, nameToId);
         if (!string.IsNullOrWhiteSpace(selected))
             _current = SessionFor(selected);
-        // #region agent log
-        Stage3Log("A", "reload-sessions", IsolationJson());
-        // #endregion
     }
 
     public PatientToothSession SessionFor(string fdi)
@@ -153,52 +149,11 @@ internal sealed class PatientTreatmentChart
     public PatientToothSession Activate(string fdi)
     {
         _current = SessionFor(fdi);
-        // #region agent log
-        Stage3Log("B", "activate-session",
-            "{\"clientId\":" + ClientId +
-            ",\"fdi\":\"" + _current.Clinical.ToothNumber +
-            "\",\"procedureCount\":" + _current.Clinical.Procedures.Count +
-            ",\"pending\":" + _current.Pending.Count +
-            ",\"editing\":" + (_current.IsEditing ? "true" : "false") +
-            ",\"labPatients\":false}");
-        // #endregion
         return _current;
     }
 
     public ToothOdontogramState OdontogramFor(string fdi) =>
         ToothOdontogramState.From(fdi, SessionFor(fdi).Clinical.Procedures);
 
-    public string IsolationJson()
-    {
-        string Slot(string fdi)
-        {
-            _sessions.TryGetValue(fdi, out var session);
-            var n = session?.Clinical.Procedures.Count ?? 0;
-            var state = session is null
-                ? ToothOdontogramState.Healthy(fdi)
-                : ToothOdontogramState.From(fdi, session.Clinical.Procedures);
-            return "\"" + fdi + "\":{\"n\":" + n +
-                   ",\"filling\":" + (state.ShowFilling ? "true" : "false") +
-                   ",\"implant\":" + (state.ShowImplant ? "true" : "false") +
-                   ",\"missing\":" + (state.ShowMissing ? "true" : "false") +
-                   ",\"endo\":" + (state.ShowEndodontic ? "true" : "false") + "}";
-        }
 
-        return "{\"clientId\":" + ClientId +
-               ",\"sessionCount\":" + _sessions.Count +
-               ",\"labPatients\":false" +
-               ",\"fdi\":\"" + (_current?.Clinical.ToothNumber ?? "") + "\"," +
-               Slot("16") + "," + Slot("24") + "," + Slot("34") + "," + Slot("46") + "}";
-    }
-
-    // #region agent log
-    private static void Stage3Log(string hypothesisId, string message, string dataJson)
-    {
-        var line = "{\"sessionId\":\"ee2893\",\"runId\":\"stage3\",\"hypothesisId\":\"" + hypothesisId +
-                   "\",\"location\":\"PatientTreatmentChart.cs\",\"message\":\"" + message +
-                   "\",\"data\":" + dataJson + ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
-        try { File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line); }
-        catch { /* session logging must not break the chart */ }
-    }
-    // #endregion
 }

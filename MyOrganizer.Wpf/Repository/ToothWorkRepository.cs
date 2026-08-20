@@ -17,7 +17,15 @@ public class ToothWorkRepository : IToothWorkRepository
            .ThenBy(x => x.Id)
            .ToListAsync();
 
-    public async Task AddAsync(int clientId, string toothFdi, string procedure, string tier, int price, string? surface = null)
+    public async Task AddAsync(
+        int clientId,
+        string toothFdi,
+        string procedure,
+        string tier,
+        int price,
+        string? surface = null,
+        Guid? procedureId = null,
+        string? rootCanalIds = null)
     {
         if (clientId <= 0)
             throw new InvalidOperationException("Client must be saved before adding tooth work.");
@@ -29,7 +37,9 @@ public class ToothWorkRepository : IToothWorkRepository
             ProcedureName = procedure,
             Tier = tier,
             Price = price,
-            Surface = surface ?? ""
+            Surface = surface ?? "",
+            ProcedureId = procedureId is { } id && id != Guid.Empty ? id : null,
+            RootCanalIds = rootCanalIds ?? ""
         });
         await _db.SaveChangesAsync();
     }

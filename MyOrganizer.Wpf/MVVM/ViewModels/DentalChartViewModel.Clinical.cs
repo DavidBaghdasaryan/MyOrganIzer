@@ -24,7 +24,9 @@ public sealed partial class DentalChartViewModel
         new(DentalProcedureType.Filling, DentalProcedureTypes.DisplayName(DentalProcedureType.Filling)),
         new(DentalProcedureType.Implant, DentalProcedureTypes.DisplayName(DentalProcedureType.Implant)),
         new(DentalProcedureType.Endodontic, DentalProcedureTypes.DisplayName(DentalProcedureType.Endodontic)),
-        new(DentalProcedureType.Extraction, DentalProcedureTypes.DisplayName(DentalProcedureType.Extraction))
+        new(DentalProcedureType.Extraction, DentalProcedureTypes.DisplayName(DentalProcedureType.Extraction)),
+        new(DentalProcedureType.Crown, DentalProcedureTypes.DisplayName(DentalProcedureType.Crown)),
+        new(DentalProcedureType.Denture, DentalProcedureTypes.DisplayName(DentalProcedureType.Denture))
     ];
 
     public ICommand CreateProcedureCommand { get; private set; } = null!;
@@ -54,6 +56,7 @@ public sealed partial class DentalChartViewModel
     public bool ShowDetailedViewer => ShowInspector && !IsImplantSelected;
     public bool ShowEmptyImplantViewer => ShowInspector && IsImplantSelected;
     public bool ShowPlaceholder => HasSelection && !_asset.RuntimeImported;
+    public bool ShowViewportIdle => !ShowDetailedViewer && !ShowEmptyImplantViewer && !ShowPlaceholder;
     public bool ShowClinicalTools => HasSelection && _asset.ClinicalInteraction;
     public bool ShowAssetStatus => HasSelection && !_asset.SurfaceMapAvailable;
     public bool ShowSurfacePicker => ShowClinicalTools && DentalProcedureTypes.RequiresSurfaces(SelectedProcedureType);
@@ -214,17 +217,6 @@ public sealed partial class DentalChartViewModel
         var created = session.TryCreate(SelectedProcedureType);
         if (created is not null && SelectedPriceTier is { } tier)
             created.SetBilling(CatalogName(SelectedProcedureType), tier.Code, tier.Price);
-        // #region agent log
-        Stage3Log("D", "create-procedure",
-            "{\"clientId\":" + ClientId +
-            ",\"fdi\":\"" + ToothNumber +
-            "\",\"type\":\"" + SelectedProcedureType +
-            "\",\"ok\":" + (created is not null ? "true" : "false") +
-            ",\"tier\":\"" + (created?.Tier ?? "") +
-            "\",\"price\":" + (created?.Price ?? 0) +
-            ",\"procedureCount\":" + session.Clinical.Procedures.Count +
-            ",\"labPatients\":false}");
-        // #endregion
         if (created is null)
             return;
         await PersistSessionAsync(session);
@@ -370,6 +362,7 @@ public sealed partial class DentalChartViewModel
         OnPropertyChanged(nameof(ShowDetailedViewer));
         OnPropertyChanged(nameof(ShowEmptyImplantViewer));
         OnPropertyChanged(nameof(ShowPlaceholder));
+        OnPropertyChanged(nameof(ShowViewportIdle));
         OnPropertyChanged(nameof(ShowClinicalTools));
         OnPropertyChanged(nameof(ShowAssetStatus));
         OnPropertyChanged(nameof(ShowSurfacePicker));
@@ -388,6 +381,7 @@ public sealed partial class DentalChartViewModel
         OnPropertyChanged(nameof(IsImplantSelected));
         OnPropertyChanged(nameof(ShowDetailedViewer));
         OnPropertyChanged(nameof(ShowEmptyImplantViewer));
+        OnPropertyChanged(nameof(ShowViewportIdle));
         RefreshOdontogram();
         ClinicalChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -431,22 +425,32 @@ public sealed partial class DentalChartViewModel
             if (procedure.ProcedureType == DentalProcedureType.Filling)
             {
                 foreach (var surface in procedure.Surfaces)
-                    await _repo.AddAsync(ClientId, fdi, name, tier, price, surface.ToString());
+                    await _repo.AddAsync(ClientId, fdi, name, tier, price, surface.ToString(), procedure.Id);
             }
             else
             {
-                await _repo.AddAsync(ClientId, fdi, name, tier, price);
+                await _repo.AddAsync(
+                    ClientId,
+                    fdi,
+                    name,
+                    tier,
+                    price,
+                    null,
+                    procedure.Id,
+                    StoredCanals(procedure));
             }
         }
-        // #region agent log
-        Stage3Log("D", "persist-session",
-            "{\"clientId\":" + ClientId +
-            ",\"fdi\":\"" + fdi +
-            "\",\"procedureCount\":" + session.Clinical.Procedures.Count +
-            ",\"types\":\"" + string.Join(",", session.Clinical.Procedures.Select(p => p.ProcedureType)) +
-            "\",\"tiers\":\"" + string.Join(",", session.Clinical.Procedures.Select(p => p.Tier + ":" + p.Price)) +
-            "\",\"labPatients\":false}");
-        // #endregion
+        ShowStatus("Saved.");
+    }
+
+    private static string StoredCanals(DentalProcedure procedure)
+    {
+        if (procedure.ProcedureType != DentalProcedureType.Endodontic)
+            return "";
+        return string.Join(",",
+            ToothRootCanalCatalog.ForFdi(procedure.ToothNumber)
+                .Select(c => c.Id)
+                .Where(id => procedure.RootCanalIds.Contains(id)));
     }
 
     private string CatalogName(DentalProcedureType type)
@@ -458,6 +462,8 @@ public sealed partial class DentalChartViewModel
             DentalProcedureType.Filling => ProcedureVisualMap.FillingId,
             DentalProcedureType.Implant => ProcedureVisualMap.ImplantZirconiaId,
             DentalProcedureType.Endodontic => ProcedureVisualMap.EndodonticId,
+            DentalProcedureType.Crown => ProcedureVisualMap.CrownZirconiaId,
+            DentalProcedureType.Denture => ProcedureVisualMap.FullDentureId,
             _ => 0
         };
         foreach (var pair in _procedureIdByName)
@@ -470,6 +476,8 @@ public sealed partial class DentalChartViewModel
             DentalProcedureType.Filling => "Filling (Composite / Amalgam)",
             DentalProcedureType.Implant => "Implant with Zirconia Crown",
             DentalProcedureType.Endodontic => "Endodontic Treatment (Root Canal)",
+            DentalProcedureType.Crown => "Zirconia or E-max Crown",
+            DentalProcedureType.Denture => "Full Denture",
             _ => ToothWorkOdontogramProjection.ExtractionProcedureName
         };
     }

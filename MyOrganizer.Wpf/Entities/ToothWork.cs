@@ -20,6 +20,17 @@ namespace MyOrganizer.Wpf.Entities
         /// </summary>
         public string Surface { get; set; } = "";
 
+        /// <summary>
+        /// Stable Lab procedure identity. Null on rows written before Stage 9.
+        /// Several filling surface rows share one value.
+        /// </summary>
+        public Guid? ProcedureId { get; set; }
+
+        /// <summary>
+        /// Comma-separated root/canal ids. Empty for non-endo and legacy endo.
+        /// </summary>
+        public string RootCanalIds { get; set; } = "";
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
