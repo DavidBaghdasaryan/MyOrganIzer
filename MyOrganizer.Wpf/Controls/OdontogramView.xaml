@@ -56,17 +56,10 @@
                         <local:ImplantOdontogramVisual
                             FdiNumber="{Binding Fdi}"
                             Visibility="{Binding ShowImplant, Converter={StaticResource BoolToVis}}"/>
-                        <Canvas IsHitTestVisible="False"
-                                Visibility="{Binding ShowEndodontic, Converter={StaticResource BoolToVis}}">
-                            <Path Stroke="#C62828" StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Visibility="{Binding IsUpper, Converter={StaticResource BoolToVis}}"
-                                  Data="M 16,34 C 17.2,24 14.8,14 16,6"/>
-                            <Path Stroke="#C62828" StrokeThickness="1.7"
-                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Visibility="{Binding IsLower, Converter={StaticResource BoolToVis}}"
-                                  Data="M 16,10 C 14.8,20 17.2,30 16,38"/>
-                        </Canvas>
+                        <local:EndodonticOdontogramVisual
+                            FdiNumber="{Binding Fdi}"
+                            CanalIds="{Binding TreatedCanalIds}"
+                            Visibility="{Binding ShowEndodontic, Converter={StaticResource BoolToVis}}"/>
                         <Canvas IsHitTestVisible="False"
                                 Visibility="{Binding ShowFilling, Converter={StaticResource BoolToVis}}">
                             <Ellipse Width="11" Height="7" Fill="#C5CBD1" Stroke="#9AA3AD" StrokeThickness="0.8"

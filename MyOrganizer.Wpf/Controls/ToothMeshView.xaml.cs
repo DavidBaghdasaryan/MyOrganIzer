@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Media.Media3D;
+using MyOrganizer.Wpf.Dental;
 
 namespace MyOrganizer.Wpf.Controls;
 
@@ -59,6 +60,10 @@ public partial class ToothMeshView : UserControl
     private int _lastHoverTri = -1;
     private readonly Dictionary<(int, int, int), int> _triByVerts = new();
     private readonly HashSet<ClinicalSurface> _fillingSurfaces = [];
+    private readonly HashSet<string> _rootCanalIds = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyDictionary<string, IReadOnlyList<CanalSample>> _canalPaths =
+        new Dictionary<string, IReadOnlyList<CanalSample>>();
+    private Material? _canalMaterial;
     private Material? _fillingMaterial;
     private Material? _hoverMaterial;
     private Material? _selectedMaterial;
@@ -212,6 +217,7 @@ public partial class ToothMeshView : UserControl
                 CrownModel.Geometry = parts.Crown;
                 RootModel.Geometry = parts.Root;
                 CervicalModel.Geometry = parts.Cervical.TriangleIndices.Count == 0 ? null : parts.Cervical;
+                _canalPaths = ToothRootCanalGuide.PathsFromRoot(asset.FdiNumber, parts.Root);
                 ToothLabAppearance.Apply(asset.FdiNumber, CrownModel, RootModel, CervicalModel);
                 BuildTriangleLookup(parts.Crown);
                 if (asset.SurfaceMapAvailable)
@@ -364,6 +370,21 @@ public partial class ToothMeshView : UserControl
         ApplyInteractionOverlays();
     }
 
+    public void SetRootCanals(IEnumerable<string> ids)
+    {
+        _rootCanalIds.Clear();
+        foreach (var id in ToothRootCanalCatalog.Normalize(_loadedFdi, ids))
+            _rootCanalIds.Add(id);
+        ApplyCanalOverlays(log: true);
+        // #region agent log
+        AgentLog("A", "canal-overlay-set",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
+            "\",\"pathCount\":" + _canalPaths.Count +
+            ",\"drawn\":" + ((CanalOverlayVisual.Content as Model3DGroup)?.Children.Count ?? 0) + "}");
+        // #endregion
+    }
+
     /// <summary>
     /// Empties the lab 3D viewport. Used for odontogram implant teeth, which
     /// have no 3D model in this version. Does not change loaded tooth assets.
@@ -377,6 +398,8 @@ public partial class ToothMeshView : UserControl
         _hoverSurface = null;
         _fillingSurfaces.Clear();
         _selectedSurfaces.Clear();
+        _rootCanalIds.Clear();
+        _canalPaths = new Dictionary<string, IReadOnlyList<CanalSample>>();
         _triByVerts.Clear();
         _overlayGroup.Children.Clear();
         CrownModel.Geometry = null;
@@ -384,6 +407,7 @@ public partial class ToothMeshView : UserControl
         CervicalModel.Geometry = null;
         SurfaceOverlayVisual.Content = null;
         ClinicalOverlayVisual.Content = null;
+        CanalOverlayVisual.Content = null;
         SelectedOverlayVisual.Content = null;
         HoverOverlayVisual.Content = null;
         MissingOverlay.Visibility = Visibility.Collapsed;
@@ -627,6 +651,7 @@ public partial class ToothMeshView : UserControl
         OrthoCam.Width = Math.Max(0.8, span * 1.32);
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
+        ApplyCanalOverlays();
         LogFraming("frame-occlusal");
         CaptureViewPreview("occlusal");
     }
@@ -646,6 +671,7 @@ public partial class ToothMeshView : UserControl
         OrthoCam.Width = Math.Max(0.8, across * 1.36);
         SyncLights(OrthoCam.LookDirection, OrthoCam.UpDirection);
         UpdateChrome();
+        ApplyCanalOverlays();
         LogFraming("frame-" + name);
         CaptureViewPreview(name);
     }
@@ -670,6 +696,7 @@ public partial class ToothMeshView : UserControl
         _orbitCam.UpDirection = up;
         SyncLights(_orbitCam.LookDirection, _orbitCam.UpDirection);
         UpdateChrome();
+        ApplyCanalOverlays();
     }
 
     /// <summary>
@@ -1185,6 +1212,51 @@ public partial class ToothMeshView : UserControl
             ",\"contentNull\":" + (ClinicalOverlayVisual.Content is null ? "true" : "false") +
             ",\"parsed\":\"" + Esc(string.Join(",", _fillingSurfaces.Select(DisplaySurfaceName))) + "\"}");
         // #endregion
+    }
+
+    private void ApplyCanalOverlays(bool log = false)
+    {
+        _canalMaterial ??= CanalMaterial();
+        if (_rootCanalIds.Count == 0 || _canalPaths.Count == 0)
+        {
+            CanalOverlayVisual.Content = null;
+            return;
+        }
+
+        var group = new Model3DGroup();
+        foreach (var id in _rootCanalIds)
+        {
+            if (!_canalPaths.TryGetValue(id, out var path) || path.Count < 2)
+                continue;
+            var cam = View3D.Camera as ProjectionCamera;
+            var look = cam?.LookDirection ?? new Vector3D(0, 0, -1);
+            var visible = ToothRootCanalGuide.VisibleInside(path, look);
+            group.Children.Add(new GeometryModel3D
+            {
+                Geometry = ToothRootCanalGuide.Tube(visible, 0.016),
+                Material = _canalMaterial,
+                BackMaterial = _canalMaterial
+            });
+        }
+        CanalOverlayVisual.Content = group.Children.Count == 0 ? null : group;
+        if (!log)
+            return;
+        // #region agent log
+        AgentLog("B", "canal-overlay",
+            "{\"fdi\":\"" + Esc(_loadedFdi) +
+            "\",\"ids\":\"" + Esc(string.Join(",", _rootCanalIds)) +
+            "\",\"drawn\":" + group.Children.Count +
+            ",\"paths\":" + _canalPaths.Count + "}");
+        // #endregion
+    }
+
+    private static Material CanalMaterial()
+    {
+        var group = new MaterialGroup();
+        group.Children.Add(new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(0xE0, 0xC6, 0x28, 0x28))));
+        group.Children.Add(new EmissiveMaterial(new SolidColorBrush(Color.FromArgb(0x40, 0xC6, 0x28, 0x28))));
+        group.Freeze();
+        return group;
     }
 
     private void ApplyInteractionOverlays()

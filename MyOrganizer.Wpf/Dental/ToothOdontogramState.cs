@@ -35,18 +35,21 @@ public sealed class ToothOdontogramState
         string fdi,
         OdontogramPresentation presentation,
         IReadOnlyList<OdontogramOverlayKind> overlays,
-        IReadOnlyList<ToothSurfaceType> fillingSurfaces)
+        IReadOnlyList<ToothSurfaceType> fillingSurfaces,
+        IReadOnlyList<string>? treatedRootCanalIds = null)
     {
         Fdi = fdi;
         Presentation = presentation;
         Overlays = overlays;
         FillingSurfaces = fillingSurfaces;
+        TreatedRootCanalIds = treatedRootCanalIds ?? [];
     }
 
     public string Fdi { get; }
     public OdontogramPresentation Presentation { get; }
     public IReadOnlyList<OdontogramOverlayKind> Overlays { get; }
     public IReadOnlyList<ToothSurfaceType> FillingSurfaces { get; }
+    public IReadOnlyList<string> TreatedRootCanalIds { get; }
 
     public bool ShowNaturalTooth => Presentation == OdontogramPresentation.Natural;
     public bool ShowImplant => Presentation == OdontogramPresentation.Implant;
@@ -64,6 +67,7 @@ public sealed class ToothOdontogramState
         var hasExtraction = false;
         var hasEndodontic = false;
         var filling = new HashSet<ToothSurfaceType>();
+        var canals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var procedure in procedures)
         {
             switch (procedure.ProcedureType)
@@ -76,6 +80,8 @@ public sealed class ToothOdontogramState
                     break;
                 case DentalProcedureType.Endodontic:
                     hasEndodontic = true;
+                    foreach (var id in procedure.RootCanalIds)
+                        canals.Add(id);
                     break;
                 case DentalProcedureType.Filling:
                     foreach (var surface in procedure.Surfaces)
@@ -99,7 +105,13 @@ public sealed class ToothOdontogramState
                 overlays.Add(OdontogramOverlayKind.Endodontic);
         }
 
-        return new ToothOdontogramState(fdi, presentation, overlays, LabSurfaces.All.Where(filling.Contains).ToList());
+        var treated = ToothRootCanalCatalog.ForFdi(fdi).Where(c => canals.Contains(c.Id)).Select(c => c.Id).ToList();
+        return new ToothOdontogramState(
+            fdi,
+            presentation,
+            overlays,
+            LabSurfaces.All.Where(filling.Contains).ToList(),
+            treated);
     }
 }
 
@@ -115,6 +127,9 @@ public static class DentalProcedureTypes
 
     public static bool RequiresSurfaces(DentalProcedureType type) =>
         type == DentalProcedureType.Filling;
+
+    public static bool RequiresRootCanals(DentalProcedureType type, string fdi) =>
+        type == DentalProcedureType.Endodontic && ToothRootCanalCatalog.HasChoices(fdi);
 
     public static string DisplayName(DentalProcedureType type) => type switch
     {

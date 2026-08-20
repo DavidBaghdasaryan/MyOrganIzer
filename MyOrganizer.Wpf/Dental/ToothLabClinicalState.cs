@@ -3,7 +3,8 @@ using MyOrganizer.Wpf.Controls;
 namespace MyOrganizer.Wpf.Dental;
 
 /// <summary>
-/// Lab procedure catalog. Filling is surface-scoped; the others are whole-tooth.
+/// Lab procedure catalog. Filling is surface-scoped; Endodontic is root/canal-scoped
+/// when the tooth has catalog entries. Implant and Extraction remain whole-tooth.
 /// Odontogram presentation is derived from these records, not stored separately.
 /// </summary>
 public enum DentalProcedureType
@@ -18,23 +19,32 @@ public enum DentalProcedureType
 /// One clinical procedure record. Identity is independent of visualization.
 /// A Filling may own any subset of the five crown surfaces.
 /// Palatal is stored as <see cref="ToothSurfaceType.Lingual"/>.
+/// An Endodontic record stores selected root/canal IDs from
+/// <see cref="ToothRootCanalCatalog"/>; it never creates a Filling.
 /// </summary>
 public sealed class DentalProcedure
 {
     private readonly HashSet<ToothSurfaceType> _surfaces;
+    private readonly HashSet<string> _rootCanalIds;
 
     internal DentalProcedure(
         Guid id,
         int displayNumber,
         string toothNumber,
         DentalProcedureType procedureType,
-        IEnumerable<ToothSurfaceType> surfaces)
+        IEnumerable<ToothSurfaceType> surfaces,
+        IEnumerable<string>? rootCanalIds = null)
     {
         Id = id;
         DisplayNumber = displayNumber;
         ToothNumber = toothNumber;
         ProcedureType = procedureType;
-        _surfaces = LabSurfaces.Normalize(surfaces);
+        _surfaces = procedureType == DentalProcedureType.Filling
+            ? LabSurfaces.Normalize(surfaces)
+            : [];
+        _rootCanalIds = procedureType == DentalProcedureType.Endodontic
+            ? ToothRootCanalCatalog.Normalize(toothNumber, rootCanalIds)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     public Guid Id { get; }
@@ -42,15 +52,31 @@ public sealed class DentalProcedure
     public string ToothNumber { get; }
     public DentalProcedureType ProcedureType { get; }
     public IReadOnlyCollection<ToothSurfaceType> Surfaces => _surfaces;
+    public IReadOnlyCollection<string> RootCanalIds => _rootCanalIds;
 
     internal bool ReplaceSurfaces(IEnumerable<ToothSurfaceType> surfaces)
     {
+        if (ProcedureType != DentalProcedureType.Filling)
+            return false;
         var next = LabSurfaces.Normalize(surfaces);
         if (next.Count == 0 || next.SetEquals(_surfaces))
             return false;
         _surfaces.Clear();
         foreach (var surface in next)
             _surfaces.Add(surface);
+        return true;
+    }
+
+    internal bool ReplaceRootCanals(IEnumerable<string> rootCanalIds)
+    {
+        if (ProcedureType != DentalProcedureType.Endodontic)
+            return false;
+        var next = ToothRootCanalCatalog.Normalize(ToothNumber, rootCanalIds);
+        if (next.Count == 0 || next.SetEquals(_rootCanalIds))
+            return false;
+        _rootCanalIds.Clear();
+        foreach (var id in next)
+            _rootCanalIds.Add(id);
         return true;
     }
 }
@@ -75,19 +101,30 @@ public sealed class ToothLabClinicalState
 
     /// <summary>
     /// Always appends a new record. Same tooth and type never merge automatically.
-    /// Filling requires at least one surface; whole-tooth types may have none.
+    /// Filling requires at least one surface. Endodontic requires at least one
+    /// catalog canal when the tooth has definitions. Never creates a Filling
+    /// as a side effect of Root Canal.
     /// </summary>
-    public DentalProcedure? TryCreate(DentalProcedureType type, IEnumerable<ToothSurfaceType> surfaces)
+    public DentalProcedure? TryCreate(
+        DentalProcedureType type,
+        IEnumerable<ToothSurfaceType> surfaces,
+        IEnumerable<string>? rootCanalIds = null)
     {
-        var set = LabSurfaces.Normalize(surfaces);
+        var set = type == DentalProcedureType.Filling ? LabSurfaces.Normalize(surfaces) : [];
         if (DentalProcedureTypes.RequiresSurfaces(type) && set.Count == 0)
+            return null;
+        var canals = type == DentalProcedureType.Endodontic
+            ? ToothRootCanalCatalog.Normalize(ToothNumber, rootCanalIds)
+            : [];
+        if (DentalProcedureTypes.RequiresRootCanals(type, ToothNumber) && canals.Count == 0)
             return null;
         var procedure = new DentalProcedure(
             Guid.NewGuid(),
             _nextDisplayNumber++,
             ToothNumber,
             type,
-            set);
+            set,
+            canals);
         _procedures.Add(procedure);
         return procedure;
     }
@@ -96,6 +133,12 @@ public sealed class ToothLabClinicalState
     {
         var procedure = Find(id);
         return procedure is not null && procedure.ReplaceSurfaces(surfaces);
+    }
+
+    public bool TryUpdateRootCanals(Guid id, IEnumerable<string> rootCanalIds)
+    {
+        var procedure = Find(id);
+        return procedure is not null && procedure.ReplaceRootCanals(rootCanalIds);
     }
 
     public bool TryRemove(Guid id)
@@ -119,6 +162,22 @@ public sealed class ToothLabClinicalState
                 set.Add(surface);
         }
         return LabSurfaces.DisplayNames(set, innerName);
+    }
+
+    /// <summary>
+    /// Union of treated root/canal IDs across Endodontic records. Independent of Filling.
+    /// </summary>
+    public IReadOnlyList<string> TreatedRootCanalIds()
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var procedure in _procedures)
+        {
+            if (procedure.ProcedureType != DentalProcedureType.Endodontic)
+                continue;
+            foreach (var id in procedure.RootCanalIds)
+                set.Add(id);
+        }
+        return ToothRootCanalCatalog.ForFdi(ToothNumber).Where(c => set.Contains(c.Id)).Select(c => c.Id).ToList();
     }
 }
 

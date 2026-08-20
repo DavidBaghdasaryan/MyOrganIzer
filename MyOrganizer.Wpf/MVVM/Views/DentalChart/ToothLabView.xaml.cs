@@ -114,6 +114,7 @@ public partial class ToothLabView : UserControl
         {
             MeshView.SetFillingSurfaces([]);
             MeshView.SetSelectedSurfaces([]);
+            MeshView.SetRootCanals([]);
         }
         if (_vm.ShowDetailedViewer && _vm.ShowSegTools)
             ApplySurfaceDebug();
@@ -172,10 +173,12 @@ public partial class ToothLabView : UserControl
     private void PushClinical(ToothLabViewModel vm)
     {
         MeshView.SetFillingSurfaces(vm.FillingSurfaceNames);
+        MeshView.SetRootCanals(vm.TreatedRootCanalIds);
         // #region agent log
         var line = "{\"sessionId\":\"ee2893\",\"runId\":\"paint-cleanup\",\"hypothesisId\":\"B\",\"location\":\"ToothLabView.xaml.cs\",\"message\":\"filling-from-clinical\",\"data\":{\"fdi\":\"" +
                    vm.ToothNumber + "\",\"inner\":\"" + vm.InnerCameraLabel +
                    "\",\"derived\":\"" + string.Join(",", vm.FillingSurfaceNames) +
+                   "\",\"canals\":\"" + string.Join(",", vm.TreatedRootCanalIds) +
                    "\",\"pending\":\"" + string.Join(",", vm.PendingSurfaceNames) +
                    "\",\"procedureCount\":" + vm.Clinical.Procedures.Count +
                    "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
