@@ -225,7 +225,8 @@ public partial class ToothMeshView : UserControl
                 CrownModel.Geometry = parts.Crown;
                 RootModel.Geometry = parts.Root;
                 CervicalModel.Geometry = parts.Cervical.TriangleIndices.Count == 0 ? null : parts.Cervical;
-                _canalPaths = ToothRootCanalGuide.PathsFromRoot(asset.FdiNumber, parts.Root);
+                _canalPaths = ToothRootCanalGuide.PathsFromRoot(
+                    asset.FdiNumber, parts.Root, _stats.Mirrored, _stats.CrownMeanZ, _stats.RootMeanZ);
                 ToothLabAppearance.Apply(asset.FdiNumber, CrownModel, RootModel, CervicalModel);
                 BuildTriangleLookup(parts.Crown);
                 if (asset.SurfaceMapAvailable)

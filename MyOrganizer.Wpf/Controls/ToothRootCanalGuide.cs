@@ -7,17 +7,19 @@ namespace MyOrganizer.Wpf.Controls;
 internal readonly record struct CanalSample(Point3D Point, double Radius);
 
 /// <summary>
-/// Thin canal polylines sampled from the approved FDI 36 root mesh.
-/// Mesial = greater +X (AlignFdi36). Does not modify the tooth model.
+/// Thin canal polylines sampled from each tooth's approved root mesh.
+/// FDI 36 remains the reference: Mesial = greater +X after AlignFdi36.
+/// Does not modify tooth models.
 /// </summary>
 internal static class ToothRootCanalGuide
 {
-    public static IReadOnlyDictionary<string, IReadOnlyList<CanalSample>> PathsFromRoot(string fdi, MeshGeometry3D? root)
+    public static IReadOnlyDictionary<string, IReadOnlyList<CanalSample>> PathsFromRoot(
+        string fdi, MeshGeometry3D? root, bool mirrored = false, double crownMeanZ = 0, double rootMeanZ = 0)
     {
         var result = new Dictionary<string, IReadOnlyList<CanalSample>>(StringComparer.OrdinalIgnoreCase);
-        if (!string.Equals(ToothAssetRegistry.Normalize(fdi), "36", StringComparison.Ordinal) ||
-            root is null ||
-            root.Positions.Count == 0)
+        fdi = ToothAssetRegistry.Normalize(fdi ?? "");
+        var defs = ToothRootCanalCatalog.ForFdi(fdi);
+        if (defs.Count == 0 || root is null || root.Positions.Count == 0)
             return result;
 
         var pts = root.Positions;
@@ -30,78 +32,34 @@ internal static class ToothRootCanalGuide
         }
 
         var zSpan = Math.Max(1e-6, maxZ - minZ);
-        var apicalCut = minZ + 0.20 * zSpan;
+        var apexIsMaxZ = Math.Abs(rootMeanZ - crownMeanZ) > 1e-4
+            ? rootMeanZ > crownMeanZ
+            : false;
+        var sign = apexIsMaxZ ? 1.0 : -1.0;
+        var apexZ = apexIsMaxZ ? maxZ : minZ;
+        var cervixZ = apexIsMaxZ ? minZ : maxZ;
+        var apicalCut = apexZ - sign * 0.20 * zSpan;
         var apical = new List<Point3D>();
         foreach (var p in pts)
         {
-            if (p.Z <= apicalCut)
+            if (apexIsMaxZ ? p.Z >= apicalCut : p.Z <= apicalCut)
                 apical.Add(p);
         }
 
-        var clusters = ClusterXy(apical, 2);
-        if (clusters.Count < 2)
+        var mesialSign = mirrored ? -1 : 1;
+        if (!TrySeeds(defs, apical, mesialSign, out var ids, out var seeds))
             return result;
 
-        var c0 = Centroid(clusters[0]);
-        var c1 = Centroid(clusters[1]);
-        var mesialI = c0.X >= c1.X ? 0 : 1;
-        var distalI = mesialI == 0 ? 1 : 0;
-        var seeds = new[] { Centroid(clusters[mesialI]), Centroid(clusters[distalI]) };
-        var ids = new[] { ToothRootCanalCatalog.Mesial, ToothRootCanalCatalog.Distal };
-
-        var z0 = maxZ - 0.12 * zSpan;
-        var z1 = minZ + 0.10 * zSpan;
-        const int slices = 10;
-        for (var i = 0; i < 2; i++)
+        var fusedBp = defs.Any(d => d.Spatial == CanalSpatial.Buccal) &&
+                      seeds.Length >= 2 && Dist2(seeds[0], seeds[1]) < 0.05;
+        var z0 = cervixZ + sign * 0.12 * zSpan;
+        var z1 = apexZ - sign * 0.10 * zSpan;
+        for (var i = 0; i < ids.Length; i++)
         {
-            var path = new List<CanalSample>(slices);
-            Point3D? last = null;
-            for (var s = 0; s < slices; s++)
-            {
-                var t = s / (double)(slices - 1);
-                var z = z0 + (z1 - z0) * t;
-                var band = 0.70 * zSpan / slices;
-                double sx = 0, sy = 0, sz = 0, rAcc = 0;
-                var n = 0;
-                foreach (var p in pts)
-                {
-                    if (Math.Abs(p.Z - z) > band)
-                        continue;
-                    var d0 = Dist2(p, seeds[0]);
-                    var d1 = Dist2(p, seeds[1]);
-                    var own = i == 0 ? d0 <= d1 : d1 < d0;
-                    if (!own)
-                        continue;
-                    sx += p.X;
-                    sy += p.Y;
-                    sz += p.Z;
-                    n++;
-                }
-
-                if (n < 6)
-                {
-                    if (last is Point3D keep)
-                        path.Add(new CanalSample(new Point3D(keep.X, keep.Y, z), path[^1].Radius));
-                    continue;
-                }
-
-                var c = new Point3D(sx / n, sy / n, sz / n);
-                foreach (var p in pts)
-                {
-                    if (Math.Abs(p.Z - z) > band)
-                        continue;
-                    var d0 = Dist2(p, seeds[0]);
-                    var d1 = Dist2(p, seeds[1]);
-                    var own = i == 0 ? d0 <= d1 : d1 < d0;
-                    if (!own)
-                        continue;
-                    rAcc = Math.Max(rAcc, Math.Sqrt(Dist2(p, c)));
-                }
-
-                last = c;
-                path.Add(new CanalSample(c, Math.Max(0.04, rAcc)));
-            }
-
+            var ySign = defs[i].Spatial == CanalSpatial.Buccal ? 1.0 : -1.0;
+            var path = fusedBp
+                ? TraceInside(pts, z0, z1, zSpan, ySign)
+                : Trace(pts, seeds, i, z0, z1, zSpan);
             if (path.Count >= 2)
                 result[ids[i]] = path;
         }
@@ -109,16 +67,24 @@ internal static class ToothRootCanalGuide
         // #region agent log
         try
         {
-            result.TryGetValue(ToothRootCanalCatalog.Mesial, out var mp);
-            result.TryGetValue(ToothRootCanalCatalog.Distal, out var dp);
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"endo-canal-v2\",\"hypothesisId\":\"C\"" +
-                       ",\"location\":\"ToothRootCanalGuide.PathsFromRoot\",\"message\":\"36-axes\"" +
-                       ",\"data\":{\"mesialX\":" + F(seeds[0].X) + ",\"distalX\":" + F(seeds[1].X) +
-                       ",\"mesialY\":" + F(seeds[0].Y) + ",\"distalY\":" + F(seeds[1].Y) +
-                       ",\"mesialN\":" + (mp?.Count ?? 0) + ",\"distalN\":" + (dp?.Count ?? 0) +
-                       ",\"z0\":" + F(z0) + ",\"z1\":" + F(z1) +
-                       ",\"minZ\":" + F(minZ) + ",\"maxZ\":" + F(maxZ) +
-                       ",\"dx\":" + F(seeds[0].X - seeds[1].X) + "}" +
+            var seedXs = string.Join(";", seeds.Select(s => F(s.X) + "," + F(s.Y)));
+            var counts = string.Join(";", ids.Select(id =>
+            {
+                result.TryGetValue(id, out var p);
+                var a = p is { Count: > 0 } ? F(p[0].Point.Z) : "";
+                var b = p is { Count: > 0 } ? F(p[^1].Point.Z) : "";
+                return id + ":" + (p?.Count ?? 0) + ":" + a + ">" + b;
+            }));
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"canal-apex-v3\",\"hypothesisId\":\"C\"" +
+                       ",\"location\":\"ToothRootCanalGuide.PathsFromRoot\",\"message\":\"canal-seeds\"" +
+                       ",\"data\":{\"fdi\":\"" + fdi + "\",\"n\":" + ids.Length +
+                       ",\"mesialSign\":" + mesialSign + ",\"mirrored\":" + (mirrored ? "true" : "false") +
+                       ",\"apexMax\":" + (apexIsMaxZ ? "true" : "false") +
+                       ",\"crownZ\":" + F(crownMeanZ) + ",\"rootZ\":" + F(rootMeanZ) +
+                       ",\"fusedBp\":" + (fusedBp ? "true" : "false") +
+                       ",\"seeds\":\"" + seedXs + "\",\"counts\":\"" + counts +
+                       "\",\"z0\":" + F(z0) + ",\"z1\":" + F(z1) +
+                       ",\"minZ\":" + F(minZ) + ",\"maxZ\":" + F(maxZ) + "}" +
                        ",\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n";
             File.AppendAllText(@"c:\Users\david\source\repos\MyOrganIzer\debug-ee2893.log", line);
         }
@@ -201,7 +167,326 @@ internal static class ToothRootCanalGuide
         return mesh;
     }
 
+    private static bool TrySeeds(
+        IReadOnlyList<ToothRootCanalDefinition> defs,
+        List<Point3D> apical,
+        int mesialSign,
+        out string[] ids,
+        out Point3D[] seeds)
+    {
+        ids = defs.Select(d => d.Id).ToArray();
+        seeds = new Point3D[defs.Count];
+        if (apical.Count < 8)
+            return false;
+
+        var hasMd = defs.Any(d => d.Spatial is CanalSpatial.Mesial or CanalSpatial.Distal);
+        var hasMolar3 = defs.Any(d => d.Spatial == CanalSpatial.Mesiobuccal);
+        var hasBp = defs.Any(d => d.Spatial is CanalSpatial.Buccal) &&
+                    defs.Any(d => d.Spatial is CanalSpatial.Palatal or CanalSpatial.Lingual);
+
+        if (hasMolar3)
+            return AssignMaxillaryMolar(defs, apical, mesialSign, seeds);
+        if (hasMd)
+            return AssignMesialDistal(defs, apical, mesialSign, seeds);
+        if (hasBp)
+            return AssignBuccalInner(defs, apical, seeds);
+
+        var c = Centroid(apical);
+        for (var i = 0; i < defs.Count; i++)
+            seeds[i] = c;
+        return true;
+    }
+
+    private static bool AssignMesialDistal(
+        IReadOnlyList<ToothRootCanalDefinition> defs,
+        List<Point3D> apical,
+        int mesialSign,
+        Point3D[] seeds)
+    {
+        var clusters = ClusterXy(apical, 2);
+        Point3D mesial;
+        Point3D distal;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            var mesialFirst = c0.X * mesialSign >= c1.X * mesialSign;
+            mesial = mesialFirst ? c0 : c1;
+            distal = mesialFirst ? c1 : c0;
+        }
+        else
+        {
+            var c = Centroid(apical);
+            var dx = SpreadX(apical) * 0.22;
+            mesial = new Point3D(c.X + mesialSign * dx, c.Y, c.Z);
+            distal = new Point3D(c.X - mesialSign * dx, c.Y, c.Z);
+        }
+
+        for (var i = 0; i < defs.Count; i++)
+        {
+            seeds[i] = defs[i].Spatial == CanalSpatial.Mesial ? mesial : distal;
+        }
+        return true;
+    }
+
+    private static bool AssignMaxillaryMolar(
+        IReadOnlyList<ToothRootCanalDefinition> defs,
+        List<Point3D> apical,
+        int mesialSign,
+        Point3D[] seeds)
+    {
+        var clusters = ClusterXy(apical, 3);
+        Point3D palatal;
+        Point3D mb;
+        Point3D db;
+        if (clusters.Count >= 3)
+        {
+            var cents = clusters.Select(Centroid).ToArray();
+            var palI = 0;
+            for (var i = 1; i < cents.Length; i++)
+            {
+                if (cents[i].Y < cents[palI].Y)
+                    palI = i;
+            }
+            var buccal = Enumerable.Range(0, cents.Length).Where(i => i != palI).ToArray();
+            var a = cents[buccal[0]];
+            var b = cents[buccal[1]];
+            var aMesial = a.X * mesialSign >= b.X * mesialSign;
+            mb = aMesial ? a : b;
+            db = aMesial ? b : a;
+            palatal = cents[palI];
+        }
+        else if (clusters.Count == 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            palatal = c0.Y <= c1.Y ? c0 : c1;
+            var buccal = c0.Y <= c1.Y ? c1 : c0;
+            var dx = Math.Max(0.04, SpreadX(apical) * 0.18);
+            mb = new Point3D(buccal.X + mesialSign * dx, buccal.Y, buccal.Z);
+            db = new Point3D(buccal.X - mesialSign * dx, buccal.Y, buccal.Z);
+        }
+        else
+        {
+            var c = Centroid(apical);
+            var dx = Math.Max(0.04, SpreadX(apical) * 0.22);
+            var dy = Math.Max(0.04, SpreadY(apical) * 0.22);
+            palatal = new Point3D(c.X, c.Y - dy, c.Z);
+            mb = new Point3D(c.X + mesialSign * dx, c.Y + dy * 0.4, c.Z);
+            db = new Point3D(c.X - mesialSign * dx, c.Y + dy * 0.4, c.Z);
+        }
+
+        for (var i = 0; i < defs.Count; i++)
+        {
+            seeds[i] = defs[i].Spatial switch
+            {
+                CanalSpatial.Mesiobuccal => mb,
+                CanalSpatial.Distobuccal => db,
+                _ => palatal
+            };
+        }
+        PullTowardBarycenter(seeds, 0.72);
+        return true;
+    }
+
+    private static void PullTowardBarycenter(Point3D[] seeds, double t)
+    {
+        if (seeds.Length < 2)
+            return;
+        double x = 0, y = 0, z = 0;
+        foreach (var s in seeds)
+        {
+            x += s.X;
+            y += s.Y;
+            z += s.Z;
+        }
+        var n = seeds.Length;
+        var o = new Point3D(x / n, y / n, z / n);
+        for (var i = 0; i < seeds.Length; i++)
+        {
+            seeds[i] = new Point3D(
+                o.X + (seeds[i].X - o.X) * t,
+                o.Y + (seeds[i].Y - o.Y) * t,
+                o.Z + (seeds[i].Z - o.Z) * t);
+        }
+    }
+
+    private static bool AssignBuccalInner(
+        IReadOnlyList<ToothRootCanalDefinition> defs,
+        List<Point3D> apical,
+        Point3D[] seeds)
+    {
+        var clusters = ClusterXy(apical, 2);
+        Point3D buccal;
+        Point3D inner;
+        if (clusters.Count >= 2)
+        {
+            var c0 = Centroid(clusters[0]);
+            var c1 = Centroid(clusters[1]);
+            if (Dist2(c0, c1) >= 0.05)
+            {
+                var buccalFirst = c0.Y >= c1.Y;
+                buccal = buccalFirst ? c0 : c1;
+                inner = buccalFirst ? c1 : c0;
+            }
+            else
+            {
+                SplitSingleRoot(apical, out buccal, out inner);
+            }
+        }
+        else
+        {
+            SplitSingleRoot(apical, out buccal, out inner);
+        }
+
+        for (var i = 0; i < defs.Count; i++)
+            seeds[i] = defs[i].Spatial == CanalSpatial.Buccal ? buccal : inner;
+        if (Dist2(buccal, inner) >= 0.05)
+            PullTowardBarycenter(seeds, 0.72);
+        return true;
+    }
+
+    private static void SplitSingleRoot(List<Point3D> apical, out Point3D buccal, out Point3D inner)
+    {
+        var c = Centroid(apical);
+        var dy = Math.Max(0.02, SpreadY(apical) * 0.18);
+        buccal = new Point3D(c.X, c.Y + dy, c.Z);
+        inner = new Point3D(c.X, c.Y - dy, c.Z);
+    }
+
+    private static List<CanalSample> TraceInside(
+        Point3DCollection pts, double z0, double z1, double zSpan, double ySign)
+    {
+        const int slices = 10;
+        var path = new List<CanalSample>(slices);
+        for (var s = 0; s < slices; s++)
+        {
+            var t = s / (double)(slices - 1);
+            var z = z0 + (z1 - z0) * t;
+            var band = 0.70 * zSpan / slices;
+            double sx = 0, sy = 0, sz = 0;
+            var n = 0;
+            foreach (var p in pts)
+            {
+                if (Math.Abs(p.Z - z) > band)
+                    continue;
+                sx += p.X;
+                sy += p.Y;
+                sz += p.Z;
+                n++;
+            }
+            if (n < 6)
+                continue;
+            var c = new Point3D(sx / n, sy / n, sz / n);
+            var ry = 0.0;
+            foreach (var p in pts)
+            {
+                if (Math.Abs(p.Z - z) > band)
+                    continue;
+                ry = Math.Max(ry, Math.Abs(p.Y - c.Y));
+            }
+            path.Add(new CanalSample(
+                new Point3D(c.X, c.Y + ySign * 0.28 * ry, c.Z),
+                Math.Max(0.03, ry)));
+        }
+        return path;
+    }
+
+    private static List<CanalSample> Trace(
+        Point3DCollection pts,
+        Point3D[] seeds,
+        int i,
+        double z0,
+        double z1,
+        double zSpan)
+    {
+        const int slices = 10;
+        var path = new List<CanalSample>(slices);
+        Point3D? last = null;
+        for (var s = 0; s < slices; s++)
+        {
+            var t = s / (double)(slices - 1);
+            var z = z0 + (z1 - z0) * t;
+            var band = 0.70 * zSpan / slices;
+            double sx = 0, sy = 0, sz = 0, rAcc = 0;
+            var n = 0;
+            foreach (var p in pts)
+            {
+                if (Math.Abs(p.Z - z) > band)
+                    continue;
+                if (Owner(p, seeds) != i)
+                    continue;
+                sx += p.X;
+                sy += p.Y;
+                sz += p.Z;
+                n++;
+            }
+
+            if (n == 0)
+                continue;
+            if (n < 6)
+            {
+                if (last is Point3D keep)
+                    path.Add(new CanalSample(new Point3D(keep.X, keep.Y, z), path[^1].Radius));
+                continue;
+            }
+
+            var c = new Point3D(sx / n, sy / n, sz / n);
+            foreach (var p in pts)
+            {
+                if (Math.Abs(p.Z - z) > band)
+                    continue;
+                if (Owner(p, seeds) != i)
+                    continue;
+                rAcc = Math.Max(rAcc, Math.Sqrt(Dist2(p, c)));
+            }
+
+            last = c;
+            path.Add(new CanalSample(c, Math.Max(0.04, rAcc)));
+        }
+        return path;
+    }
+
+    private static int Owner(Point3D p, Point3D[] seeds)
+    {
+        var best = 0;
+        var bestD = Dist2(p, seeds[0]);
+        for (var s = 1; s < seeds.Length; s++)
+        {
+            var d = Dist2(p, seeds[s]);
+            if (d >= bestD)
+                continue;
+            bestD = d;
+            best = s;
+        }
+        return best;
+    }
+
     private static string F(double v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static double SpreadX(List<Point3D> pts)
+    {
+        var min = double.PositiveInfinity;
+        var max = double.NegativeInfinity;
+        foreach (var p in pts)
+        {
+            if (p.X < min) min = p.X;
+            if (p.X > max) max = p.X;
+        }
+        return Math.Max(0, max - min);
+    }
+
+    private static double SpreadY(List<Point3D> pts)
+    {
+        var min = double.PositiveInfinity;
+        var max = double.NegativeInfinity;
+        foreach (var p in pts)
+        {
+            if (p.Y < min) min = p.Y;
+            if (p.Y > max) max = p.Y;
+        }
+        return Math.Max(0, max - min);
+    }
 
     private static List<List<Point3D>> ClusterXy(List<Point3D> pts, int k)
     {

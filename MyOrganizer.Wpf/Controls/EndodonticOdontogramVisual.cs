@@ -104,13 +104,17 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
         var apexY = upper ? minY : maxY;
         var dir = upper ? -1 : 1;
         var toothH = maxY - minY + 1;
-        var startY = ClampY(occlusalY + dir * Math.Max(8, (int)(toothH * 0.36)) + dir * 2, minY, maxY);
+        var kind = ToothFdi.Kind(_fdi);
+        var fromOcclusal = kind is ToothKind.Incisor or ToothKind.Canine
+            ? 0.40
+            : kind is ToothKind.Premolar ? 0.38 : 0.36;
+        var startY = ClampY(occlusalY + dir * Math.Max(8, (int)(toothH * fromOcclusal)) + dir * 2, minY, maxY);
         var tipY = ClampY(apexY - dir * 2, minY, maxY);
         if ((tipY - startY) * dir < 8)
             return;
 
         _rootClip = BuildRootClip(px, w, h, startY, tipY, dir);
-        var traces = FitRootAxes(px, w, startY, tipY, dir, selected, ToothFdi.MesialOnLeft(_fdi));
+        var traces = FitRootAxes(_fdi, px, w, startY, tipY, dir, selected, ToothFdi.MesialOnLeft(_fdi));
         _drawn = traces.Count;
         if (traces.Count > 0)
             _canals = BuildCanalGeometry(traces);
@@ -119,7 +123,7 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
         {
             var xs = string.Join(";", traces.Select(t =>
                 t[0].X.ToString("0.0") + "-" + t[^1].X.ToString("0.0")));
-            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"endo-canal-v2\",\"hypothesisId\":\"B\"" +
+            var line = "{\"sessionId\":\"ee2893\",\"runId\":\"canal-all-fdi\",\"hypothesisId\":\"B\"" +
                        ",\"location\":\"EndodonticOdontogramVisual.Rebuild\",\"message\":\"selected-canals\"" +
                        ",\"data\":{\"fdi\":\"" + _fdi + "\",\"ids\":\"" + string.Join(",", selected) +
                        "\",\"drawn\":" + _drawn + ",\"lenPx\":" + ((tipY - startY) * dir) +
@@ -133,21 +137,22 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
     }
 
     private static List<List<Point>> FitRootAxes(
-        int[] px, int w, int startY, int tipY, int dir, HashSet<string> selected, bool mesialOnLeft)
+        string fdi, int[] px, int w, int startY, int tipY, int dir, HashSet<string> selected, bool mesialOnLeft)
     {
         var startSpans = SpansAt(px, w, startY, dir, 4);
         var midY = startY + dir * (Math.Abs(tipY - startY) / 2);
         var midSpans = SpansAt(px, w, midY, dir, 6);
         var tipSpans = SpansAt(px, w, tipY - dir * 3, dir, 6);
         var canals = new List<List<Point>>();
-        foreach (var id in new[] { ToothRootCanalCatalog.Mesial, ToothRootCanalCatalog.Distal })
+        var defs = ToothRootCanalCatalog.ForFdi(fdi);
+        var palatalCentered = defs.Any(d => d.Spatial == CanalSpatial.Mesiobuccal);
+        foreach (var def in defs)
         {
-            if (!selected.Contains(id))
+            if (!selected.Contains(def.Id))
                 continue;
-            var mesial = id == ToothRootCanalCatalog.Mesial;
-            var x0 = AxisX(startSpans, mesial, mesialOnLeft, w);
-            var x1 = AxisX(midSpans, mesial, mesialOnLeft, w);
-            var x2 = AxisX(tipSpans, mesial, mesialOnLeft, w);
+            var x0 = AxisX(startSpans, def.Spatial, mesialOnLeft, palatalCentered, w);
+            var x1 = AxisX(midSpans, def.Spatial, mesialOnLeft, palatalCentered, w);
+            var x2 = AxisX(tipSpans, def.Spatial, mesialOnLeft, palatalCentered, w);
             canals.Add(
             [
                 new Point(x0, startY + 0.5),
@@ -174,7 +179,21 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
         return [];
     }
 
-    private static double AxisX(IReadOnlyList<Span> spans, bool mesial, bool mesialOnLeft, int w)
+    private static double AxisX(
+        IReadOnlyList<Span> spans, CanalSpatial spatial, bool mesialOnLeft, bool palatalCentered, int w)
+    {
+        if (spatial is CanalSpatial.Mesial or CanalSpatial.Mesiobuccal)
+            return MdAxisX(spans, mesial: true, mesialOnLeft, w);
+        if (spatial is CanalSpatial.Distal or CanalSpatial.Distobuccal)
+            return MdAxisX(spans, mesial: false, mesialOnLeft, w);
+        if (spatial == CanalSpatial.Buccal)
+            return BpAxisX(spans, buccal: true, w);
+        if (spatial is CanalSpatial.Palatal or CanalSpatial.Lingual)
+            return palatalCentered ? InnerAxisX(spans, w) : BpAxisX(spans, buccal: false, w);
+        return CenterAxisX(spans, w);
+    }
+
+    private static double MdAxisX(IReadOnlyList<Span> spans, bool mesial, bool mesialOnLeft, int w)
     {
         var leftBias = mesial == mesialOnLeft;
         if (spans.Count >= 2)
@@ -190,6 +209,32 @@ public sealed class EndodonticOdontogramVisual : FrameworkElement
             return s.Left + (s.Right - s.Left) * t;
         }
         return w * (leftBias ? 0.38 : 0.62);
+    }
+
+    private static double InnerAxisX(IReadOnlyList<Span> spans, int w)
+    {
+        if (spans.Count >= 3)
+            return Mid(spans[spans.Count / 2]);
+        return CenterAxisX(spans, w);
+    }
+
+    private static double BpAxisX(IReadOnlyList<Span> spans, bool buccal, int w)
+    {
+        var t = buccal ? 0.38 : 0.62;
+        if (spans.Count == 0)
+            return w * t;
+        var lo = spans[0].Left;
+        var hi = spans[^1].Right;
+        return lo + (hi - lo) * t;
+    }
+
+    private static double CenterAxisX(IReadOnlyList<Span> spans, int w)
+    {
+        if (spans.Count == 0)
+            return w * 0.5;
+        var lo = spans[0].Left;
+        var hi = spans[^1].Right;
+        return (lo + hi) / 2.0;
     }
 
     private static Geometry BuildCanalGeometry(List<List<Point>> traces)

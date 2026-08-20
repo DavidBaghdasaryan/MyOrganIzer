@@ -1,0 +1,2 @@
+/// Odontogram overlay: thin red canal lines for the treated root/canal IDs
+/// from <see cref="ToothRootCanalCatalog"/>. FDI 36 is the approved reference.

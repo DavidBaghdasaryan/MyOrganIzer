@@ -3,33 +3,96 @@ using MyOrganizer.Wpf.Controls;
 namespace MyOrganizer.Wpf.Dental;
 
 /// <summary>
+/// Spatial role used to place a canal on the odontogram and 3D root mesh.
+/// Anatomical names stay in <see cref="ToothRootCanalDefinition.DisplayName"/>.
+/// </summary>
+public enum CanalSpatial
+{
+    Mesial,
+    Distal,
+    Buccal,
+    Palatal,
+    Lingual,
+    Mesiobuccal,
+    Distobuccal,
+    Central
+}
+
+/// <summary>
 /// One selectable root/canal on a tooth. <see cref="Id"/> is the stored value;
 /// <see cref="DisplayName"/> is the anatomical label shown in UI.
 /// </summary>
-public readonly record struct ToothRootCanalDefinition(string Id, string DisplayName);
+public readonly record struct ToothRootCanalDefinition(
+    string Id,
+    string DisplayName,
+    CanalSpatial Spatial);
 
 /// <summary>
 /// Single source of truth for available roots/canals by FDI.
 /// Procedure UI, odontogram, and 3D overlays all read from here.
-/// First reference implementation: FDI 36 (mandibular left first molar).
+/// FDI 36 (mandibular left first molar) remains the approved Mesial/Distal reference.
 /// </summary>
 public static class ToothRootCanalCatalog
 {
     public const string Mesial = "mesial";
     public const string Distal = "distal";
+    public const string Mesiobuccal = "mesiobuccal";
+    public const string Distobuccal = "distobuccal";
+    public const string Palatal = "palatal";
+    public const string Buccal = "buccal";
+    public const string Lingual = "lingual";
+    public const string Central = "central";
 
     private static readonly ToothRootCanalDefinition[] Empty = [];
 
-    private static readonly ToothRootCanalDefinition[] MandibularFirstMolar36 =
+    private static readonly ToothRootCanalDefinition[] MandibularMolar =
     [
-        new(Mesial, "Mesial"),
-        new(Distal, "Distal")
+        new(Mesial, "Mesial", CanalSpatial.Mesial),
+        new(Distal, "Distal", CanalSpatial.Distal)
+    ];
+
+    private static readonly ToothRootCanalDefinition[] MaxillaryMolar =
+    [
+        new(Mesiobuccal, "Mesiobuccal", CanalSpatial.Mesiobuccal),
+        new(Distobuccal, "Distobuccal", CanalSpatial.Distobuccal),
+        new(Palatal, "Palatal", CanalSpatial.Palatal)
+    ];
+
+    private static readonly ToothRootCanalDefinition[] MaxillaryPremolar =
+    [
+        new(Buccal, "Buccal", CanalSpatial.Buccal),
+        new(Palatal, "Palatal", CanalSpatial.Palatal)
+    ];
+
+    private static readonly ToothRootCanalDefinition[] MandibularTwoCanal =
+    [
+        new(Buccal, "Buccal", CanalSpatial.Buccal),
+        new(Lingual, "Lingual", CanalSpatial.Lingual)
+    ];
+
+    private static readonly ToothRootCanalDefinition[] SingleCanal =
+    [
+        new(Central, "Central", CanalSpatial.Central)
     ];
 
     public static IReadOnlyList<ToothRootCanalDefinition> ForFdi(string? fdi)
     {
         fdi = ToothAssetRegistry.Normalize(fdi ?? "");
-        return fdi == "36" ? MandibularFirstMolar36 : Empty;
+        if (!ToothFdi.TryParse(fdi, out var n))
+            return Empty;
+
+        var pos = n % 10;
+        var upper = ToothFdi.IsUpper(fdi);
+        return pos switch
+        {
+            6 or 7 or 8 when upper => MaxillaryMolar,
+            6 or 7 or 8 => MandibularMolar,
+            4 or 5 when upper => MaxillaryPremolar,
+            4 => MandibularTwoCanal,
+            1 or 2 when !upper => MandibularTwoCanal,
+            1 or 2 or 3 or 5 => SingleCanal,
+            _ => Empty
+        };
     }
 
     public static bool HasChoices(string? fdi) => ForFdi(fdi).Count > 0;
@@ -72,5 +135,16 @@ public static class ToothRootCanalCatalog
             }
         }
         return set;
+    }
+
+    /// <summary>
+    /// +1 when loaded mesh +X is mesial (approved FDI 36).
+    /// Use the actual loader <paramref name="meshMirrored"/> flag, not the registry
+    /// MirrorX intent — FDI 16 keeps +X mesial even when the registry asks to mirror.
+    /// </summary>
+    public static int MeshMesialSign(string? fdi, bool meshMirrored = false)
+    {
+        _ = fdi;
+        return meshMirrored ? -1 : 1;
     }
 }
